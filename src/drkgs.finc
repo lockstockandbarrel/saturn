@@ -1,0 +1,316 @@
+!*==drkgs.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DRKGS
+!
+!        PURPOSE
+!           TO SOLVE A SYSTEM OF FIRST ORDER ORDINARY DIFFERENTIAL
+!           EQUATIONS WITH GIVEN INITIAL VALUES.
+!
+!        USAGE
+!           CALL DRKGS (PRMT,Y,DERY,NDIM,IHLF,FCT,OUTP,AUX)
+!           PARAMETERS FCT AND OUTP REQUIRE AN EXTERNAL STATEMENT.
+!
+!        DESCRIPTION OF PARAMETERS
+!           PRMT   - DOUBLE PRECISION INPUT AND OUTPUT VECTOR WITH
+!                    DIMENSION GREATER THAN OR EQUAL TO 5, WHICH
+!                    SPECIFIES THE PARAMETERS OF THE INTERVAL AND OF
+!                    ACCURACY AND WHICH SERVES FOR COMMUNICATION BETWEEN
+!                    OUTPUT SUBROUTINE (FURNISHED BY THE USER) AND
+!                    SUBROUTINE DRKGS. EXCEPT PRMT(5) THE COMPONENTS
+!                    ARE NOT DESTROYED BY SUBROUTINE DRKGS AND THEY ARE
+!           PRMT(1)- LOWER BOUND OF THE INTERVAL (INPUT),
+!           PRMT(2)- UPPER BOUND OF THE INTERVAL (INPUT),
+!           PRMT(3)- INITIAL INCREMENT OF THE INDEPENDENT VARIABLE
+!                    (INPUT),
+!           PRMT(4)- UPPER ERROR BOUND (INPUT). IF ABSOLUTE ERROR IS
+!                    GREATER THAN PRMT(4), INCREMENT GETS HALVED.
+!                    IF INCREMENT IS LESS THAN PRMT(3) AND ABSOLUTE
+!                    ERROR LESS THAN PRMT(4)/50, INCREMENT GETS DOUBLED.
+!                    THE USER MAY CHANGE PRMT(4) BY MEANS OF HIS
+!                    OUTPUT SUBROUTINE.
+!           PRMT(5)- NO INPUT PARAMETER. SUBROUTINE DRKGS INITIALIZES
+!                    PRMT(5)=0. IF THE USER WANTS TO TERMINATE
+!                    SUBROUTINE DRKGS AT ANY OUTPUT POINT, HE HAS TO
+!                    CHANGE PRMT(5) TO NON-ZERO BY MEANS OF SUBROUTINE
+!                    OUTP. FURTHER COMPONENTS OF VECTOR PRMT ARE
+!                    FEASIBLE IF ITS DIMENSION IS DEFINED GREATER
+!                    THAN 5. HOWEVER SUBROUTINE DRKGS DOES NOT REQUIRE
+!                    AND CHANGE THEM. NEVERTHELESS THEY MAY BE USEFUL
+!                    FOR HANDING RESULT VALUES TO THE MAIN PROGRAM
+!                    (CALLING DRKGS) WHICH ARE OBTAINED BY SPECIAL
+!                    MANIPULATIONS WITH OUTPUT DATA IN SUBROUTINE OUTP.
+!           Y      - DOUBLE PRECISION INPUT VECTOR OF INITIAL VALUES
+!                    (DESTROYED). LATERON Y IS THE RESULTING VECTOR OF
+!                    DEPENDENT VARIABLES COMPUTED AT INTERMEDIATE
+!                    POINTS X.
+!           DERY   - DOUBLE PRECISION INPUT VECTOR OF ERROR WEIGHTS
+!                    (DESTROYED). THE SUM OF ITS COMPONENTS MUST BE
+!                    EQUAL TO 1. LATERON DERY IS THE VECTOR OF
+!                    DERIVATIVES, WHICH BELONG TO FUNCTION VALUES Y AT
+!                    INTERMEDIATE POINTS X.
+!           NDIM   - AN INPUT VALUE, WHICH SPECIFIES THE NUMBER OF
+!                    EQUATIONS IN THE SYSTEM.
+!           IHLF   - AN OUTPUT VALUE, WHICH SPECIFIES THE NUMBER OF
+!                    BISECTIONS OF THE INITIAL INCREMENT. IF IHLF GETS
+!                    GREATER THAN 10, SUBROUTINE DRKGS RETURNS WITH
+!                    ERROR MESSAGE IHLF=11 INTO MAIN PROGRAM. ERROR
+!                    MESSAGE IHLF=12 OR IHLF=13 APPEARS IN CASE
+!                    PRMT(3)=0 OR IN CASE SIGN(PRMT(3)).NE.SIGN(PRMT(2)-
+!                    PRMT(1)) RESPECTIVELY.
+!           FCT    - THE NAME OF AN EXTERNAL SUBROUTINE USED. THIS
+!                    SUBROUTINE COMPUTES THE RIGHT HAND SIDES DERY OF
+!                    THE SYSTEM TO GIVEN VALUES X AND Y. ITS PARAMETER
+!                    LIST MUST BE X,Y,DERY. SUBROUTINE FCT SHOULD
+!                    NOT DESTROY X AND Y.
+!           OUTP   - THE NAME OF AN EXTERNAL OUTPUT SUBROUTINE USED.
+!                    ITS PARAMETER LIST MUST BE X,Y,DERY,IHLF,NDIM,PRMT.
+!                    NONE OF THESE PARAMETERS (EXCEPT, IF NECESSARY,
+!                    PRMT(4),PRMT(5),...) SHOULD BE CHANGED BY
+!                    SUBROUTINE OUTP. IF PRMT(5) IS CHANGED TO NON-ZERO,
+!                    SUBROUTINE DRKGS IS TERMINATED.
+!           AUX    - DOUBLE PRECISION AUXILIARY STORAGE ARRAY WITH 8
+!                    ROWS AND NDIM COLUMNS.
+!
+!        REMARKS
+!           THE PROCEDURE TERMINATES AND RETURNS TO CALLING PROGRAM, IF
+!           (1) MORE THAN 10 BISECTIONS OF THE INITIAL INCREMENT ARE
+!               NECESSARY TO GET SATISFACTORY ACCURACY (ERROR MESSAGE
+!               IHLF=11),
+!           (2) INITIAL INCREMENT IS EQUAL TO 0 OR HAS WRONG SIGN
+!               (ERROR MESSAGES IHLF=12 OR IHLF=13),
+!           (3) THE WHOLE INTEGRATION INTERVAL IS WORKED THROUGH,
+!           (4) SUBROUTINE OUTP HAS CHANGED PRMT(5) TO NON-ZERO.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL SUBROUTINES FCT(X,Y,DERY) AND
+!           OUTP(X,Y,DERY,IHLF,NDIM,PRMT) MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF FOURTH ORDER RUNGE-KUTTA
+!           FORMULAE IN THE MODIFICATION DUE TO GILL. ACCURACY IS
+!           TESTED COMPARING THE RESULTS OF THE PROCEDURE WITH SINGLE
+!           AND DOUBLE INCREMENT.
+!           SUBROUTINE DRKGS AUTOMATICALLY ADJUSTS THE INCREMENT DURING
+!           THE WHOLE COMPUTATION BY HALVING OR DOUBLING. IF MORE THAN
+!           10 BISECTIONS OF THE INCREMENT ARE NECESSARY TO GET
+!           SATISFACTORY ACCURACY, THE SUBROUTINE RETURNS WITH
+!           ERROR MESSAGE IHLF=11 INTO MAIN PROGRAM.
+!           TO GET FULL FLEXIBILITY IN OUTPUT, AN OUTPUT SUBROUTINE
+!           MUST BE FURNISHED BY THE USER.
+!           FOR REFERENCE, SEE
+!           RALSTON/WILF, MATHEMATICAL METHODS FOR DIGITAL COMPUTERS,
+!           WILEY, NEW YORK/LONDON, 1960, PP.110-120.
+!
+!     ..................................................................
+!
+SUBROUTINE drkgs(Prmt,Y,Dery,Ndim,Ihlf,fct,outp,Aux)
+   IMPLICIT NONE
+
+   INTEGER i,iend,Ihlf,imod,irec,istep,itest,j,Ndim
+
+!
+!
+   DIMENSION Y(*),Dery(*),Aux(8,1),a(4),b(4),c(4),Prmt(*)
+   DOUBLE PRECISION Prmt,Y,Dery,Aux,a,b,c,x,xend,h,aj,bj,cj,r1,r2,delt
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+         DO i = 1,Ndim
+            Aux(8,i) = .066666666666666667D0*Dery(i)
+         ENDDO
+         x = Prmt(1)
+         xend = Prmt(2)
+         h = Prmt(3)
+         Prmt(5) = 0.D0
+         CALL fct(x,Y,Dery)
+!
+!     ERROR TEST
+         IF ( h*(xend-x)<0 ) THEN
+            Ihlf = 13
+         ELSEIF ( h*(xend-x)==0 ) THEN
+            Ihlf = 12
+         ELSE
+!
+!     PREPARATIONS FOR RUNGE-KUTTA METHOD
+            a(1) = .5D0
+            a(2) = .29289321881345248D0
+            a(3) = 1.7071067811865475D0
+            a(4) = .16666666666666667D0
+            b(1) = 2.D0
+            b(2) = 1.D0
+            b(3) = 1.D0
+            b(4) = 2.D0
+            c(1) = .5D0
+            c(2) = .29289321881345248D0
+            c(3) = 1.7071067811865475D0
+            c(4) = .5D0
+!
+!     PREPARATIONS OF FIRST RUNGE-KUTTA STEP
+            DO i = 1,Ndim
+               Aux(1,i) = Y(i)
+               Aux(2,i) = Dery(i)
+               Aux(3,i) = 0.D0
+               Aux(6,i) = 0.D0
+            ENDDO
+            irec = 0
+            h = h + h
+            Ihlf = -1
+            istep = 0
+            iend = 0
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         CALL outp(x,Y,Dery,Ihlf,Ndim,Prmt)
+         RETURN
+      CASE (2)
+!
+!
+!     START OF A RUNGE-KUTTA STEP
+         IF ( (x+h-xend)*h<0 ) THEN
+            spag_nextblock_1 = 3
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         IF ( (x+h-xend)*h/=0 ) h = xend - x
+         iend = 1
+         spag_nextblock_1 = 3
+      CASE (3)
+!
+!     RECORDING OF INITIAL VALUES OF THIS STEP
+         CALL outp(x,Y,Dery,irec,Ndim,Prmt)
+         IF ( Prmt(5)/=0 ) RETURN
+         itest = 0
+         spag_nextblock_1 = 4
+      CASE (4)
+         istep = istep + 1
+!
+!
+!     START OF INNERMOST RUNGE-KUTTA LOOP
+         j = 1
+         SPAG_Loop_1_1: DO
+            aj = a(j)
+            bj = b(j)
+            cj = c(j)
+            DO i = 1,Ndim
+               r1 = h*Dery(i)
+               r2 = aj*(r1-bj*Aux(6,i))
+               Y(i) = Y(i) + r2
+               r2 = r2 + r2 + r2
+               Aux(6,i) = Aux(6,i) + r2 - cj*r1
+            ENDDO
+            IF ( j<4 ) THEN
+               j = j + 1
+               IF ( j/=3 ) x = x + .5D0*h
+               CALL fct(x,Y,Dery)
+            ELSE
+!     END OF INNERMOST RUNGE-KUTTA LOOP
+!
+!
+!     TEST OF ACCURACY
+               IF ( itest<=0 ) THEN
+!
+!     IN CASE ITEST=0 THERE IS NO POSSIBILITY FOR TESTING OF ACCURACY
+                  DO i = 1,Ndim
+                     Aux(4,i) = Y(i)
+                  ENDDO
+                  itest = 1
+                  istep = istep + istep - 2
+               ELSE
+!
+!     IN CASE ITEST=1 TESTING OF ACCURACY IS POSSIBLE
+                  imod = istep/2
+                  IF ( istep-imod/=imod ) THEN
+                     CALL fct(x,Y,Dery)
+                     DO i = 1,Ndim
+                        Aux(5,i) = Y(i)
+                        Aux(7,i) = Dery(i)
+                     ENDDO
+                     spag_nextblock_1 = 4
+                     CYCLE SPAG_DispatchLoop_1
+                  ELSE
+!
+!     COMPUTATION OF TEST VALUE DELT
+                     delt = 0.D0
+                     DO i = 1,Ndim
+                        delt = delt + Aux(8,i)*dabs(Aux(4,i)-Y(i))
+                     ENDDO
+                     IF ( delt<=Prmt(4) ) THEN
+!
+!     RESULT VALUES ARE GOOD
+                        CALL fct(x,Y,Dery)
+                        DO i = 1,Ndim
+                           Aux(1,i) = Y(i)
+                           Aux(2,i) = Dery(i)
+                           Aux(3,i) = Aux(6,i)
+                           Y(i) = Aux(5,i)
+                           Dery(i) = Aux(7,i)
+                        ENDDO
+                        CALL outp(x-h,Y,Dery,Ihlf,Ndim,Prmt)
+                        IF ( Prmt(5)/=0 ) EXIT SPAG_Loop_1_1
+                        DO i = 1,Ndim
+                           Y(i) = Aux(1,i)
+                           Dery(i) = Aux(2,i)
+                        ENDDO
+                        irec = Ihlf
+                        IF ( iend<=0 ) THEN
+!
+!     INCREMENT GETS DOUBLED
+                           Ihlf = Ihlf - 1
+                           istep = istep/2
+                           h = h + h
+                           IF ( Ihlf>=0 ) THEN
+                              imod = istep/2
+                              IF ( istep-imod==imod ) THEN
+                                 IF ( delt<=.02D0*Prmt(4) ) THEN
+                                    Ihlf = Ihlf - 1
+                                    istep = istep/2
+                                    h = h + h
+                                 ENDIF
+                              ENDIF
+                           ENDIF
+                           spag_nextblock_1 = 2
+                           CYCLE SPAG_DispatchLoop_1
+                        ELSE
+                           CALL outp(x,Y,Dery,Ihlf,Ndim,Prmt)
+                           EXIT SPAG_Loop_1_1
+                        ENDIF
+!
+!     ERROR IS TOO GREAT
+                     ELSEIF ( Ihlf<10 ) THEN
+                        DO i = 1,Ndim
+                           Aux(4,i) = Aux(5,i)
+                        ENDDO
+                        istep = istep + istep - 4
+                        x = x - h
+                        iend = 0
+                     ELSE
+!
+!
+!     RETURNS TO CALLING PROGRAM
+                        Ihlf = 11
+                        CALL fct(x,Y,Dery)
+                        CALL outp(x,Y,Dery,Ihlf,Ndim,Prmt)
+                        EXIT SPAG_Loop_1_1
+                     ENDIF
+                  ENDIF
+               ENDIF
+               Ihlf = Ihlf + 1
+               x = x - h
+               h = .5D0*h
+               DO i = 1,Ndim
+                  Y(i) = Aux(1,i)
+                  Dery(i) = Aux(2,i)
+                  Aux(6,i) = Aux(3,i)
+               ENDDO
+               spag_nextblock_1 = 4
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ENDDO SPAG_Loop_1_1
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE drkgs

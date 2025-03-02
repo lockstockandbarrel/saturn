@@ -1,0 +1,47 @@
+!*==pcla.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PCLA
+!
+!        PURPOSE
+!           MOVE POLYNOMIAL X TO Y
+!
+!        USAGE
+!           CALL PCLA(Y,IDIMY,X,IDIMX)
+!
+!        DESCRIPTION OF PARAMETERS
+!           Y     - VECTOR OF RESULTANT COEFFICIENTS, ORDERED FROM
+!                   SMALLEST TO LARGEST POWER
+!           IDIMY - DIMENSION OF Y
+!           X     - VECTOR OF COEFFICIENTS FOR POLYNOMIAL, ORDERED
+!                   FROM SMALLEST TO LARGEST POWER
+!           IDIMX - DIMENSION OF X
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           IDIMY IS REPLACED BY IDIMX AND VECTOR X IS MOVED TO Y
+!
+!     ..................................................................
+!
+SUBROUTINE pcla(Y,Idimy,X,Idimx)
+   IMPLICIT NONE
+
+   INTEGER i,Idimx,Idimy
+   REAL X,Y
+
+   DIMENSION X(*),Y(*)
+!
+   Idimy = Idimx
+   IF ( Idimx>0 ) THEN
+      DO i = 1,Idimx
+         Y(i) = X(i)
+      ENDDO
+   ENDIF
+END SUBROUTINE pcla

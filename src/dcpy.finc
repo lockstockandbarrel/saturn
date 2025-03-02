@@ -1,0 +1,53 @@
+!*==dcpy.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DCPY
+!
+!        PURPOSE
+!           COPY DIAGONAL ELEMENTS OF A MATRIX INTO A VECTOR
+!
+!        USAGE
+!           CALL DCPY (A,R,N,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX
+!           R - NAME OF OUTPUT VECTOR OF LENGTH N
+!           N - NUMBER OF ROWS AND COLUMNS IN MATRIX A
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           INPUT MATRIX MUST BE A SQUARE MATRIX
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           ELEMENTS ON DIAGONAL OF MATRIX ARE MOVED TO CORRESPONDING
+!           POSITIONS OF VECTOR R
+!
+!     ..................................................................
+!
+SUBROUTINE dcpy(A,R,N,Ms)
+   IMPLICIT NONE
+
+   REAL A,R
+   INTEGER ij,j,Ms,N
+
+   DIMENSION A(*),R(*)
+!
+   DO j = 1,N
+!
+!        LOCATE DIAGONAL ELEMENT FOR ANY MATRIX STORAGE MODE
+!
+      CALL loc(j,j,ij,N,N,Ms)
+!
+!        MOVE DIAGONAL ELEMENT TO VECTOR R
+!
+      R(j) = A(ij)
+   ENDDO
+END SUBROUTINE dcpy

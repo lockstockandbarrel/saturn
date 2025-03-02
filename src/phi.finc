@@ -1,0 +1,148 @@
+!*==phi.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PHI
+!
+!        PURPOSE
+!           TO COMPUTE THE PHI COEFFICIENT BETWEEN TWO VARIABLES  WHICH
+!           ARE DICHOTOMOUS.
+!
+!        USAGE
+!           CALL PHI (N,U,V,HU,HV,P,CH,XP,IE)
+!
+!        DESCRIPTION OF PARAMETERS
+!           N  - NUMBER OF OBSERVATIONS
+!           U  - INPUT VECTOR OF LENGTH N CONTAINING THE FIRST DICHOTO-
+!                MOUS VARIABLE
+!           V  - INPUT VECTOR OF LENGTH N CONTAINING THE SECOND DICHOTO-
+!                MOUS VARIABLE
+!           HU - INPUT NUMERICAL CODE WHICH INDICATES THE HIGHER
+!                CATEGORY OF THE FIRST VARIABLE.  ANY OBSERVATION IN
+!                VECTOR U WHICH HAS A VALUE EQUAL TO OR GREATER THAN HU
+!                WILL BE CLASSIFIED IN THE HIGHER CATEGORY.
+!           HV - INPUT NUMERICAL CODE FOR VECTOR V, SIMILAR TO HU
+!           P  - PHI COEFFICIENT COMPUTED
+!           CH - CHI-SQUARE COMPUTED AS A FUNCTION OF PHI COEFFICIENT
+!                (DEGREES OF FREEDOM FOR CHI-SQUARE = 1)
+!           XP - COMPUTED VALUE OF THE MAXIMAL PHI COEFFICIENT THAT
+!                CAN BE ATTAINED IN THE PROBLEM
+!           IE - IF IE IS NON-ZERO, SOME CELL IN THE 2 BY 2 TABLE IS
+!                NULL.  IF SO, P, CH, AND XP ARE SET TO 10**75.
+!
+!        REMARKS
+!           VARIABLES U AND V MUST BE SPECIFIED NUMERIC.
+!           THE PHI COEFFICIENT IS A SPECIAL CASE OF THE
+!           PEARSON PRODUCT-MOMENT CORRELATION WHEN BOTH VARIABLES ARE
+!           BINARY.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           REFER TO P. HORST, 'PYSCHOLOGICAL MEASUREMENT AND
+!           PREDICTION', P. 94 (WADSWORTH, 1966).
+!
+!     ..................................................................
+!
+SUBROUTINE phi(N,U,V,Hu,Hv,P,Ch,Xp,Ie)
+   IMPLICIT NONE
+
+   REAL a,b,c,Ch,d,Hu,Hv,P,p1,p2,p3,p4,t,U,V,Xp
+   INTEGER i,Ie,N
+
+!
+   DIMENSION U(*),V(*)
+!
+!        CONSTRUCT A 2X2 CONTINGENCY TABLE
+!
+   Ie = 0
+   a = 0.0
+   b = 0.0
+   c = 0.0
+   d = 0.0
+!
+   DO i = 1,N
+      IF ( U(i)<Hu ) THEN
+         IF ( V(i)<Hv ) THEN
+            d = d + 1.0
+         ELSE
+            b = b + 1.0
+         ENDIF
+      ELSEIF ( V(i)<Hv ) THEN
+         c = c + 1.0
+      ELSE
+         a = a + 1.0
+      ENDIF
+   ENDDO
+   IF ( a<=0 ) THEN
+      CALL spag_block_2
+      RETURN
+   ENDIF
+   IF ( b<=0 ) THEN
+      CALL spag_block_2
+      RETURN
+   ENDIF
+   IF ( c<=0 ) THEN
+      CALL spag_block_2
+      RETURN
+   ENDIF
+   IF ( d<=0 ) THEN
+      CALL spag_block_2
+      RETURN
+   ENDIF
+!
+!        COMPUTE THE PHI COEFFICIENT
+!
+   P = (a*d-b*c)/sqrt((a+b)*(c+d)*(a+c)*(b+d))
+!
+!        COMPUTE CHI-SQURE
+!
+   t = N
+   Ch = t*P*P
+!
+!        COMPUTE THE MAXIMAL PHI COEFFICIENT
+!
+   p1 = (a+c)/t
+   p2 = (b+d)/t
+   p3 = (a+b)/t
+   p4 = (c+d)/t
+   IF ( p1<p2 ) THEN
+      IF ( p3<p4 ) THEN
+         IF ( p2<p4 ) THEN
+            Xp = sqrt((p2/p1)*(p3/p4))
+         ELSE
+            Xp = sqrt((p4/p3)*(p1/p2))
+         ENDIF
+      ELSEIF ( p2<p3 ) THEN
+         Xp = sqrt((p1/p2)*(p4/p3))
+      ELSE
+         Xp = sqrt((p4/p3)*(p1/p2))
+      ENDIF
+   ELSEIF ( p3<p4 ) THEN
+      IF ( p1<p4 ) THEN
+         Xp = sqrt((p2/p1)*(p3/p4))
+      ELSE
+         Xp = sqrt((p3/p4)*(p2/p1))
+      ENDIF
+   ELSEIF ( p1<p3 ) THEN
+      Xp = sqrt((p1/p2)*(p4/p3))
+   ELSE
+      Xp = sqrt((p3/p4)*(p2/p1))
+   ENDIF
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+!
+      RETURN
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+      Ie = 1
+      P = huge(0.0)
+      Ch = huge(0.0)
+      Xp = huge(0.0)
+      CALL spag_block_1
+      RETURN
+   END SUBROUTINE spag_block_2
+END SUBROUTINE phi

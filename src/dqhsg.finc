@@ -1,0 +1,64 @@
+!*==dqhsg.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQHSG
+!
+!        PURPOSE
+!           TO COMPUTE THE VECTOR OF INTEGRAL VALUES FOR A GIVEN
+!           GENERAL TABLE OF ARGUMENT, FUNCTION, FIRST DERIVATIVE,
+!           AND SECOND DERIVATIVE VALUES.
+!
+!        USAGE
+!           CALL DQHSG (X,Y,FDY,SDY,Z,NDIM)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X      - DOUBLE PRECISION INPUT VECTOR OF ARGUMENT VALUES.
+!           Y      - DOUBLE PRECISION INPUT VECTOR OF FUNCTION VALUES.
+!           FDY    - DOUBLE PRECISION INPUT VECTOR OF FIRST DERIVATIVE.
+!           SDY    - DOUBLE PRECISION INPUT VECTOR OF SECOND DERIVATIVE.
+!           Z      - RESULTING DOUBLE PRECISION VECTOR OF INTEGRAL
+!                    VALUES. Z MAY BE IDENTICAL WITH X, Y, FDY OR SDY.
+!           NDIM   - THE DIMENSION OF VECTORS X,Y,FDY,SDY,Z.
+!
+!        REMARKS
+!           NO ACTION IN CASE NDIM LESS THAN 1.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           BEGINNING WITH Z(1)=0, EVALUATION OF VECTOR Z IS DONE BY
+!           MEANS OF HERMITEAN SIXTH ORDER INTEGRATION FORMULA.
+!           FOR REFERENCE, SEE
+!           R.ZURMUEHL, PRAKTISCHE MATHEMATIK FUER INGENIEURE UND
+!           PHYSIKER, SPRINGER, BERLIN/GOETTINGEN/HEIDELBERG, 1963,
+!           PP.227-230.
+!
+!     ..................................................................
+!
+SUBROUTINE dqhsg(X,Y,Fdy,Sdy,Z,Ndim)
+   IMPLICIT NONE
+
+   INTEGER i,Ndim
+
+!
+!
+   DIMENSION X(*),Y(*),Fdy(*),Sdy(*),Z(*)
+   DOUBLE PRECISION X,Y,Fdy,Sdy,Z,sum1,sum2
+!
+   sum2 = 0.D0
+   IF ( Ndim<1 ) RETURN
+   IF ( Ndim/=1 ) THEN
+!
+!     INTEGRATION LOOP
+      DO i = 2,Ndim
+         sum1 = sum2
+         sum2 = .5D0*(X(i)-X(i-1))
+         sum2 = sum1 + sum2*((Y(i-1)+Y(i))+.4D0*sum2*((Fdy(i-1)-Fdy(i))+.16666666666666667D0*sum2*(Sdy(i-1)+Sdy(i))))
+         Z(i-1) = sum1
+      ENDDO
+   ENDIF
+   Z(Ndim) = sum2
+END SUBROUTINE dqhsg

@@ -1,0 +1,52 @@
+!*==scla.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE SCLA
+!
+!        PURPOSE
+!           SET EACH ELEMENT OF A MATRIX EQUAL TO A GIVEN SCALAR
+!
+!        USAGE
+!           CALL SCLA (A,C,N,M,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX
+!           C - SCALAR
+!           N - NUMBER OF ROWS IN MATRIX A
+!           M - NUMBER OF COLUMNS IN MATRIX A
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           EACH ELEMENT OF MATRIX A IS REPLACED BY SCALAR C
+!
+!     ..................................................................
+!
+SUBROUTINE scla(A,C,N,M,Ms)
+   IMPLICIT NONE
+
+   REAL A,C
+   INTEGER i,it,M,Ms,N
+
+   DIMENSION A(*)
+!
+!        COMPUTE VECTOR LENGTH, IT
+!
+   CALL loc(N,M,it,N,M,Ms)
+!
+!        REPLACE BY SCALAR
+!
+   DO i = 1,it
+      A(i) = C
+   ENDDO
+END SUBROUTINE scla

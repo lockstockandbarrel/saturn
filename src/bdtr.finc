@@ -1,0 +1,320 @@
+!*==bdtr.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE BDTR
+!
+!        PURPOSE
+!           COMPUTES P(X) = PROBABILITY THAT THE RANDOM VARIABLE U,
+!           DISTRIBUTED ACCORDING TO THE BETA DISTRIBUTION WITH
+!           PARAMETERS A AND B, IS LESS THAN OR EQUAL TO X.  F(A,B,X),
+!           THE ORDINATE OF THE BETA DENSITY AT X, IS ALSO COMPUTED.
+!
+!        USAGE
+!           CALL BDTR(X,A,B,P,D,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X   - INPUT SCALAR FOR WHICH P(X) IS COMPUTED.
+!           A   - BETA DISTRIBUTION PARAMETER (CONTINUOUS).
+!           B   - BETA DISTRIBUTION PARAMETER (CONTINUOUS).
+!           P   - OUTPUT PROBABILITY.
+!           D   - OUTPUT DENSITY.
+!           IER - RESULTANT ERROR CODE WHERE
+!               IER= 0 --- NO ERROR
+!               IER=-1,+1  CDTR HAS BEEN CALLED AND AN ERROR HAS
+!                          OCCURRED.  SEE CDTR.
+!               IER=-2 --- AN INPUT PARAMETER IS INVALID.  X IS LESS
+!                          THAN 0.0 OR GREATER THAN 1.0, OR EITHER A OR
+!                          B IS LESS THAN 0.5 OR GREATER THAN 10**(+5).
+!                          P AND D ARE SET TO -HUGE(0.0).
+!               IER=+2 --- INVALID OUTPUT.  P IS LESS THAN ZERO OR
+!                          GREATER THAN ONE.  P IS SET TO HUGE(0.0).
+!
+!        REMARKS
+!           SEE MATHEMATICAL DESCRIPTION.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           DLGAM
+!           NDTR
+!           CDTR
+!
+!        METHOD
+!           REFER TO R.E. BARGMANN AND S.P. GHOSH, STATISTICAL
+!           DISTRIBUTION PROGRAMS FOR A COMPUTER LANGUAGE,
+!           IBM RESEARCH REPORT RC-1094, 1963.
+!
+!     ..................................................................
+!
+SUBROUTINE bdtr(X,A,B,P,D,Ier)
+   IMPLICIT NONE
+
+   REAL A,B,D,df,dummy,P,X,xs
+   INTEGER i,id,Ier,ii,iok
+
+   DOUBLE PRECISION xx,dlxx,dl1x,aa,bb,g1,g2,g3,g4,dd,pp,xo,ff,fn,xi,ss,cc,rr,dlbeta
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        TEST FOR VALID INPUT DATA
+!
+         IF ( A>=(.5-1.E-5) ) THEN
+            IF ( B>=(.5-1.E-5) ) THEN
+               IF ( A-1.E+5<=0 ) THEN
+                  IF ( B-1.E+5>0 ) THEN
+                     spag_nextblock_1 = 2
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  IF ( X<0 ) THEN
+                     spag_nextblock_1 = 2
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  IF ( 1.<X ) THEN
+                     spag_nextblock_1 = 2
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+!
+!        COMPUTE LOG(BETA(A,B))
+!
+                  aa = dble(A)
+                  bb = dble(B)
+                  CALL dlgam(aa,g1,iok)
+                  CALL dlgam(bb,g2,iok)
+                  CALL dlgam(aa+bb,g3,iok)
+                  dlbeta = g1 + g2 - g3
+!
+!        TEST FOR X NEAR 0.0 OR 1.0
+!
+                  IF ( X<=1.E-8 ) THEN
+                     P = 0.0
+                     IF ( A<1. ) THEN
+                        D = huge(0.0)
+                        Ier = 0
+                     ELSEIF ( A==1. ) THEN
+                        GOTO 2
+                     ELSE
+                        D = 0.0
+                        Ier = 0
+                     ENDIF
+                     RETURN
+                  ELSEIF ( (1.-X)<=1.E-8 ) THEN
+                     P = 1.0
+                     IF ( B<1. ) THEN
+                        D = huge(0.0)
+                        Ier = 0
+                     ELSEIF ( B==1. ) THEN
+                        GOTO 2
+                     ELSE
+                        D = 0.0
+                        Ier = 0
+                     ENDIF
+                     RETURN
+                  ELSE
+!
+!        SET PROGRAM PARAMETERS
+!
+                     xx = dble(X)
+                     dlxx = dlog(xx)
+                     dl1x = dlog(1.D0-xx)
+                     xo = xx/(1.D0-xx)
+                     id = 0
+!
+!        COMPUTE ORDINATE
+!
+                     dd = (aa-1.D0)*dlxx + (bb-1.D0)*dl1x - dlbeta
+                     IF ( dd>1.68D02 ) THEN
+                        D = huge(0.0)
+                     ELSEIF ( dd+1.68D02<=0 ) THEN
+                        D = 0.0
+                     ELSE
+                        dd = dexp(dd)
+                        D = sngl(dd)
+                     ENDIF
+!
+!        A OR B OR BOTH WITHIN 1.E-8 OF 1.0
+!
+                     IF ( abs(A-1.)<=1.E-8 ) THEN
+                        IF ( abs(B-1.)<=1.E-8 ) THEN
+                           P = X
+                           Ier = 0
+                           RETURN
+                        ELSE
+                           pp = bb*dl1x
+                           IF ( pp+1.68D02<=0 ) THEN
+                              P = 1.0
+                              Ier = 0
+                              RETURN
+                           ELSE
+                              pp = dexp(pp)
+                              pp = 1.D0 - pp
+                              P = sngl(pp)
+                              GOTO 8
+                           ENDIF
+                        ENDIF
+                     ELSEIF ( abs(B-1.)<=1.E-8 ) THEN
+                        pp = aa*dlxx
+                        IF ( pp+1.68D02<=0 ) THEN
+                           P = 0.0
+                           Ier = 0
+                           RETURN
+                        ELSE
+                           pp = dexp(pp)
+                           P = sngl(pp)
+                           GOTO 8
+                        ENDIF
+!
+!        TEST FOR A OR B GREATER THAN 1000.0
+!
+                     ELSEIF ( A<=1000. ) THEN
+                        IF ( B>1000. ) THEN
+                           xx = 2.D0*bb*xo
+                           xs = sngl(xx)
+                           aa = 2.D0*aa
+                           df = sngl(aa)
+                           CALL cdtr(xs,df,P,dummy,Ier)
+                           RETURN
+!
+!        SELECT PARAMETERS FOR CONTINUED FRACTION COMPUTATION
+!
+                        ELSEIF ( X<=.5 ) THEN
+                           IF ( aa<=1.D0 ) THEN
+                              rr = aa + 1.D0
+                           ELSE
+                              rr = aa
+                           ENDIF
+                           dd = dlxx/5.D0
+                           dd = dexp(dd)
+                           dd = (rr-1.D0) - (rr+bb-1.D0)*xx*dd + 2.D0
+                           IF ( dd>0 ) GOTO 6
+                           GOTO 4
+                        ELSE
+                           IF ( bb<=1.D0 ) THEN
+                              rr = bb + 1.D0
+                           ELSE
+                              rr = bb
+                           ENDIF
+                           dd = dl1x/5.D0
+                           dd = dexp(dd)
+                           dd = (rr-1.D0) - (aa+rr-1.D0)*(1.D0-xx)*dd + 2.D0
+                           IF ( dd>0 ) GOTO 4
+                           GOTO 6
+                        ENDIF
+                     ELSE
+                        xx = 2.D0*aa/xo
+                        xs = sngl(xx)
+                        aa = 2.D0*bb
+                        df = sngl(aa)
+                        CALL cdtr(xs,df,P,dummy,Ier)
+                        P = 1.0 - P
+                        RETURN
+                     ENDIF
+                  ENDIF
+ 2                dd = -dlbeta
+                  IF ( dd+1.68D02<=0 ) THEN
+                     D = 0.0
+                     Ier = 0
+                  ELSE
+                     dd = dexp(dd)
+                     D = sngl(dd)
+                     Ier = 0
+                  ENDIF
+                  RETURN
+ 4                id = 1
+                  ff = dl1x
+                  dl1x = dlxx
+                  dlxx = ff
+                  xo = 1.D0/xo
+                  ff = aa
+                  aa = bb
+                  bb = ff
+                  g2 = g1
+!
+!        TEST FOR A LESS THAN 1.0
+!
+ 6                ff = 0.D0
+                  IF ( aa<=1.D0 ) THEN
+                     CALL dlgam(aa+1.D0,g4,iok)
+                     dd = aa*dlxx + bb*dl1x + g3 - g2 - g4
+                     IF ( dd+1.68D02>0 ) ff = ff + dexp(dd)
+                     aa = aa + 1.D0
+                  ENDIF
+!
+!        COMPUTE P USING CONTINUED FRACTION EXPANSION
+!
+                  fn = aa + bb - 1.D0
+                  rr = aa - 1.D0
+                  ii = 80
+                  xi = dfloat(ii)
+                  ss = ((bb-xi)*(rr+xi))/((rr+2.D0*xi-1.D0)*(rr+2.D0*xi))
+                  ss = ss*xo
+                  DO i = 1,79
+                     ii = 80 - i
+                     xi = dfloat(ii)
+                     dd = (xi*(fn+xi))/((rr+2.D0*xi+1.D0)*(rr+2.D0*xi))
+                     dd = dd*xo
+                     cc = ((bb-xi)*(rr+xi))/((rr+2.D0*xi-1.D0)*(rr+2.D0*xi))
+                     cc = cc*xo
+                     ss = cc/(1.D0+dd/(1.D0-ss))
+                  ENDDO
+                  ss = 1.D0/(1.D0-ss)
+                  IF ( ss<=0 ) THEN
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  CALL dlgam(aa+bb,g1,iok)
+                  CALL dlgam(aa+1.D0,g4,iok)
+                  cc = g1 - g2 - g4 + aa*dlxx + (bb-1.D0)*dl1x
+                  pp = cc + dlog(ss)
+                  IF ( pp+1.68D02<=0 ) THEN
+                     pp = ff
+                  ELSE
+                     pp = dexp(pp) + ff
+                  ENDIF
+                  IF ( id>0 ) pp = 1.D0 - pp
+                  P = sngl(pp)
+!
+!        SET ERROR INDICATOR
+!
+                  IF ( P<0 ) THEN
+                     IF ( abs(P)>1.E-7 ) THEN
+                        spag_nextblock_1 = 3
+                        CYCLE SPAG_DispatchLoop_1
+                     ENDIF
+                     P = 0.0
+                     Ier = 0
+                     RETURN
+                  ELSEIF ( 1.<P ) THEN
+                     IF ( abs(1.-P)>1.E-7 ) THEN
+                        spag_nextblock_1 = 3
+                        CYCLE SPAG_DispatchLoop_1
+                     ENDIF
+                     P = 1.0
+                     Ier = 0
+                     RETURN
+                  ENDIF
+ 8                IF ( P<=1.E-8 ) THEN
+                     P = 0.0
+                  ELSEIF ( (1.0-P)<=1.E-8 ) THEN
+                     P = 1.0
+                  ENDIF
+                  Ier = 0
+                  RETURN
+               ENDIF
+            ENDIF
+         ENDIF
+         spag_nextblock_1 = 2
+      CASE (2)
+         Ier = -2
+         D = -huge(0.0)
+         P = -huge(0.0)
+         RETURN
+      CASE (3)
+         Ier = +2
+         P = huge(0.0)
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE bdtr

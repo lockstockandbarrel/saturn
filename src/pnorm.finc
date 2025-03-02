@@ -1,0 +1,45 @@
+!*==pnorm.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PNORM
+!
+!        PURPOSE
+!           NORMALIZE COEFFICIENT VECTOR OF A POLYNOMIAL
+!
+!        USAGE
+!           CALL PNORM(X,IDIMX,EPS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X      - VECTOR OF ORIGINAL COEFFICIENTS, ORDERED FROM
+!                    SMALLEST TO LARGEST POWER. IT REMAINS UNCHANGED
+!           IDIMX  - DIMENSION OF X. IT IS REPLACED BY FINAL DIMENSION
+!           EPS    - TOLERANCE BELOW WHICH COEFFICIENT IS ELIMINATED
+!
+!        REMARKS
+!           IF ALL COEFFICIENTS ARE LESS THAN EPS, RESULT IS A ZERO
+!           POLYNOMIAL WITH IDIMX=0 BUT VECTOR X REMAINS INTACT
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DIMENSION OF VECTOR X IS REDUCED BY ONE FOR EACH TRAILING
+!           COEFFICIENT WITH AN ABSOLUTE VALUE LESS THAN OR EQUAL TO EPS
+!
+!     ..................................................................
+!
+SUBROUTINE pnorm(X,Idimx,Eps)
+   IMPLICIT NONE
+
+   REAL Eps,X
+   INTEGER Idimx
+
+   DIMENSION X(*)
+!
+   SPAG_Loop_1_1: DO WHILE ( Idimx>0 )
+      IF ( abs(X(Idimx))>Eps ) EXIT SPAG_Loop_1_1
+      Idimx = Idimx - 1
+   ENDDO SPAG_Loop_1_1
+END SUBROUTINE pnorm

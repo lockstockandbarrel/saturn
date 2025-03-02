@@ -1,0 +1,296 @@
+!*==dmfss.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DMFSS
+!
+!        PURPOSE
+!           GIVEN A SYMMETRIC POSITIVE SEMI DEFINITE MATRIX ,DMFSS WILL
+!           (1) DETERMINE THE RANK AND LINEARLY INDEPENDENT ROWS AND
+!               COLUMNS
+!           (2) FACTOR A SYMMETRIC SUBMATRIX OF MAXIMAL RANK
+!           (3) EXPRESS NONBASIC ROWS IN TERMS OF BASIC ONES,
+!               EXPRESS NONBASIC COLUMNS IN TERMS OF BASIC ONES
+!               EXPRESS BASIC VARIABLES IN TERMS OF FREE ONES
+!           SUBROUTINE DMFSS MAY BE USED AS A PREPARATORY STEP FOR THE
+!           CALCULATION OF THE LEAST SQUARES SOLUTION OF MINIMAL
+!           LENGTH OF A SYSTEM OF LINEAR EQUATIONS WITH SYMMETRIC
+!           POSITIVE SEMI-DEFINITE COEFFICIENT MATRIX
+!
+!        USAGE
+!           CALL DMFSS(A,N,EPS,IRANK,TRAC)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - UPPER TRIANGULAR PART OF GIVEN SYMMETRIC SEMI-
+!                   DEFINITE MATRIX STORED COLUMNWISE IN COMPRESSED FORM
+!                   ON RETURN A CONTAINS THE MATRIX T AND, IF IRANK IS
+!                   LESS THAN N, THE MATRICES U AND TU
+!                   A MUST BE OF DOUBLE PRECISION
+!           N     - DIMENSION OF GIVEN MATRIX A
+!           EPS   - TESTVALUE FOR ZERO AFFECTED BY ROUND-OFF NOISE
+!           IRANK - RESULTANT VARIABLE, CONTAINING THE RANK OF GIVEN
+!                   MATRIX A IF A IS SEMI-DEFINITE
+!                   IRANK = 0 MEANS A HAS NO POSITIVE DIAGONAL ELEMENT
+!                             AND/OR EPS IS NOT ABSOLUTELY LESS THAN ONE
+!                   IRANK =-1 MEANS DIMENSION N IS NOT POSITIVE
+!                   IRANK =-2 MEANS COMPLETE FAILURE, POSSIBLY DUE TO
+!                             INADEQUATE RELATIVE TOLERANCE EPS
+!           TRAC  - VECTOR OF DIMENSION N CONTAINING THE
+!                   SOURCE INDEX OF THE I-TH PIVOT ROW IN ITS I-TH
+!                   LOCATION, THIS MEANS THAT TRAC CONTAINS THE
+!                   PRODUCT REPRESENTATION OF THE PERMUTATION WHICH
+!                   IS APPLIED TO ROWS AND COLUMNS OF A IN TERMS OF
+!                   TRANSPOSITIONS
+!                   TRAC MUST BE OF DOUBLE PRECISION
+!
+!        REMARKS
+!           EPS MUST BE ABSOLUTELY LESS THAN ONE. A SENSIBLE VALUE IS
+!           SOMEWHERE IN BETWEEN 10**(-4) AND 10**(-6)
+!           THE ABSOLUTE VALUE OF INPUT PARAMETER EPS IS USED AS
+!           RELATIVE TOLERANCE.
+!           IN ORDER TO PRESERVE SYMMETRY ONLY PIVOTING ALONG THE
+!           DIAGONAL IS BUILT IN.
+!           ALL PIVOTELEMENTS MUST BE GREATER THAN THE ABSOLUTE VALUE
+!           OF EPS TIMES ORIGINAL DIAGONAL ELEMENT
+!           OTHERWISE THEY ARE TREATED AS IF THEY WERE ZERO
+!           MATRIX A REMAINS UNCHANGED IF THE RESULTANT VALUE IRANK
+!           EQUALS ZERO
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE SQUARE ROOT METHOD WITH DIAGONAL PIVOTING IS USED FOR
+!           CALCULATION OF THE RIGHT HAND TRIANGULAR FACTOR.
+!           IN CASE OF AN ONLY SEMI-DEFINITE MATRIX THE SUBROUTINE
+!           RETURNS THE IRANK X IRANK UPPER TRIANGULAR FACTOR T OF A
+!           SUBMATRIX OF MAXIMAL RANK, THE IRANK X (N-IRANK) MATRIX U
+!           AND THE (N-IRANK) X (N-IRANK) UPPER TRIANGULAR TU SUCH
+!           THAT TRANSPOSE(TU)*TU=I+TRANSPOSE(U)*U
+!
+!     ..................................................................
+!
+SUBROUTINE dmfss(A,N,Eps,Irank,Trac)
+   IMPLICIT NONE
+
+   REAL Eps
+   INTEGER i,idc,ii,im1,Irank,isub,j,ji,jj,jk,k,kk,kmi,kpiv,ksub,l,N
+
+!
+!
+!        DIMENSIONED DUMMY VARIABLES
+   DIMENSION A(*),Trac(*)
+   DOUBLE PRECISION sum,A,Trac,piv,hold
+   INTEGER :: spag_nextblock_1
+   INTEGER :: spag_nextblock_2
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        TEST OF SPECIFIED DIMENSION
+         IF ( N<=0 ) THEN
+!
+!        ERROR RETURNS
+!
+!        RETURN IN CASE OF ILLEGAL DIMENSION
+            Irank = -1
+            RETURN
+         ELSE
+!
+!        INITIALIZE TRIANGULAR FACTORIZATION
+            Irank = 0
+            isub = 0
+            kpiv = 0
+            j = 0
+            piv = 0.D0
+!
+!        SEARCH FIRST PIVOT ELEMENT
+            DO k = 1,N
+               j = j + k
+               Trac(k) = A(j)
+               IF ( A(j)>piv ) THEN
+                  piv = A(j)
+                  ksub = j
+                  kpiv = k
+               ENDIF
+            ENDDO
+!
+!        START LOOP OVER ALL ROWS OF A
+            SPAG_Loop_1_2: DO i = 1,N
+               spag_nextblock_2 = 1
+               SPAG_DispatchLoop_2: DO
+                  SELECT CASE (spag_nextblock_2)
+                  CASE (1)
+                     isub = isub + i
+                     im1 = i - 1
+                     spag_nextblock_2 = 2
+                  CASE (2)
+                     SPAG_Loop_2_1: DO
+                        kmi = kpiv - i
+                        IF ( kmi<0 ) GOTO 10
+                        IF ( kmi/=0 ) THEN
+!
+!        PERFORM PARTIAL COLUMN INTERCHANGE
+                           ji = ksub - kmi
+                           idc = ji - isub
+                           jj = isub - im1
+                           DO k = jj,isub
+                              kk = k + idc
+                              hold = A(k)
+                              A(k) = A(kk)
+                              A(kk) = hold
+                           ENDDO
+!
+!        PERFORM PARTIAL ROW INTERCHANGE
+                           kk = ksub
+                           DO k = kpiv,N
+                              ii = kk - kmi
+                              hold = A(kk)
+                              A(kk) = A(ii)
+                              A(ii) = hold
+                              kk = kk + k
+                           ENDDO
+!
+!        PERFORM REMAINING INTERCHANGE
+                           jj = kpiv - 1
+                           ii = isub
+                           DO k = i,jj
+                              hold = A(ii)
+                              A(ii) = A(ji)
+                              A(ji) = hold
+                              ii = ii + k
+                              ji = ji + 1
+                           ENDDO
+                        ENDIF
+                        IF ( Irank<0 ) THEN
+                           Irank = im1
+                           ii = isub - Irank
+                           ji = ii
+                           DO k = 1,Irank
+                              ji = ji - 1
+                              jk = isub - 1
+                              jj = k - 1
+                              DO j = i,N
+                                 idc = Irank
+                                 sum = 0.D0
+                                 kmi = ji
+                                 kk = jk
+                                 IF ( jj>0 ) THEN
+                                    DO l = 1,jj
+                                       idc = idc - 1
+                                       sum = sum - A(kmi)*A(kk)
+                                       kmi = kmi - idc
+                                       kk = kk - 1
+                                    ENDDO
+                                 ENDIF
+                                 A(kk) = (sum+A(kk))/A(kmi)
+                                 jk = jk + j
+                              ENDDO
+                           ENDDO
+!
+!        CALCULATE I+TRANSPOSE(U)*U
+                           jj = isub - i
+                           piv = 0.D0
+                           kk = isub - 1
+                           DO k = i,N
+                              jj = jj + k
+                              idc = 0
+                              DO j = k,N
+                                 sum = 0.D0
+                                 kmi = jj + idc
+                                 DO l = ii,kk
+                                    jk = l + idc
+                                    sum = sum + A(l)*A(jk)
+                                 ENDDO
+                                 A(kmi) = sum
+                                 idc = idc + j
+                              ENDDO
+                              A(jj) = A(jj) + 1.D0
+                              Trac(k) = A(jj)
+!
+!        SEARCH NEXT DIAGONAL ELEMENT
+                              IF ( piv<A(jj) ) THEN
+                                 kpiv = k
+                                 ksub = jj
+                                 piv = A(jj)
+                              ENDIF
+                              ii = ii + k
+                              kk = kk + k
+                           ENDDO
+                        ELSE
+!
+!        RECORD INTERCHANGE IN TRANSPOSITION VECTOR
+                           Trac(kpiv) = Trac(i)
+                           Trac(i) = kpiv
+!
+!        MODIFY CURRENT PIVOT ROW
+                           kk = im1 - Irank
+                           kmi = isub - kk
+                           piv = 0.D0
+                           idc = Irank + 1
+                           ji = isub - 1
+                           jk = kmi
+                           jj = isub - i
+                           DO k = i,N
+                              sum = 0.D0
+!
+!        BUILD UP SCALAR PRODUCT IF NECESSARY
+                              IF ( kk>0 ) THEN
+                                 DO j = kmi,ji
+                                    sum = sum - A(j)*A(jk)
+                                    jk = jk + 1
+                                 ENDDO
+                              ENDIF
+                              jj = jj + k
+                              IF ( k<=i ) THEN
+                                 sum = A(isub) + sum
+!
+!        TEST RADICAND FOR LOSS OF SIGNIFICANCE
+                                 IF ( sum<=dabs(A(isub)*dble(Eps)) ) EXIT SPAG_Loop_2_1
+                                 A(isub) = dsqrt(sum)
+                                 kpiv = i + 1
+                              ELSE
+                                 sum = (A(jk)+sum)/A(isub)
+                                 A(jk) = sum
+!
+!        SEARCH FOR NEXT PIVOT ROW
+                                 IF ( A(jj)>0 ) THEN
+                                    Trac(k) = Trac(k) - sum*sum
+                                    hold = Trac(k)/A(jj)
+                                    IF ( piv<hold ) THEN
+                                       piv = hold
+                                       kpiv = k
+                                       ksub = jj
+                                    ENDIF
+                                 ENDIF
+                              ENDIF
+                              jk = jj + idc
+                           ENDDO
+                           CYCLE SPAG_Loop_1_2
+                        ENDIF
+                     ENDDO SPAG_Loop_2_1
+!
+!        CALCULATE MATRIX OF DEPENDENCIES U
+                     IF ( Irank>0 ) THEN
+                        spag_nextblock_1 = 2
+                        CYCLE SPAG_DispatchLoop_1
+                     ENDIF
+                     Irank = -1
+                     spag_nextblock_2 = 2
+                     CYCLE SPAG_DispatchLoop_2
+                  END SELECT
+               ENDDO SPAG_DispatchLoop_2
+            ENDDO SPAG_Loop_1_2
+            IF ( Irank==0 ) Irank = N
+ 10         RETURN
+         ENDIF
+      CASE (2)
+!
+!        INSTABLE FACTORIZATION OF I+TRANSPOSE(U)*U
+         Irank = -2
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE dmfss

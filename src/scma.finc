@@ -1,0 +1,69 @@
+!*==scma.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE SCMA
+!
+!        PURPOSE
+!           MULTIPLY COLUMN OF MATRIX BY A SCALAR AND ADD TO ANOTHER
+!           COLUMN OF THE SAME MATRIX
+!
+!        USAGE
+!           CALL SCMA(A,C,N,LA,LB)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A  - NAME OF MATRIX
+!           C  - SCALAR
+!           N  - NUMBER OF ROWS IN A
+!           LA - COLUMN IN A TO BE MULTIPLIED BY SCALAR
+!           LB - COLUMN IN A TO WHICH PRODUCT IS ADDED
+!                IF 0 IS SPECIFIED, PRODUCT REPLACES ELEMENTS IN LA
+!
+!        REMARKS
+!           MATRIX A MUST BE A GENERAL MATRIX
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           EACH ELEMENT OF COLUMN LA IS MULTIPLIED BY SCALAR C AND THE
+!           PRODUCT IS ADDED TO THE CORRESPONDING ELEMENT OF COLUMN LB.
+!           COLUMN LA REMAINS UNAFFECTED BY THE OPERATION.
+!           IF PARAMETER LB CONTAINS ZERO, MULTIPLICATION BY THE SCALAR
+!           IS PERFORMED AND THE PRODUCT REPLACES ELEMENTS IN LA.
+!
+!     ..................................................................
+!
+SUBROUTINE scma(A,C,N,La,Lb)
+   IMPLICIT NONE
+
+   REAL A,C
+   INTEGER i,ila,ilb,La,Lb,N
+
+   DIMENSION A(*)
+!
+!        LOCATE STARTING POINT OF BOTH COLUMNS
+!
+   ila = N*(La-1)
+   ilb = N*(Lb-1)
+!
+   DO i = 1,N
+      ila = ila + 1
+      ilb = ilb + 1
+!
+!        CHECK LB FOR ZERO
+!
+      IF ( Lb/=0 ) THEN
+!
+!        IF NOT MULTIPLY BY CONSTANT AND ADD TO SECOND COLUMN
+!
+         A(ilb) = A(ila)*C + A(ilb)
+      ELSE
+!
+!        OTHERWISE, MULTIPLY COLUMN BY CONSTANT
+!
+         A(ila) = A(ila)*C
+      ENDIF
+   ENDDO
+END SUBROUTINE scma

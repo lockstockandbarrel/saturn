@@ -1,0 +1,65 @@
+!*==cs.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE CS
+!
+!        PURPOSE
+!           COMPUTES THE FRESNEL INTEGRALS.
+!
+!        USAGE
+!           CALL CS (C,S,X)
+!
+!        DESCRIPTION OF PARAMETERS
+!           C     - THE RESULTANT VALUE C(X).
+!           S     - THE RESULTANT VALUE S(X).
+!           X     - THE ARGUMENT OF FRESNEL INTEGRALS
+!                   IF X IS NEGATIVE, THE ABSOLUTE VALUE IS USED.
+!
+!        REMARKS
+!           THE ARGUMENT VALUE X REMAINS UNCHANGED.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DEFINITION
+!           C(X)=INTEGRAL(COS(T)/SQRT(2*LI*T) SUMMED OVER T FROM 0 TO X)
+!           S(X)=INTEGRAL(SIN(T)/SQRT(I*LI*T) SUMMED OVER T FROM 0 TO X)
+!           EVALUATION
+!           USING DIFFERENT APPROXIMATIONS FOR X LESS THAN 4 AND X
+!           GREATER THAN 4.
+!           REFERENCE
+!           'COMPUTATION OF FRESNEL INTEGRALS' BY BOERSMA,
+!           MATHEMATICAL TABLES AND OTHER AIDS TO COMPUTATION, VOL. 14,
+!           1960, NO. 72, P. 380.
+!
+!     ..................................................................
+!
+SUBROUTINE cs(C,S,X)
+   IMPLICIT NONE
+
+   REAL a,b,C,d,S,X,z
+
+   z = abs(X)
+   IF ( z<=4. ) THEN
+      C = sqrt(z)
+      S = z*C
+      z = (4.-z)*(4.+z)
+      C = C*((((((5.100785E-11*z+5.244297E-9)*z+5.451182E-7)*z+3.273308E-5)*z+1.020418E-3)*z+1.102544E-2)*z+1.840965E-1)
+      S = S*(((((6.677681E-10*z+5.883158E-8)*z+5.051141E-6)*z+2.441816E-4)*z+6.121320E-3)*z+8.026490E-2)
+      RETURN
+   ELSE
+      d = cos(z)
+      S = sin(z)
+      z = 4./z
+      a = (((((((8.768258E-4*z-4.169289E-3)*z+7.970943E-3)*z-6.792801E-3)*z-3.095341E-4)*z+5.972151E-3)*z-1.606428E-5)              &
+        & *z-2.493322E-2)*z - 4.444091E-9
+      b = ((((((-6.633926E-4*z+3.401409E-3)*z-7.271690E-3)*z+7.428246E-3)*z-4.027145E-4)*z-9.314910E-3)*z-1.207998E-6)              &
+        & *z + 1.994711E-1
+      z = sqrt(z)
+      C = 0.5 + z*(d*a+S*b)
+      S = 0.5 + z*(S*a-d*b)
+   ENDIF
+END SUBROUTINE cs

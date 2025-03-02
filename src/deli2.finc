@@ -1,0 +1,163 @@
+!*==deli2.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DELI2
+!
+!        PURPOSE
+!           COMPUTES THE GENERALIZED ELLIPTIC INTEGRAL OF SECOND KIND
+!
+!        USAGE
+!           CALL DELI2(R,X,CK,A,B)
+!
+!        DESCRIPTION OF PARAMETERS
+!           R     - RESULT VALUE IN DOUBLE PRECISION
+!           X     - UPPER INTEGRATION BOUND (ARGUMENT OF ELLIPTIC
+!                   INTEGRAL OF SECOND KIND) IN DOUBLE PRECISION
+!           CK    - COMPLEMENTARY MODULUS IN DOUBLE PRECISION
+!           A     - DOUBLE PRECISION CONSTANT TERM IN NUMERATOR
+!           B     - DOUBLE PRECISION QUATRATIC TERM IN NUMERATOR
+!
+!        REMARKS
+!           DOUBLE PRECISION MODULUS K = DSQRT(1.D0-CK*CK).
+!           SPECIAL CASES OF THE GENERALIZED ELLIPTIC INTEGRAL OF
+!           SECOND KIND ARE
+!           F(DATAN(X),K) OBTAINED WITH A=1.D0, B=1.D0
+!           E(DATAN(X),K) OBTAINED WITH A=1.D0, B=CK*CK
+!           B(DATAN(X),K) OBTAINED WITH A=1.D0, B=0.D0
+!           D(DATAN(X),K) OBTAINED WITH A=0.D0, B=1.D0.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DEFINITION
+!           R=INTEGRAL((A+B*T*T)/(SQRT((1+T*T)*(1+(CK*T)**2))*(1+T*T)),
+!                  SUMMED OVER T FROM 0 TO X).
+!           EQUIVALENT IS THE DEFINITION
+!           R=INTEGRAL((A+(B-A)*(SIN(T))**2)/SQRT(1-(K*SIN(T))**2),
+!                  SUMMED OVER T FROM 0 TO ATAN(X)).
+!           EVALUATION
+!           LANDENS TRANSFORMATION IS USED FOR CALCULATION.
+!           REFERENCE
+!           R. BULIRSCH, NUMERICAL CALCULATION OF ELLIPTIC INTEGRALS AND
+!                  ELLIPTIC FUNCTIONS
+!                  HANDBOOK SERIES OF SPECIAL FUNCTIONS
+!                  NUMERISCHE MATHEMATIK VOL. 7, 1965, PP. 78-90.
+!
+!     ..................................................................
+!
+SUBROUTINE deli2(R,X,Ck,A,B)
+   IMPLICIT NONE
+
+   INTEGER isi
+
+!
+   DOUBLE PRECISION R,X,A,B,an,aa,ang,aang,pim,pima,ari,aari
+   DOUBLE PRECISION geo,sgeo,c,d,p,Ck
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        TEST ARGUMENT
+!
+         IF ( X/=0 ) THEN
+!
+!        TEST MODULUS
+!
+            c = 0.D0
+            d = 0.5D0
+            IF ( Ck/=0 ) THEN
+!
+!        INITIALIZATION
+!
+               an = (B+A)*0.5D0
+               aa = A
+               R = B
+               ang = dabs(1.D0/X)
+               pim = 0.D0
+               isi = 0
+               ari = 1.D0
+               geo = dabs(Ck)
+               spag_nextblock_1 = 3
+               CYCLE SPAG_DispatchLoop_1
+            ELSE
+               R = dsqrt(1.D0+X*X)
+               R = (A-B)*dabs(X)/R + B*dlog(dabs(X)+R)
+            ENDIF
+         ELSE
+            R = 0.D0
+            RETURN
+         ENDIF
+         spag_nextblock_1 = 2
+      CASE (2)
+         R = R + c*(A-B)
+!
+!        TEST SIGN OF ARGUMENT
+!
+         IF ( X<0 ) R = -R
+         RETURN
+      CASE (3)
+!
+!        LANDEN TRANSFORMATION
+!
+         R = aa*geo + R
+         sgeo = ari*geo
+         aa = an
+         aari = ari
+!
+!        ARITHMETIC MEAN
+!
+         ari = geo + ari
+!
+!        SUM OF SINE VALUES
+!
+         an = (R/ari+aa)*0.5D0
+         aang = dabs(ang)
+         ang = -sgeo/ang + ang
+         pima = pim
+         IF ( ang<0 ) THEN
+         ELSEIF ( ang==0 ) THEN
+!
+!        REPLACE 0 BY SMALL VALUE
+!
+            ang = -1.D-17*aang
+         ELSE
+            spag_nextblock_1 = 4
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         pim = pim + 3.1415926535897932
+         isi = isi + 1
+         spag_nextblock_1 = 4
+      CASE (4)
+         aang = ari*ari + ang*ang
+         p = d/dsqrt(aang)
+         IF ( isi>=4 ) isi = isi - 4
+         IF ( isi>=2 ) p = -p
+         c = c + p
+         d = d*(aari-geo)*0.5D0/ari
+         IF ( dabs(aari-geo)<=1.D-9*aari ) THEN
+!
+!        ACCURACY WAS SUFFICIENT
+!
+            R = (datan(ari/ang)+pim)*an/ari
+            c = c + d*ang/aang
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ELSE
+            sgeo = dsqrt(sgeo)
+!
+!        GEOMETRIC MEAN
+!
+            geo = sgeo + sgeo
+            pim = pim + pima
+            isi = isi + isi
+            spag_nextblock_1 = 3
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE deli2

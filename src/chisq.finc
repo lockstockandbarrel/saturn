@@ -1,0 +1,116 @@
+!*==chisq.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+ 
+!
+!     ..................................................................
+!
+!        SUBROUTINE CHISQ
+!
+!        PURPOSE
+!           COMPUTE CHI-SQUARE FROM A CONTINGENCY TABLE
+!
+!        USAGE
+!           CALL CHISQ(A,N,M,CS,NDF,IERR,TR,TC)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A    - INPUT MATRIX, N BY M, CONTAINING CONTINGENCY TABLE
+!           N    - NUMBER OF ROWS IN A
+!           M    - NUMBER OF COLUMNS IN A
+!           CS   - CHI-SQUARE (OUTPUT)
+!           NDF  - NUMBER OF DEGREES OF FREEDOM (OUTPUT)
+!           IERR - ERROR CODE (OUTPUT)
+!                    0 - NORMAL CASE
+!                    1 - EXPECTED VALUE IS LESS THAN 1.0 IN ONE OR
+!                        MORE CELLS
+!                    3 - NUMBER OF DEGREES OF FREEDOM IS ZERO
+!           TR   - WORK VECTOR OF LENGTH N
+!           TC   - WORK VECTOR OF LENGTH M
+!
+!        REMARKS
+!           IF ONE OR MORE CELLS CONTAIN AN EXPECTED VALUE (I.E.,
+!           THEORETICAL VALUE) LESS THAN 1.0, CHI-SQUARE WILL BE
+!           COMPUTED, BUT ERROR CODE WILL BE SET TO 1.
+!           SEE REFERENCE GIVEN BELOW.
+!           CHI-SQUARE IS SET TO ZERO IF EITHER N OR M IS ONE (ERROR
+!           CODE 3).
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DESCRIBED IN S. SIEGEL, 'NONPARAMETRIC STATISTICS FOR THE
+!           BEHAVIORAL SCIENCES', MCGRAW-HILL, NEW YORK, 1956,
+!           CHAPTER 6 AND CHAPTER 8.
+!
+!     ..................................................................
+!
+SUBROUTINE chisq(A,N,M,Cs,Ndf,Ierr,Tr,Tc)
+   IMPLICIT NONE
+
+   REAL A,Cs,e,gt,Tc,Tr
+   INTEGER i,Ierr,ij,j,M,N,Ndf,nm
+
+   DIMENSION A(*),Tr(*),Tc(*)
+!
+   nm = N*M
+   Ierr = 0
+   Cs = 0.0
+!
+!        FIND DEGREES OF FREEDOM
+!
+   Ndf = (N-1)*(M-1)
+   IF ( Ndf<=0 ) THEN
+      Ierr = 3
+      RETURN
+   ELSE
+!
+!        COMPUTE TOTALS OF ROWS
+!
+      DO i = 1,N
+         Tr(i) = 0.0
+         ij = i - N
+         DO j = 1,M
+            ij = ij + N
+            Tr(i) = Tr(i) + A(ij)
+         ENDDO
+      ENDDO
+!
+!        COMPUTE TOTALS OF COLUMNS
+!
+      ij = 0
+      DO j = 1,M
+         Tc(j) = 0.0
+         DO i = 1,N
+            ij = ij + 1
+            Tc(j) = Tc(j) + A(ij)
+         ENDDO
+      ENDDO
+!
+!        COMPUTE GRAND TOTAL
+!
+      gt = 0.0
+      DO i = 1,N
+         gt = gt + Tr(i)
+      ENDDO
+!
+!        COMPUTE CHI SQUARE FOR 2 BY 2 TABLE (SPECIAL CASE)
+!
+      IF ( nm/=4 ) THEN
+!
+!        COMPUTE CHI SQUARE FOR OTHER CONTINGENCY TABLES
+!
+         ij = 0
+         DO j = 1,M
+            DO i = 1,N
+               ij = ij + 1
+               e = Tr(i)*Tc(j)/gt
+               IF ( e<1.0 ) Ierr = 1
+               Cs = Cs + (A(ij)-e)*(A(ij)-e)/e
+            ENDDO
+         ENDDO
+         RETURN
+      ENDIF
+   ENDIF
+   Cs = gt*(abs(A(1)*A(4)-A(2)*A(3))-gt/2.0)**2/(Tc(1)*Tc(2)*Tr(1)*Tr(2))
+   RETURN
+END SUBROUTINE chisq

@@ -1,0 +1,147 @@
+!*==ali.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE ALI
+!
+!        PURPOSE
+!           TO INTERPOLATE FUNCTION VALUE Y FOR A GIVEN ARGUMENT VALUE
+!           X USING A GIVEN TABLE (ARG,VAL) OF ARGUMENT AND FUNCTION
+!           VALUES.
+!
+!        USAGE
+!           CALL ALI (X,ARG,VAL,Y,NDIM,EPS,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X      - THE ARGUMENT VALUE SPECIFIED BY INPUT.
+!           ARG    - THE INPUT VECTOR (DIMENSION NDIM) OF ARGUMENT
+!                    VALUES OF THE TABLE (NOT DESTROYED).
+!           VAL    - THE INPUT VECTOR (DIMENSION NDIM) OF FUNCTION
+!                    VALUES OF THE TABLE (DESTROYED).
+!           Y      - THE RESULTING INTERPOLATED FUNCTION VALUE.
+!           NDIM   - AN INPUT VALUE WHICH SPECIFIES THE NUMBER OF
+!                    POINTS IN TABLE (ARG,VAL).
+!           EPS    - AN INPUT CONSTANT WHICH IS USED AS UPPER BOUND
+!                    FOR THE ABSOLUTE ERROR.
+!           IER    - A RESULTING ERROR PARAMETER.
+!
+!        REMARKS
+!           (1) TABLE (ARG,VAL) SHOULD REPRESENT A SINGLE-VALUED
+!               FUNCTION AND SHOULD BE STORED IN SUCH A WAY, THAT THE
+!               DISTANCES ABS(ARG(I)-X) INCREASE WITH INCREASING
+!               SUBSCRIPT I. TO GENERATE THIS ORDER IN TABLE (ARG,VAL),
+!               SUBROUTINES ATSG, ATSM OR ATSE COULD BE USED IN A
+!               PREVIOUS STAGE.
+!           (2) NO ACTION BESIDES ERROR MESSAGE IN CASE NDIM LESS
+!               THAN 1.
+!           (3) INTERPOLATION IS TERMINATED EITHER IF THE DIFFERENCE
+!               BETWEEN TWO SUCCESSIVE INTERPOLATED VALUES IS
+!               ABSOLUTELY LESS THAN TOLERANCE EPS, OR IF THE ABSOLUTE
+!               VALUE OF THIS DIFFERENCE STOPS DIMINISHING, OR AFTER
+!               (NDIM-1) STEPS. FURTHER IT IS TERMINATED IF THE
+!               PROCEDURE DISCOVERS TWO ARGUMENT VALUES IN VECTOR ARG
+!               WHICH ARE IDENTICAL. DEPENDENT ON THESE FOUR CASES,
+!               ERROR PARAMETER IER IS CODED IN THE FOLLOWING FORM
+!                IER=0 - IT WAS POSSIBLE TO REACH THE REQUIRED
+!                        ACCURACY (NO ERROR).
+!                IER=1 - IT WAS IMPOSSIBLE TO REACH THE REQUIRED
+!                        ACCURACY BECAUSE OF ROUNDING ERRORS.
+!                IER=2 - IT WAS IMPOSSIBLE TO CHECK ACCURACY BECAUSE
+!                        NDIM IS LESS THAN 3, OR THE REQUIRED ACCURACY
+!                        COULD NOT BE REACHED BY MEANS OF THE GIVEN
+!                        TABLE. NDIM SHOULD BE INCREASED.
+!                IER=3 - THE PROCEDURE DISCOVERED TWO ARGUMENT VALUES
+!                        IN VECTOR ARG WHICH ARE IDENTICAL.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           INTERPOLATION IS DONE BY MEANS OF AITKENS SCHEME OF
+!           LAGRANGE INTERPOLATION. ON RETURN Y CONTAINS AN INTERPOLATED
+!           FUNCTION VALUE AT POINT X, WHICH IS IN THE SENSE OF REMARK
+!           (3) OPTIMAL WITH RESPECT TO GIVEN TABLE. FOR REFERENCE, SEE
+!           F.B.HILDEBRAND, INTRODUCTION TO NUMERICAL ANALYSIS,
+!           MCGRAW-HILL, NEW YORK/TORONTO/LONDON, 1956, PP.49-50.
+!
+!     ..................................................................
+!
+SUBROUTINE ali(X,Arg,Val,Y,Ndim,Eps,Ier)
+   IMPLICIT NONE
+
+   REAL Arg,delt1,delt2,Eps,h,Val,X,Y
+   INTEGER i,iend,Ier,j,Ndim
+
+!
+!
+   DIMENSION Arg(*),Val(*)
+   Ier = 2
+   delt2 = 0.
+   IF ( Ndim<1 ) THEN
+      CALL spag_block_1
+      RETURN
+   ENDIF
+   IF ( Ndim/=1 ) THEN
+!
+!     START OF AITKEN-LOOP
+      DO j = 2,Ndim
+         delt1 = delt2
+         iend = j - 1
+         DO i = 1,iend
+            h = Arg(i) - Arg(j)
+            IF ( h==0 ) THEN
+               CALL spag_block_5
+               RETURN
+            ENDIF
+            Val(j) = (Val(i)*(X-Arg(j))-Val(j)*(X-Arg(i)))/h
+         ENDDO
+         delt2 = abs(Val(j)-Val(iend))
+         IF ( j>2 ) THEN
+            IF ( delt2<=Eps ) THEN
+               CALL spag_block_2
+               RETURN
+            ENDIF
+            IF ( j>=5 ) THEN
+               IF ( delt2>=delt1 ) THEN
+                  CALL spag_block_3
+                  RETURN
+               ENDIF
+            ENDIF
+         ENDIF
+      ENDDO
+   ENDIF
+!     END OF AITKEN-LOOP
+!
+   j = Ndim
+   Y = Val(j)
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+      RETURN
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+!
+!     THERE IS SUFFICIENT ACCURACY WITHIN NDIM-1 ITERATION STEPS
+      Ier = 0
+      Y = Val(j)
+      CALL spag_block_1
+   END SUBROUTINE spag_block_2
+   SUBROUTINE spag_block_3
+!
+!     TEST VALUE DELT2 STARTS OSCILLATING
+      Ier = 1
+      CALL spag_block_4
+   END SUBROUTINE spag_block_3
+   SUBROUTINE spag_block_4
+      j = iend
+      Y = Val(j)
+      CALL spag_block_1
+   END SUBROUTINE spag_block_4
+   SUBROUTINE spag_block_5
+!
+!     THERE ARE TWO IDENTICAL ARGUMENT VALUES IN VECTOR ARG
+      Ier = 3
+      CALL spag_block_4
+   END SUBROUTINE spag_block_5
+END SUBROUTINE ali

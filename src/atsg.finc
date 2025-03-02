@@ -1,0 +1,106 @@
+!*==atsg.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE ATSG
+!
+!        PURPOSE
+!           NDIM POINTS OF A GIVEN GENERAL TABLE ARE SELECTED AND
+!           ORDERED SUCH THAT ABS(ARG(I)-X).GE.ABS(ARG(J)-X) IF I.GT.J.
+!
+!        USAGE
+!           CALL ATSG (X,Z,F,WORK,IROW,ICOL,ARG,VAL,NDIM)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X      - THE SEARCH ARGUMENT.
+!           Z      - THE VECTOR OF ARGUMENT VALUES (DIMENSION IROW).
+!           F      - IN CASE ICOL=1, F IS THE VECTOR OF FUNCTION VALUES
+!                    (DIMENSION IROW).
+!                    IN CASE ICOL=2, F IS AN IROW BY 2 MATRIX. THE FIRST
+!                    COLUMN SPECIFIES THE VECTOR OF FUNCTION VALUES AND
+!                    THE SECOND THE VECTOR OF DERIVATIVES.
+!           WORK   - A WORKING STORAGE (DIMENSION IROW).
+!           IROW   - THE DIMENSION OF VECTORS Z AND WORK AND OF EACH
+!                    COLUMN IN MATRIX F.
+!           ICOL   - THE NUMBER OF COLUMNS IN F (I.E. 1 OR 2).
+!           ARG    - THE RESULTING VECTOR OF SELECTED AND ORDERED
+!                    ARGUMENT VALUES (DIMENSION NDIM).
+!           VAL    - THE RESULTING VECTOR OF SELECTED FUNCTION VALUES
+!                    (DIMENSION NDIM) IN CASE ICOL=1. IN CASE ICOL=2,
+!                    VAL IS THE VECTOR OF FUNCTION AND DERIVATIVE VALUES
+!                    (DIMENSION 2*NDIM) WHICH ARE STORED IN PAIRS (I.E.
+!                    EACH FUNCTION VALUE IS FOLLOWED BY ITS DERIVATIVE
+!                    VALUE).
+!           NDIM   - THE NUMBER OF POINTS WHICH MUST BE SELECTED OUT OF
+!                    THE GIVEN TABLE (Z,F).
+!
+!        REMARKS
+!           NO ACTION IN CASE IROW LESS THAN 1.
+!           IF INPUT VALUE NDIM IS GREATER THAN IROW, THE PROGRAM
+!           SELECTS ONLY A MAXIMUM TABLE OF IROW POINTS.  THEREFORE THE
+!           USER OUGHT TO CHECK CORRESPONDENCE BETWEEN TABLE (ARG,VAL)
+!           AND ITS DIMENSION BY COMPARISON OF NDIM AND IROW, IN ORDER
+!           TO GET CORRECT RESULTS IN FURTHER WORK WITH TABLE (ARG,VAL).
+!           THIS TEST MAY BE DONE BEFORE OR AFTER CALLING
+!           SUBROUTINE ATSG.
+!           SUBROUTINE ATSG ESPECIALLY CAN BE USED FOR GENERATING THE
+!           TABLE (ARG,VAL) NEEDED IN SUBROUTINES ALI, AHI, AND ACFI.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           SELECTION IS DONE BY GENERATING THE VECTOR WORK WITH
+!           COMPONENTS WORK(I)=ABS(Z(I)-X) AND AT EACH OF THE NDIM STEPS
+!           (OR IROW STEPS IF NDIM IS GREATER THAN IROW)
+!           SEARCHING FOR THE SUBSCRIPT OF THE SMALLEST COMPONENT, WHICH
+!           IS AFTERWARDS REPLACED BY A NUMBER GREATER THAN
+!           MAX(WORK(I)).
+!
+!     ..................................................................
+!
+SUBROUTINE atsg(X,Z,F,Work,Irow,Icol,Arg,Val,Ndim)
+   IMPLICIT NONE
+
+   REAL Arg,b,delta,F,Val,Work,X,Z
+   INTEGER i,Icol,ii,iii,Irow,j,n,Ndim
+
+!
+!
+   DIMENSION Z(*),F(*),Work(*),Arg(*),Val(*)
+   IF ( Irow>0 ) THEN
+      n = Ndim
+!     IF N IS GREATER THAN IROW, N IS SET EQUAL TO IROW.
+      IF ( n>Irow ) n = Irow
+!
+!     GENERATION OF VECTOR WORK AND COMPUTATION OF ITS GREATEST ELEMENT.
+      b = 0.
+      DO i = 1,Irow
+         delta = abs(Z(i)-X)
+         IF ( delta>b ) b = delta
+         Work(i) = delta
+      ENDDO
+!
+!     GENERATION OF TABLE (ARG,VAL)
+      b = b + 1.
+      DO j = 1,n
+         delta = b
+         DO i = 1,Irow
+            IF ( Work(i)<delta ) THEN
+               ii = i
+               delta = Work(i)
+            ENDIF
+         ENDDO
+         Arg(j) = Z(ii)
+         IF ( Icol/=1 ) THEN
+            Val(2*j-1) = F(ii)
+            iii = ii + Irow
+            Val(2*j) = F(iii)
+         ELSE
+            Val(j) = F(ii)
+         ENDIF
+         Work(ii) = b
+      ENDDO
+   ENDIF
+END SUBROUTINE atsg

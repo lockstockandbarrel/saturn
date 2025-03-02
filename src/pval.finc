@@ -1,0 +1,46 @@
+!*==pval.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PVAL
+!
+!        PURPOSE
+!           EVALUATE A POLYNOMIAL FOR A GIVEN VALUE OF THE VARIABLE
+!
+!        USAGE
+!           CALL PVAL(RES,ARG,X,IDIMX)
+!
+!        DESCRIPTION OF PARAMETERS
+!           RES    - RESULTANT VALUE OF POLYNOMIAL
+!           ARG    - GIVEN VALUE OF THE VARIABLE
+!           X      - VECTOR OF COEFFICIENTS, ORDERED FROM SMALLEST TO
+!                    LARGEST POWER
+!           IDIMX  - DIMENSION OF X
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF NESTED MULTIPLICATION
+!
+!     ..................................................................
+!
+SUBROUTINE pval(Res,Arg,X,Idimx)
+   IMPLICIT NONE
+
+   REAL Arg,Res,X
+   INTEGER Idimx,j
+
+   DIMENSION X(*)
+!
+   Res = 0.
+   j = Idimx
+   DO WHILE ( j>0 )
+      Res = Res*Arg + X(j)
+      j = j - 1
+   ENDDO
+END SUBROUTINE pval

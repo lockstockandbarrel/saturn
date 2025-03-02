@@ -1,0 +1,220 @@
+!*==dapfs.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DAPFS
+!
+!        PURPOSE
+!           PERFORM SYMMETRIC FACTORIZATION OF THE MATRIX OF THE NORMAL
+!           EQUATIONS FOLLOWED BY CALCULATION OF THE LEAST SQUARES FIT
+!           OPTIONALLY
+!
+!        USAGE
+!           CALL DAPFS(WORK,IP,IRES,IOP,EPS,ETA,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           WORK  - GIVEN SYMMETRIC COEFFICIENT MATRIX, STORED
+!                   COMPRESSED, I.E UPPER TRIANGULAR PART COLUMNWISE.
+!                   THE GIVEN RIGHT HAND SIDE OCCUPIES THE NEXT IP
+!                   LOCATIONS IN WORK. THE VERY LAST COMPONENT OF WORK
+!                   CONTAINS THE SQUARE SUM OF FUNCTION VALUES E0
+!                   THIS SCHEME OF STORAGE ALLOCATION IS PRODUCED E.G.
+!                   BY SUBROUTINE APLL.
+!                   THE GIVEN MATRIX IS FACTORED IN THE FORM
+!                   TRANSPOSE(T)*T AND THE GIVEN RIGHT HAND SIDE IS
+!                   DIVIDED BY TRANSPOSE(T).
+!                   THE UPPER TRIANGULAR FACTOR T IS RETURNED IN WORK IF
+!                   IOP EQUALS ZERO.
+!                   IN CASE OF NONZERO IOP THE CALCULATED SOLUTIONS ARE
+!                   STORED IN THE COLUMNS OF TRIANGULAR ARRAY WORK OF
+!                   CORRESPONDING DIMENSION AND E0  IS REPLACED BY THE
+!                   SQUARE SUM OF THE ERRORS FOR FIT OF DIMENSION IRES.
+!                   THE TOTAL DIMENSION OF WORK IS (IP+1)*(IP+2)/2
+!           IP    - NUMBER OF FUNDAMENTAL FUNCTIONS USED FOR LEAST
+!                   SQUARES FIT
+!           IRES  - DIMENSION OF CALCULATED LEAST SQUARES FIT.
+!                   LET N1, N2, DENOTE THE FOLLOWING NUMBERS
+!                   N1 = MAXIMAL DIMENSION FOR WHICH NO LOSS OF
+!                        SIGNIFICANCE WAS INDICATED DURING FACTORIZATION
+!                   N2 = SMALLEST DIMENSION FOR WHICH THE SQUARE SUM OF
+!                        THE ERRORS DOES NOT EXCEED TEST=ABS(ETA*FSQ)
+!                   THEN IRES=MINO(IP,N1) IF IOP IS NONNEGATIVE
+!                   AND  IRES=MINO(IP,N1,N2) IF IOP IS NEGATIVE
+!           IOP   - INPUT PARAMETER FOR SELECTION OF OPERATION
+!                   IOP = 0 MEANS TRIANGULAR FACTORIZATION, DIVISION OF
+!                           THE RIGHT HAND SIDE BY TRANSPOSE(T) AND
+!                           CALCULATION OF THE SQUARE SUM OF ERRORS IS
+!                           PERFORMED ONLY
+!                   IOP = +1 OR -1 MEANS THE SOLUTION OF DIMENSION IRES
+!                           IS CALCULATED ADDITIONALLY
+!                   IOP = +2 OR -2 MEANS ALL SOLUTIONS FOR DIMENSION ONE
+!                           UP TO IRES ARE CALCULATED ADDITIONALLY
+!           EPS   - RELATIVE TOLERANCE FOR TEST ON LOSS OF SIGNIFICANCE.
+!                   A SENSIBLE VALUE IS BETWEEN 1.E-3 AND 1.E-6
+!           ETA   - RELATIVE TOLERANCE FOR TOLERATED SQUARE SUM OF
+!                   ERRORS. A REALISTIC VALUE IS BETWEEN 1.E0 AND 1.E-6
+!           IER   - RESULTANT ERROR PARAMETER
+!                   IER =-1 MEANS NONPOSITIVE IP
+!                   IER = 0 MEANS NO LOSS OF SIGNIFICANCE DETECTED
+!                           AND SPECIFIED TOLERANCE OF ERRORS REACHED
+!                   IER = 1 MEANS LOSS OF SIGNIFICANCE DETECTED OR
+!                           SPECIFIED TOLERANCE OF ERRORS NOT REACHED
+!        NOTE: WORK,SUM AND PIV ARE DOUBLE PRECISION
+!        REMARKS
+!           THE ABSOLUTE TOLERANCE USED INTERNALLY FOR TEST ON LOSS OF
+!           SIGNIFICANCE IS TOL=ABS(EPS*WORK(1)).
+!           THE ABSOLUTE TOLERANCE USED INTERNALLY FOR THE SQUARE SUM OF
+!           ERRORS IS ABS(ETA*FSQ).
+!           IOP GREATER THAN 2 HAS THE SAME EFFECT AS IOP = 2.
+!           IOP LESS THAN -2 HAS THE SAME EFFECT AS IOP =-2.
+!           IRES = 0 MEANS THE ABSOLUTE VALUE OF EPS IS NOT LESS THAN
+!           ONE AND/OR WORK(1) IS NOT POSITIVE AND/OR IP IS NOT POSITIVE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           CALCULATION OF THE LEAST SQUARES FITS IS DONE USING
+!           CHOLESKYS SQUARE ROOT METHOD FOR SYMMETRIC FACTORIZATION.
+!           THE INCORPORATED TEST ON LOSS OF SIGNIFICANCE MEANS EACH
+!           RADICAND MUST BE GREATER THAN THE INTERNAL ABSOLUTE
+!           TOLERANCE TOL=ABS(EPS*WORK(1)).
+!           IN CASE OF LOSS OF SIGNIFICANCE IN THE ABOVE SENSE ONLY A
+!           SUBSYSTEM OF THE NORMAL EQUATIONS IS SOLVED.
+!           IN CASE OF NEGATIVE IOP THE TRIANGULAR FACTORIZATION IS
+!           TERMINATED PREMATURELY EITHER IF THE SQUARE SUM OF THE
+!           ERRORS DOES NOT EXCEED ETA*FSQ OR IF THERE IS INDICATION
+!           FOR LOSS OF SIGNIFICANCE
+!
+!     ..................................................................
+!
+SUBROUTINE dapfs(Work,Ip,Ires,Iop,Eps,Eta,Ier)
+   IMPLICIT NONE
+
+   REAL Eps,Eta,test,tol
+   INTEGER i,iadr,iend,Ier,Iop,Ip,ipiv,ipp1,Ires,ite,j,ja,je,jj,jk,k
+
+!
+   DOUBLE PRECISION Work,sum,piv
+!        DIMENSIONED DUMMY VARIABLES
+   DIMENSION Work(*)
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+         Ires = 0
+!
+!        TEST OF SPECIFIED DIMENSION
+         IF ( Ip<=0 ) THEN
+!
+!        ERROR RETURN IN CASE OF ILLEGAL DIMENSION
+            Ier = -1
+            RETURN
+         ELSE
+!
+!        INITIALIZE FACTORIZATION PROCESS
+            ipiv = 0
+            ipp1 = Ip + 1
+            Ier = 1
+            ite = Ip*ipp1/2
+            iend = ite + ipp1
+            tol = abs(Eps*Work(1))
+            test = abs(Eta*Work(iend))
+!
+!        START LOOP OVER ALL ROWS OF WORK
+            DO i = 1,Ip
+               ipiv = ipiv + i
+               ja = ipiv - Ires
+               je = ipiv - 1
+!
+!        FORM SCALAR PRODUCT NEEDED TO MODIFY CURRENT ROW ELEMENTS
+               jk = ipiv
+               DO k = i,ipp1
+                  sum = 0.
+                  IF ( Ires>0 ) THEN
+                     jk = jk - Ires
+                     DO j = ja,je
+                        sum = sum + Work(j)*Work(jk)
+                        jk = jk + 1
+                     ENDDO
+                  ENDIF
+                  IF ( jk<=ipiv ) THEN
+!
+!        TEST FOR LOSS OF SIGNIFICANCE
+                     sum = Work(ipiv) - sum
+                     IF ( sum<=tol ) GOTO 10
+                     sum = sqrt(sum)
+                     Work(ipiv) = sum
+                     piv = 1.0D0/sum
+                  ELSE
+!
+!        UPDATE OFF-DIAGONAL TERMS
+                     sum = (Work(jk)-sum)*piv
+                     Work(jk) = sum
+                  ENDIF
+                  jk = jk + k
+               ENDDO
+!
+!        UPDATE SQUARE SUM OF ERRORS
+               Work(iend) = Work(iend) - sum*sum
+!
+!        RECORD ADDRESS OF LAST PIVOT ELEMENT
+               Ires = Ires + 1
+               iadr = ipiv
+!
+!        TEST FOR TOLERABLE ERROR IF SPECIFIED
+               IF ( Iop<0 ) THEN
+                  IF ( Work(iend)<=test ) THEN
+                     spag_nextblock_1 = 2
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+               ENDIF
+            ENDDO
+            IF ( Iop==0 ) THEN
+!
+!        NORMAL RETURN
+               Ier = 0
+               RETURN
+            ENDIF
+!
+!        PERFORM BACK SUBSTITUTION IF SPECIFIED
+ 10         IF ( Iop==0 ) RETURN
+            spag_nextblock_1 = 3
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+      CASE (2)
+         Ier = 0
+         spag_nextblock_1 = 3
+      CASE (3)
+         ipiv = Ires
+         SPAG_Loop_1_2: DO WHILE ( ipiv>0 )
+            sum = 0.0D0
+            ja = ite + ipiv
+            jj = iadr
+            jk = iadr
+            k = ipiv
+            SPAG_Loop_2_1: DO i = 1,ipiv
+               Work(jk) = (Work(ja)-sum)/Work(jj)
+               IF ( k<=1 ) EXIT SPAG_Loop_2_1
+               je = jj - 1
+               sum = 0.0D0
+               DO j = k,ipiv
+                  sum = sum + Work(jk)*Work(je)
+                  jk = jk + 1
+                  je = je + j
+               ENDDO
+               jk = je - ipiv
+               ja = ja - 1
+               jj = jj - k
+               k = k - 1
+            ENDDO SPAG_Loop_2_1
+            IF ( Iop/2==0 ) EXIT SPAG_Loop_1_2
+            iadr = iadr - ipiv
+            ipiv = ipiv - 1
+         ENDDO SPAG_Loop_1_2
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE dapfs

@@ -1,0 +1,83 @@
+!*==ctie.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE CTIE
+!
+!        PURPOSE
+!           ADJOIN TWO MATRICES WITH SAME ROW DIMENSION TO FORM ONE
+!           RESULTANT MATRIX (SEE METHOD)
+!
+!        USAGE
+!           CALL CTIE(A,B,R,N,M,MSA,MSB,L)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF FIRST INPUT MATRIX
+!           B - NAME OF SECOND INPUT MATRIX
+!           R - NAME OF OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A,B,R
+!           M - NUMBER OF COLUMNS IN A
+!           MSA - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!           MSB - SAME AS MSA EXCEPT FOR MATRIX B
+!           L - NUMBER OF COLUMNS IN B
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRICES A OR B
+!           MATRIX R IS ALWAYS A GENERAL MATRIX
+!           MATRIX A MUST HAVE THE SAME NUMBER OF ROWS AS MATRIX B
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           MATRIX B IS ATTACHED TO THE RIGHT OF MATRIX A .
+!           THE RESULTANT MATRIX R CONTAINS N ROWS AND M+L COLUMNS
+!
+!     ..................................................................
+!
+SUBROUTINE ctie(A,B,R,N,M,Msa,Msb,L)
+   IMPLICIT NONE
+
+   REAL A,B,R
+   INTEGER i,ij,ir,j,jj,L,M,mm,Msa,Msb,msx,N
+
+   DIMENSION A(*),B(*),R(*)
+!
+   mm = M
+   ir = 0
+   msx = Msa
+   DO jj = 1,2
+      DO j = 1,mm
+         DO i = 1,N
+            ir = ir + 1
+            R(ir) = 0.0
+!
+!        LOCATE ELEMENT FOR ANY MATRIX STORAGE MODE
+!
+            CALL loc(i,j,ij,N,mm,msx)
+!
+!        TEST FOR ZERO ELEMENT IN DIAGONAL MATRIX
+!
+            IF ( ij/=0 ) THEN
+!
+!        MOVE ELEMENT TO MATRIX R
+!
+               IF ( jj==2 ) THEN
+                  R(ir) = B(ij)
+               ELSE
+                  R(ir) = A(ij)
+               ENDIF
+            ENDIF
+         ENDDO
+      ENDDO
+!
+!        REPEAT ABOVE FOR MATRIX B
+!
+      msx = Msb
+      mm = L
+   ENDDO
+END SUBROUTINE ctie

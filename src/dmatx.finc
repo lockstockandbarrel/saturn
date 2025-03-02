@@ -1,0 +1,128 @@
+!*==dmatx.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DMATX
+!
+!        PURPOSE
+!           COMPUTE MEANS OF VARIABLES IN EACH GROUP AND A POOLED
+!           DISPERSION MATRIX FOR ALL THE GROUPS. NORMALLY THIS SUB-
+!           ROUTINE IS USED IN THE PERFORMANCE OF DISCRIMINANT ANALYSIS.
+!
+!        USAGE
+!           CALL DMATX (K,M,N,X,XBAR,D,CMEAN)
+!
+!        DESCRIPTION OF PARAMETERS
+!           K     - NUMBER OF GROUPS
+!           M     - NUMBER OF VARIABLES (MUST BE THE SAME FOR ALL
+!                   GROUPS).
+!           N     - INPUT VECTOR OF LENGTH K CONTAINING SAMPLE SIZES OF
+!                   GROUPS.
+!           X     - INPUT VECTOR CONTAINING DATA IN THE MANNER EQUIVA-
+!                   LENT TO A 3-DIMENSIONAL FORTRAN ARRAY, X(1,1,1),
+!                   X(2,1,1), X(3,1,1), ETC.  THE FIRST SUBSCRIPT IS
+!                   CASE NUMBER, THE SECOND SUBSCRIPT IS VARIABLE NUMBER
+!                   AND THE THIRD SUBSCRIPT IS GROUP NUMBER.  THE
+!                   LENGTH OF VECTOR X IS EQUAL TO THE TOTAL NUMBER OF
+!                   DATA POINTS, T*M, WHERE T = N(1)+N(2)+...+N(K).
+!           XBAR  - OUTPUT MATRIX (M X K) CONTAINING MEANS OF VARIABLES
+!                   IN K GROUPS.
+!           D     - OUTPUT MATRIX (M X M) CONTAINING POOLED DISPERSION.
+!           CMEAN - WORKING VECTOR OF LENGTH M.
+!
+!        REMARKS
+!           THE NUMBER OF VARIABLES MUST BE GREATER THAN OR EQUAL TO
+!           THE NUMBER OF GROUPS.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           REFER TO 'BMD COMPUTER PROGRAMS MANUAL', EDITED BY W. J.
+!           DIXON, UCLA, 1964, AND T. W. ANDERSON, 'INTRODUCTION TO
+!           MULTIVARIATE STATISTICAL ANALYSIS', JOHN WILEY AND SONS,
+!           1958, SECTION 6.6-6.8.
+!
+!     ..................................................................
+!
+SUBROUTINE dmatx(K,M,N,X,Xbar,D,Cmean)
+   IMPLICIT NONE
+
+   REAL Cmean,D,fn,X,Xbar
+   INTEGER i,j,jj,K,l,ll,lm,lmean,M,mm,N,n1,n2,n4,ng
+
+   DIMENSION N(*),X(*),Xbar(*),D(*),Cmean(*)
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION XBAR,D,CMEAN
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        ...............................................................
+!
+!     INITIALIZATION
+!
+   mm = M*M
+   DO i = 1,mm
+      D(i) = 0.0
+   ENDDO
+!
+!     CALCULATE MEANS
+!
+   n4 = 0
+   l = 0
+   lm = 0
+   DO ng = 1,K
+      n1 = N(ng)
+      fn = n1
+      DO j = 1,M
+         lm = lm + 1
+         Xbar(lm) = 0.0
+         DO i = 1,n1
+            l = l + 1
+            Xbar(lm) = Xbar(lm) + X(l)
+         ENDDO
+         Xbar(lm) = Xbar(lm)/fn
+      ENDDO
+!
+!     CALCULATE SUMS OF CROSS-PRODUCTS OF DEVIATIONS
+!
+      lmean = lm - M
+      DO i = 1,n1
+         ll = n4 + i - n1
+         DO j = 1,M
+            ll = ll + n1
+            n2 = lmean + j
+            Cmean(j) = X(ll) - Xbar(n2)
+         ENDDO
+         ll = 0
+         DO j = 1,M
+            DO jj = 1,M
+               ll = ll + 1
+               D(ll) = D(ll) + Cmean(j)*Cmean(jj)
+            ENDDO
+         ENDDO
+      ENDDO
+      n4 = n4 + n1*M
+   ENDDO
+!
+!     CALCULATE THE POOLED DISPERSION MATRIX
+!
+   ll = -K
+   DO i = 1,K
+      ll = ll + N(i)
+   ENDDO
+   fn = ll
+   DO i = 1,mm
+      D(i) = D(i)/fn
+   ENDDO
+!
+END SUBROUTINE dmatx

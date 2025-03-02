@@ -1,0 +1,267 @@
+!*==mlss.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MLSS
+!
+!        PURPOSE
+!           SUBROUTINE MLSS IS THE SECOND STEP IN THE PROCEDURE FOR
+!           CALCULATING THE LEAST SQUARES SOLUTION OF MINIMAL LENGTH
+!           OF A SYSTEM OF SIMULTANEOUS LINEAR EQUATIONS WITH SYMMETRIC
+!           POSITIVE SEMI-DEFINITE COEFFICIENT MATRIX.
+!
+!        USAGE
+!           CALL MLSS(A,N,IRANK,TRAC,INC,RHS,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - COEFFICIENT MATRIX IN FACTORED FORM AS GENERATED
+!                   BY SUBROUTINE MFSS FROM INITIALLY GIVEN SYMMETRIC
+!                   COEFFICIENT MATRIX A STORED IN N*(N+1)/2 LOCATIONS
+!                   A REMAINS UNCHANGED
+!           N     - DIMENSION OF COEFFICIENT MATRIX
+!           IRANK - RANK OF COEFFICIENT MATRIX, CALCULATED BY MEANS OF
+!                   SUBROUTINE MFSS
+!           TRAC  - VECTOR OF DIMENSION N CONTAINING THE
+!                   SUBSCRIPTS OF PIVOT ROWS AND COLUMNS, I.E. THE
+!                   PRODUCT REPRESENTATION IN TRANSPOSITIONS OF THE
+!                   PERMUTATION WHICH WAS APPLIED TO ROWS AND COLUMNS
+!                   OF A IN THE FACTORIZATION PROCESS
+!                   TRAC IS A RESULTANT ARRAY OF SUBROUTINE MFSS
+!           INC   - INPUT VARIABLE WHICH SHOULD CONTAIN THE VALUE ZERO
+!                   IF THE SYSTEM OF SIMULTANEOUS EQUATIONS IS KNOWN
+!                   TO BE COMPATIBLE AND A NONZERO VALUE OTHERWISE
+!           RHS   - VECTOR OF DIMENSION N CONTAINING THE RIGHT HAND SIDE
+!                   ON RETURN RHS CONTAINS THE MINIMAL LENGTH SOLUTION
+!           IER   - RESULTANT ERROR PARAMETER
+!                   IER = 0 MEANS NO ERRORS
+!                   IER =-1 MEANS N AND/OR IRANK IS NOT POSITIVE AND/OR
+!                           IRANK IS GREATER THAN N
+!                   IER = 1 MEANS THE FACTORIZATION CONTAINED IN A HAS
+!                           ZERO DIVISORS AND/OR TRAC CONTAINS
+!                           VALUES OUTSIDE THE FEASIBLE RANGE 1 UP TO N
+!
+!        REMARKS
+!           THE MINIMAL LENGTH SOLUTION IS PRODUCED IN THE STORAGE
+!           LOCATIONS OCCUPIED BY THE RIGHT HAND SIDE.
+!           SUBROUTINE MLSS DOES TAKE CARE OF THE PERMUTATION
+!           WHICH WAS APPLIED TO ROWS AND COLUMNS OF A.
+!           OPERATION IS BYPASSED IN CASE OF A NON POSITIVE VALUE
+!           OF IRANK
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           LET T, U, TU BE THE COMPONENTS OF THE FACTORIZATION OF A,
+!           AND LET THE RIGHT HAND SIDE BE PARTITIONED INTO A FIRST
+!           PART X1 OF DIMENSION IRANK AND A SECOND PART X2 OF DIMENSION
+!           N-IRANK. THEN THE FOLLOWING OPERATIONS ARE APPLIED IN
+!           SEQUENCE
+!           (1) INTERCHANGE RIGHT HAND SIDE
+!           (2) X1 = X1 + U * X2
+!           (3) X2 =-TRANSPOSE(U) * X1
+!           (4) X2 = INVERSE(TU) * INVERSE(TRANSPOSE(TU)) * X2
+!           (5) X1 = X1 + U * X2
+!           (6) X1 = INVERSE(T) * INVERSE(TRANSPOSE(T)) * X1
+!           (7) X2 =-TRANSPOSE(U) * X1
+!           (8) X2 = INVERSE(TU) * INVERSE(TRANSPOSE(TU)) * X2
+!           (9) X1 = X1 + U * X2
+!           (10)X2 = TRANSPOSE(U) * X1
+!           (11) REINTERCHANGE CALCULATED SOLUTION
+!           IF THE SYSTEM OF SIMULTANEOUS LINEAR EQUATIONS IS SPECIFIED
+!           TO BE COMPATIBLE THEN STEPS (2), (3), (4) AND (5) ARE
+!           CANCELLED.
+!           IF THE COEFFICIENT MATRIX HAS RANK N, THEN THE ONLY STEPS
+!           PERFORMED ARE (1), (6) AND (11).
+!
+!     ..................................................................
+!
+SUBROUTINE mlss(A,N,Irank,Trac,Inc,Rhs,Ier)
+   IMPLICIT NONE
+
+   REAL A,hold,Rhs,Trac
+   INTEGER i,idef,iend,Ier,ii,Inc,Irank,ista,isw,ite,ix2,j,jj,kk,N,np1
+
+!
+!
+!        DIMENSIONED DUMMY VARIABLES
+   DIMENSION A(*),Trac(*),Rhs(*)
+   DOUBLE PRECISION sum
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        TEST OF SPECIFIED DIMENSIONS
+         idef = N - Irank
+         IF ( N<=0 ) THEN
+!
+!        ERROR RETURN IN CASE OF ILLEGAL DIMENSION
+            Ier = -1
+            RETURN
+         ELSEIF ( Irank<=0 ) THEN
+            Ier = -1
+            RETURN
+         ELSEIF ( idef<0 ) THEN
+            Ier = -1
+            RETURN
+         ELSE
+!
+!        CALCULATE AUXILIARY VALUES
+            ite = Irank*(Irank+1)/2
+            ix2 = Irank + 1
+            np1 = N + 1
+            Ier = 0
+!
+!        INTERCHANGE RIGHT HAND SIDE
+            jj = 1
+            ii = 1
+         ENDIF
+         spag_nextblock_1 = 2
+      CASE (2)
+         DO i = 1,N
+            j = Trac(ii)
+            IF ( j<=0 ) THEN
+               spag_nextblock_1 = 8
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            hold = Rhs(ii)
+            Rhs(ii) = Rhs(j)
+            Rhs(j) = hold
+            ii = ii + jj
+         ENDDO
+         IF ( jj<0 ) THEN
+            spag_nextblock_1 = 9
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!        PERFORM STEP 2 IF NECESSARY
+         isw = 1
+         IF ( Inc*idef==0 ) THEN
+            spag_nextblock_1 = 6
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         spag_nextblock_1 = 3
+      CASE (3)
+!
+!        CALCULATE X1 = X1 + U * X2
+         ista = ite
+         DO i = 1,Irank
+            ista = ista + 1
+            jj = ista
+            sum = 0.D0
+            DO j = ix2,N
+               sum = sum + A(jj)*Rhs(j)
+               jj = jj + j
+            ENDDO
+            Rhs(i) = Rhs(i) + sum
+         ENDDO
+         IF ( isw==2 ) THEN
+            spag_nextblock_1 = 6
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         spag_nextblock_1 = 4
+      CASE (4)
+!
+!        CALCULATE X2 = TRANSPOSE(U) * X1
+         ista = ite
+         DO i = ix2,N
+            jj = ista
+            sum = 0.D0
+            DO j = 1,Irank
+               jj = jj + 1
+               sum = sum + A(jj)*Rhs(j)
+            ENDDO
+            IF ( isw/=3 ) sum = -sum
+            Rhs(i) = sum
+            ista = ista + i
+         ENDDO
+         IF ( isw==2 ) THEN
+!
+!        PERFORM STEP (8)
+            isw = 3
+         ELSEIF ( isw==3 ) THEN
+            spag_nextblock_1 = 7
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!        INITIALIZE STEP (4) OR STEP (8)
+         ista = ix2
+         iend = N
+         jj = ite + ista
+         spag_nextblock_1 = 5
+      CASE (5)
+!
+!        DIVISION OF X1 BY TRANSPOSE OF TRIANGULAR MATRIX
+         sum = 0.D0
+         SPAG_Loop_1_1: DO i = ista,iend
+            IF ( A(jj)==0 ) THEN
+               spag_nextblock_1 = 8
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            Rhs(i) = (Rhs(i)-sum)/A(jj)
+            IF ( i>=iend ) EXIT SPAG_Loop_1_1
+            jj = jj + ista
+            sum = 0.D0
+            DO j = ista,i
+               sum = sum + A(jj)*Rhs(j)
+               jj = jj + 1
+            ENDDO
+         ENDDO SPAG_Loop_1_1
+!
+!        DIVISION OF X1 BY TRIANGULAR MATRIX
+         sum = 0.D0
+         ii = iend
+         SPAG_Loop_1_2: DO i = ista,iend
+            Rhs(ii) = (Rhs(ii)-sum)/A(jj)
+            IF ( ii<=ista ) EXIT SPAG_Loop_1_2
+            kk = jj - 1
+            sum = 0.D0
+            DO j = ii,iend
+               sum = sum + A(kk)*Rhs(j)
+               kk = kk + j
+            ENDDO
+            jj = jj - ii
+            ii = ii - 1
+         ENDDO SPAG_Loop_1_2
+         IF ( idef==0 ) THEN
+            spag_nextblock_1 = 7
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         IF ( isw==2 ) THEN
+            spag_nextblock_1 = 4
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!        PERFORM STEP (5)
+         IF ( isw/=3 ) isw = 2
+         spag_nextblock_1 = 3
+         CYCLE SPAG_DispatchLoop_1
+      CASE (6)
+!
+!        PERFORM STEP (6)
+         ista = 1
+         iend = Irank
+         jj = 1
+         isw = 2
+         spag_nextblock_1 = 5
+         CYCLE SPAG_DispatchLoop_1
+      CASE (7)
+!
+!        REINTERCHANGE CALCULATED SOLUTION
+         ii = N
+         jj = -1
+         spag_nextblock_1 = 2
+         CYCLE SPAG_DispatchLoop_1
+      CASE (8)
+!
+!        ERROR RETURN IN CASE OF ZERO DIVISOR
+         Ier = 1
+         spag_nextblock_1 = 9
+      CASE (9)
+         RETURN
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE mlss

@@ -1,0 +1,89 @@
+!*==rtie.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RTIE
+!
+!        PURPOSE
+!           ADJOIN TWO MATRICES WITH SAME COLUMN DIMENSION TO FORM ONE
+!           RESULTANT MATRIX (SEE METHOD)
+!
+!        USAGE
+!           CALL RTIE(A,B,R,N,M,MSA,MSB,L)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF FIRST INPUT MATRIX
+!           B - NAME OF SECOND INPUT MATRIX
+!           R - NAME OF OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A
+!           M - NUMBER OF COLUMNS IN A,B,R
+!           MSA - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!           MSB - SAME AS MSA EXCEPT FOR MATRIX B
+!           L - NUMBER OF ROWS IN B
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRICES A OR B
+!           MATRIX R IS ALWAYS A GENERAL MATRIX
+!           MATRIX A MUST HAVE THE SAME NUMBER OF COLUMNS AS MATRIX B
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           MATRIX B IS ATTACHED TO THE BOTTOM OF MATRIX A .
+!           THE RESULTANT MATRIX R CONTAINS N+L ROWS AND M COLUMNS.
+!
+!     ..................................................................
+!
+SUBROUTINE rtie(A,B,R,N,M,Msa,Msb,L)
+   IMPLICIT NONE
+
+   REAL A,B,R
+   INTEGER i,ii,ij,ir,j,L,M,Msa,Msb,msx,N,nn,nx
+
+   DIMENSION A(*),B(*),R(*)
+!
+   nn = N
+   ir = 0
+   nx = nn
+   msx = Msa
+   DO j = 1,M
+      DO ii = 1,2
+         DO i = 1,nn
+            ir = ir + 1
+            R(ir) = 0.0
+!
+!        LOCATE ELEMENT FOR ANY MATRIX STORAGE MODE
+!
+            CALL loc(i,j,ij,nn,M,msx)
+!
+!        TEST FOR ZERO ELEMENT IN DIAGONAL MATRIX
+!
+            IF ( ij/=0 ) THEN
+!
+!        MOVE ELEMENT TO MATRIX R
+!
+               IF ( ii==2 ) THEN
+                  R(ir) = B(ij)
+               ELSE
+                  R(ir) = A(ij)
+               ENDIF
+            ENDIF
+         ENDDO
+!
+!        REPEAT ABOVE FOR MATRIX B
+!
+         msx = Msb
+         nn = L
+      ENDDO
+!
+!        RESET FOR NEXT COLUMN
+!
+      msx = Msa
+      nn = nx
+   ENDDO
+END SUBROUTINE rtie

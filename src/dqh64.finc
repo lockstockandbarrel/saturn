@@ -1,0 +1,142 @@
+!*==dqh64.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQH64
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(EXP(-X*X)*FCT(X), SUMMED OVER X FROM
+!                               -INFINITY TO +INFINITY).
+!
+!        USAGE
+!           CALL DQH64 (FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           FCT    - THE NAME OF AN EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           Y      - THE RESULTING DOUBLE PRECISION INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 64-POINT GAUSSIAN-HERMITE
+!           QUADRATURE FORMULA, WHICH INTEGRATES EXACTLY WHENEVER
+!           FCT(X) IS A POLYNOMIAL UP TO DEGREE 127.
+!           FOR REFERENCE, SEE
+!           SHAO/CHEN/FRANK, TABLES OF ZEROS AND GAUSSIAN WEIGHTS OF
+!           CERTAIN ASSOCIATED LAGUERRE POLYNOMIALS AND THE RELATED
+!           GENERALIZED HERMITE POLYNOMIALS, IBM TECHNICAL REPORT
+!           TR00.1100 (MARCH 1964), PP.213-214.
+!
+!     ..................................................................
+!
+SUBROUTINE dqh64(fct,Y)
+   IMPLICIT NONE
+!
+!
+   DOUBLE PRECISION x,Y,z,fct
+!
+   x = .10526123167960546D2
+   z = -x
+   Y = .55357065358569428D-48*(fct(x)+fct(z))
+   x = .9895287586829539D1
+   z = -x
+   Y = Y + .16797479901081592D-42*(fct(x)+fct(z))
+   x = .9373159549646721D1
+   z = -x
+   Y = Y + .34211380112557405D-38*(fct(x)+fct(z))
+   x = .8907249099964770D1
+   z = -x
+   Y = Y + .15573906246297638D-34*(fct(x)+fct(z))
+   x = .8477529083379863D1
+   z = -x
+   Y = Y + .25496608991129993D-31*(fct(x)+fct(z))
+   x = .8073687285010225D1
+   z = -x
+   Y = Y + .19291035954649669D-28*(fct(x)+fct(z))
+   x = .7689540164040497D1
+   z = -x
+   Y = Y + .7861797788925910D-26*(fct(x)+fct(z))
+   x = .7321013032780949D1
+   z = -x
+   Y = Y + .19117068833006428D-23*(fct(x)+fct(z))
+   x = .69652411205511075D1
+   z = -x
+   Y = Y + .29828627842798512D-21*(fct(x)+fct(z))
+   x = .66201122626360274D1
+   z = -x
+   Y = Y + .31522545665037814D-19*(fct(x)+fct(z))
+   x = .62840112287748282D1
+   z = -x
+   Y = Y + .23518847106758191D-17*(fct(x)+fct(z))
+   x = .59556663267994860D1
+   z = -x
+   Y = Y + .12800933913224380D-15*(fct(x)+fct(z))
+   x = .56340521643499721D1
+   z = -x
+   Y = Y + .52186237265908475D-14*(fct(x)+fct(z))
+   x = .53183252246332709D1
+   z = -x
+   Y = Y + .16283407307097204D-12*(fct(x)+fct(z))
+   x = .50077796021987682D1
+   z = -x
+   Y = Y + .39591777669477239D-11*(fct(x)+fct(z))
+   x = .47018156474074998D1
+   z = -x
+   Y = Y + .7615217250145451D-10*(fct(x)+fct(z))
+   x = .43999171682281376D1
+   z = -x
+   Y = Y + .11736167423215493D-8*(fct(x)+fct(z))
+   x = .41016344745666567D1
+   z = -x
+   Y = Y + .14651253164761094D-7*(fct(x)+fct(z))
+   x = .38065715139453605D1
+   z = -x
+   Y = Y + .14955329367272471D-6*(fct(x)+fct(z))
+   x = .35143759357409062D1
+   z = -x
+   Y = Y + .12583402510311846D-5*(fct(x)+fct(z))
+   x = .32247312919920357D1
+   z = -x
+   Y = Y + .8788499230850359D-5*(fct(x)+fct(z))
+   x = .29373508230046218D1
+   z = -x
+   Y = Y + .51259291357862747D-4*(fct(x)+fct(z))
+   x = .26519724354306350D1
+   z = -x
+   Y = Y + .25098369851306249D-3*(fct(x)+fct(z))
+   x = .23683545886324014D1
+   z = -x
+   Y = Y + .10363290995075777D-2*(fct(x)+fct(z))
+   x = .20862728798817620D1
+   z = -x
+   Y = Y + .36225869785344588D-2*(fct(x)+fct(z))
+   x = .18055171714655449D1
+   z = -x
+   Y = Y + .10756040509879137D-1*(fct(x)+fct(z))
+   x = .15258891402098637D1
+   z = -x
+   Y = Y + .27203128953688918D-1*(fct(x)+fct(z))
+   x = .12472001569431179D1
+   z = -x
+   Y = Y + .58739981964099435D-1*(fct(x)+fct(z))
+   x = .9692694230711780D0
+   z = -x
+   Y = Y + .10849834930618684D0*(fct(x)+fct(z))
+   x = .69192230581004458D0
+   z = -x
+   Y = Y + .17168584234908370D0*(fct(x)+fct(z))
+   x = .41498882412107868D0
+   z = -x
+   Y = Y + .23299478606267805D0*(fct(x)+fct(z))
+   x = .13830224498700972D0
+   z = -x
+   Y = Y + .27137742494130398D0*(fct(x)+fct(z))
+END SUBROUTINE dqh64

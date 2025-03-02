@@ -1,0 +1,213 @@
+!*==tab2.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE TAB2
+!
+!        PURPOSE
+!           PERFORM A TWO-WAY CLASSIFICATION FOR TWO VARIABLES IN AN
+!           OBSERVATION MATRIX (OR A MATRIX SUBSET) OF THE FREQUENCY,
+!           PERCENT FREQUENCY, AND OTHER STATISTICS OVER GIVEN CLASS
+!           INTERVALS.
+!
+!        USAGE
+!           CALL TAB2(A,S,NOV,UBO,FREQ,PCT,STAT1,STAT2,NO,NV)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - OBSERVATION MATRIX, NO BY NV
+!           S     - INPUT VECTOR GIVING SUBSET OF A. ONLY THOSE
+!                   OBSERVATIONS WITH A CORRESPONDING NON-ZERO S(J) ARE
+!                   CONSIDERED. VECTOR LENGTH IS NO.
+!           NOV   - VARIABLES TO BE CROSS-TABULATED. NOV(1) IS VARIABLE
+!                       1, NOV(2) IS VARIABLE 2. VECTOR LENGTH IS 2. NOV
+!                       MUST BE GREATER THAN OR EQUAL TO 1 AND LESS THAN
+!                       OR EQUAL TO NV.
+!           UBO   - 3 BY 2 MATRIX GIVING LOWER LIMIT, NUMBER OF
+!                   INTERVALS, AND UPPER LIMIT OF BOTH VARIABLES TO BE
+!                   TABULATED (FIRST COLUMN FOR VARIABLE 1, SECOND
+!                   COLUMN FOR VARIABLE 2). IF LOWER LIMIT IS EQUAL TO
+!                   UPPER LIMIT FOR VARIABLE 1, THE PROGRAM USES THE
+!                   MINIMUM AND MAXIMUM VALUES ON EACH VARIABLE. NUMBER
+!                   OF INTERVALS MUST INCLUDE TWO CELLS FOR UNDER AND
+!                   ABOVE LIMITS.
+!           FREQ  - OUTPUT MATRIX OF FREQUENCIES IN THE TWO-WAY
+!                   CLASSIFICATION. ORDER OF MATRIX IS INT1 BY INT2,
+!                   WHERE INT1 IS THE NUMBER OF INTERVALS OF VARIABLE 1
+!                   AND INT2 IS THE NUMBER OF INTERVALS OF VARIABLE 2.
+!                   INT1 AND INT2 MUST BE SPECIFIED IN THE SECOND
+!                   POSITION OF RESPECTIVE COLUMN OF UBO MATRIX.
+!           PCT   - OUTPUT MATRIX OF PERCENT FREQUENCIES, SAME ORDER
+!                   AS FREQ.
+!           STAT1 - OUTPUT MATRIX SUMMARIZING TOTALS, MEANS, AND
+!                   STANDARD DEVIATIONS FOR EACH CLASS INTERVAL OF
+!                   VARIABLE 1. ORDER OF MATRIX IS 3 BY INT1.
+!           STAT2 - SAME AS STAT1 BUT OVER VARIABLE 2. ORDER OF MATRIX
+!                   IS 3 BY INT2.
+!           NO    - NUMBER OF OBSERVATIONS. NO MUST BE GREATER THAN
+!                   OR EQUAL TO 1.
+!           NV    - NUMBER OF VARIABLES FOR EACH OBSERVATION. NV
+!                   MUST BE GREATER THAN OR EQUAL TO 1.
+!
+!        REMARKS
+!           IF S IS NULL, OUTPUT AREAS ARE SET TO ZERO
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           INTERVAL SIZES FOR BOTH VARIABLES ARE CALCULATED FROM THE
+!           GIVEN INFORMATION OR OPTIONALLY FROM THE MINIMUM AND MAXIMUM
+!           VALUES. THE FREQUENCY AND PERCENT FREQUENCY MATRICES ARE
+!           DEVELOPED. MATRICES STAT1 AND STAT2 SUMMARIZING TOTALS,
+!           MEANS, AND STANDARD DEVIATIONS ARE THEN CALCULATED.
+!           THE DIVISOR FOR STANDARD DEVIATION IS ONE LESS THAN THE
+!           NUMBER OF OBSERVATIONS USED IN EACH CLASS INTERVAL.
+!
+!     ..................................................................
+!
+SUBROUTINE tab2(A,S,Nov,Ubo,Freq,Pct,Stat1,Stat2,No,Nv)
+   IMPLICIT NONE
+
+   REAL A,Freq,Pct,S,scnt,sint,Stat1,Stat2,sum,temp1,temp2,Ubo,vmax,vmin,wbo
+   INTEGER i,ij,ijf,ijx,int1,int2,intt,intx,inty,intz,isd,ix,ixx,ixy,iy,iyy,j,No,Nov,Nv
+
+   DIMENSION A(*),S(*),Nov(2),Ubo(3,2),Freq(*),Pct(*),Stat1(*),Stat2(2),sint(2)
+   DIMENSION wbo(3,2)
+   DO i = 1,3
+      DO j = 1,2
+         wbo(i,j) = Ubo(i,j)
+      ENDDO
+   ENDDO
+!
+!        DETERMINE LIMITS
+!
+   DO i = 1,2
+      IF ( Ubo(1,i)==Ubo(3,i) ) THEN
+         vmin = huge(0.0)
+         vmax = -huge(0.0)
+         ij = No*(Nov(i)-1)
+         DO j = 1,No
+            ij = ij + 1
+            IF ( S(j)/=0 ) THEN
+               IF ( A(ij)<vmin ) vmin = A(ij)
+               IF ( A(ij)>vmax ) vmax = A(ij)
+            ENDIF
+         ENDDO
+         Ubo(1,i) = vmin
+         Ubo(3,i) = vmax
+      ENDIF
+   ENDDO
+!
+!        CALCULATE INTERVAL SIZE
+!
+   DO i = 1,2
+      sint(i) = abs((Ubo(3,i)-Ubo(1,i))/(Ubo(2,i)-2.0))
+   ENDDO
+!
+!        CLEAR OUTPUT AREAS
+!
+   int1 = Ubo(2,1)
+   int2 = Ubo(2,2)
+   intt = int1*int2
+   DO i = 1,intt
+      Freq(i) = 0.0
+      Pct(i) = 0.0
+   ENDDO
+   inty = 3*int1
+   DO i = 1,inty
+      Stat1(i) = 0.0
+   ENDDO
+   intz = 3*int2
+   DO i = 1,intz
+      Stat2(i) = 0.0
+   ENDDO
+!
+!        TEST SUBSET VECTOR
+!
+   scnt = 0.0
+   inty = int1 - 1
+   intx = int2 - 1
+   ij = No*(Nov(1)-1)
+   ijx = No*(Nov(2)-1)
+   DO j = 1,No
+      ij = ij + 1
+      ijx = ijx + 1
+      IF ( S(j)/=0 ) THEN
+         scnt = scnt + 1.0
+!
+!        CALCULATE FREQUENCIES
+!
+         temp1 = Ubo(1,1) - sint(1)
+         DO iy = 1,inty
+            temp1 = temp1 + sint(1)
+            IF ( A(ij)<temp1 ) GOTO 20
+         ENDDO
+         iy = int1
+ 20      iyy = 3*(iy-1) + 1
+         Stat1(iyy) = Stat1(iyy) + A(ij)
+         iyy = iyy + 1
+         Stat1(iyy) = Stat1(iyy) + 1.0
+         iyy = iyy + 1
+         Stat1(iyy) = Stat1(iyy) + A(ij)*A(ij)
+         temp2 = Ubo(1,2) - sint(2)
+         DO ix = 1,intx
+            temp2 = temp2 + sint(2)
+            IF ( A(ijx)<temp2 ) GOTO 40
+         ENDDO
+         ix = int2
+ 40      ijf = int1*(ix-1) + iy
+         Freq(ijf) = Freq(ijf) + 1.0
+         ix = 3*(ix-1) + 1
+         Stat2(ix) = Stat2(ix) + A(ijx)
+         ix = ix + 1
+         Stat2(ix) = Stat2(ix) + 1.0
+         ix = ix + 1
+         Stat2(ix) = Stat2(ix) + A(ijx)*A(ijx)
+      ENDIF
+   ENDDO
+   IF ( scnt/=0 ) THEN
+!
+!        CALCULATE PERCENT FREQUENCIES
+!
+      DO i = 1,intt
+         Pct(i) = Freq(i)*100.0/scnt
+      ENDDO
+!
+!        CALCULATE TOTALS, MEANS, STANDARD DEVIATIONS
+!
+      ixy = -1
+      DO i = 1,int1
+         ixy = ixy + 3
+         isd = ixy + 1
+         temp1 = Stat1(ixy)
+         sum = Stat1(ixy-1)
+         IF ( temp1<1.0 ) CYCLE
+         IF ( temp1==1.0 ) THEN
+            Stat1(isd) = 0.0
+         ELSE
+            Stat1(isd) = sqrt(abs((Stat1(isd)-sum*sum/temp1)/(temp1-1.0)))
+         ENDIF
+         Stat1(ixy) = sum/temp1
+      ENDDO
+      ixx = -1
+      DO i = 1,int2
+         ixx = ixx + 3
+         isd = ixx + 1
+         temp2 = Stat2(ixx)
+         sum = Stat2(ixx-1)
+         IF ( temp2<1.0 ) CYCLE
+         IF ( temp2==1.0 ) THEN
+            Stat2(isd) = 0.0
+         ELSE
+            Stat2(isd) = sqrt(abs((Stat2(isd)-sum*sum/temp2)/(temp2-1.0)))
+         ENDIF
+         Stat2(ixx) = sum/temp2
+      ENDDO
+      DO i = 1,3
+         DO j = 1,2
+            Ubo(i,j) = wbo(i,j)
+         ENDDO
+      ENDDO
+   ENDIF
+END SUBROUTINE tab2

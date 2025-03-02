@@ -1,0 +1,63 @@
+!*==pcld.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PCLD
+!
+!        PURPOSE
+!           SHIFT OF ORIGIN (COMPLETE LINEAR SYNTHETIC DIVISION)
+!
+!        USAGE
+!           CALL PCLD(X,IDIMX,U)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X     - VECTOR OF COEFFICIENTS, ORDERED FROM SMALLEST TO
+!                   LARGEST POWER. IT IS REPLACED BY VECTOR OF
+!                   TRANSFORMED COEFFICIENTS.
+!           IDIMX - DIMENSION OF X
+!           U     - SHIFT PARAMETER
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           COEFFICIENT VECTOR X(I) OF POLYNOMIAL P(Z) IS TRANSFORMED
+!           SUCH THAT Q(Z)=P(Z-U) WHERE Q(Z) DENOTES THE POLYNOMIAL
+!           WITH TRANSFORMED COEFFICIENT VECTOR.
+!
+!     ..................................................................
+!
+SUBROUTINE pcld(X,Idimx,U)
+   IMPLICIT NONE
+
+   INTEGER Idimx,j,k
+   REAL U,X
+
+   DIMENSION X(*)
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+         k = 1
+         spag_nextblock_1 = 2
+      CASE (2)
+         j = Idimx
+         DO WHILE ( j>k )
+            X(j-1) = X(j-1) + U*X(j)
+            j = j - 1
+         ENDDO
+         k = k + 1
+         IF ( Idimx>k ) THEN
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE pcld

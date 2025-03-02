@@ -1,0 +1,183 @@
+!*==multr.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MULTR
+!
+!        PURPOSE
+!           PERFORM A MULTIPLE LINEAR REGRESSION ANALYSIS FOR A
+!           DEPENDENT VARIABLE AND A SET OF INDEPENDENT VARIABLES.  THIS
+!           SUBROUTINE IS NORMALLY USED IN THE PERFORMANCE OF MULTIPLE
+!           AND POLYNOMIAL REGRESSION ANALYSES.
+!
+!        USAGE
+!           CALL MULTR (N,K,XBAR,STD,D,RX,RY,ISAVE,B,SB,T,ANS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           N     - NUMBER OF OBSERVATIONS.
+!           K     - NUMBER OF INDEPENDENT VARIABLES IN THIS REGRESSION.
+!           XBAR  - INPUT VECTOR OF LENGTH M CONTAINING MEANS OF ALL
+!                   VARIABLES. M IS NUMBER OF VARIABLES IN OBSERVATIONS.
+!           STD   - INPUT VECTOR OF LENGTH M CONTAINING STANDARD DEVI-
+!                   ATIONS OF ALL VARIABLES.
+!           D     - INPUT VECTOR OF LENGTH M CONTAINING THE DIAGONAL OF
+!                   THE MATRIX OF SUMS OF CROSS-PRODUCTS OF DEVIATIONS
+!                   FROM MEANS FOR ALL VARIABLES.
+!           RX    - INPUT MATRIX (K X K) CONTAINING THE INVERSE OF
+!                   INTERCORRELATIONS AMONG INDEPENDENT VARIABLES.
+!           RY    - INPUT VECTOR OF LENGTH K CONTAINING INTERCORRELA-
+!                   TIONS OF INDEPENDENT VARIABLES WITH DEPENDENT
+!                   VARIABLE.
+!           ISAVE - INPUT VECTOR OF LENGTH K+1 CONTAINING SUBSCRIPTS OF
+!                   INDEPENDENT VARIABLES IN ASCENDING ORDER.  THE
+!                   SUBSCRIPT OF THE DEPENDENT VARIABLE IS STORED IN
+!                   THE LAST, K+1, POSITION.
+!           B     - OUTPUT VECTOR OF LENGTH K CONTAINING REGRESSION
+!                   COEFFICIENTS.
+!           SB    - OUTPUT VECTOR OF LENGTH K CONTAINING STANDARD
+!                   DEVIATIONS OF REGRESSION COEFFICIENTS.
+!           T     - OUTPUT VECTOR OF LENGTH K CONTAINING T-VALUES.
+!           ANS   - OUTPUT VECTOR OF LENGTH 10 CONTAINING THE FOLLOWING
+!                   INFORMATION..
+!                   ANS(1)  INTERCEPT
+!                   ANS(2)  MULTIPLE CORRELATION COEFFICIENT
+!                   ANS(3)  STANDARD ERROR OF ESTIMATE
+!                   ANS(4)  SUM OF SQUARES ATTRIBUTABLE TO REGRES-
+!                           SION (SSAR)
+!                   ANS(5)  DEGREES OF FREEDOM ASSOCIATED WITH SSAR
+!                   ANS(6)  MEAN SQUARE OF SSAR
+!                   ANS(7)  SUM OF SQUARES OF DEVIATIONS FROM REGRES-
+!                           SION (SSDR)
+!                   ANS(8)  DEGREES OF FREEDOM ASSOCIATED WITH SSDR
+!                   ANS(9)  MEAN SQUARE OF SSDR
+!                   ANS(10) F-VALUE
+!
+!        REMARKS
+!           N MUST BE GREATER THAN K+1.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE GAUSS-JORDAN METHOD IS USED IN THE SOLUTION OF THE
+!           NORMAL EQUATIONS.  REFER TO W. W. COOLEY AND P. R. LOHNES,
+!           'MULTIVARIATE PROCEDURES FOR THE BEHAVIORAL SCIENCES',
+!           JOHN WILEY AND SONS, 1962, CHAPTER 3, AND B. OSTLE,
+!           'STATISTICS IN RESEARCH', THE IOWA STATE COLLEGE PRESS,
+!           1954, CHAPTER 8.
+!
+!     ..................................................................
+!
+SUBROUTINE multr(N,K,Xbar,Std,D,Rx,Ry,Isave,B,Sb,T,Ans)
+   IMPLICIT NONE
+
+   REAL Ans,B,bo,D,f,fk,fn,rm,Rx,Ry,Sb,ssar,ssarm,ssdr,ssdrm,Std,sy,T,Xbar
+   INTEGER i,Isave,j,K,l,l1,mm,N
+
+   DIMENSION Xbar(*),Std(*),D(*),Rx(*),Ry(*),Isave(*),B(*),Sb(*),T(*),Ans(*)
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION XBAR,STD,D,RX,RY,B,SB,T,ANS,RM,BO,SSAR,SSDR,SY,
+!    1                 FN,FK,SSARM,SSDRM,F
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!        CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  SQRT AND ABS IN
+!        STATEMENTS 122, 125, AND 135 MUST BE CHANGED TO DSQRT AND DABS.
+!
+!        ...............................................................
+!
+   mm = K + 1
+!
+!        BETA WEIGHTS
+!
+   DO j = 1,K
+      B(j) = 0.0
+   ENDDO
+   DO j = 1,K
+      l1 = K*(j-1)
+      DO i = 1,K
+         l = l1 + i
+         B(j) = B(j) + Ry(i)*Rx(l)
+      ENDDO
+   ENDDO
+   rm = 0.0
+   bo = 0.0
+   l1 = Isave(mm)
+!
+!        COEFFICIENT OF DETERMINATION
+!
+   DO i = 1,K
+      rm = rm + B(i)*Ry(i)
+!
+!        REGRESSION COEFFICIENTS
+!
+      l = Isave(i)
+      B(i) = B(i)*(Std(l1)/Std(l))
+!
+!        INTERCEPT
+!
+      bo = bo + B(i)*Xbar(l)
+   ENDDO
+   bo = Xbar(l1) - bo
+!
+!        SUM OF SQUARES ATTRIBUTABLE TO REGRESSION
+!
+   ssar = rm*D(l1)
+!
+!        MULTIPLE CORRELATION COEFFICIENT
+!
+   rm = sqrt(abs(rm))
+!
+!        SUM OF SQUARES OF DEVIATIONS FROM REGRESSION
+!
+   ssdr = D(l1) - ssar
+!
+!        VARIANCE OF ESTIMATE
+!
+   fn = N - K - 1
+   sy = ssdr/fn
+!
+!        STANDARD DEVIATIONS OF REGRESSION COEFFICIENTS
+!
+   DO j = 1,K
+      l1 = K*(j-1) + j
+      l = Isave(j)
+      Sb(j) = sqrt(abs((Rx(l1)/D(l))*sy))
+!
+!        COMPUTED T-VALUES
+!
+      T(j) = B(j)/Sb(j)
+   ENDDO
+!
+!        STANDARD ERROR OF ESTIMATE
+!
+   sy = sqrt(abs(sy))
+!
+!        F VALUE
+!
+   fk = K
+   ssarm = ssar/fk
+   ssdrm = ssdr/fn
+   f = ssarm/ssdrm
+!
+   Ans(1) = bo
+   Ans(2) = rm
+   Ans(3) = sy
+   Ans(4) = ssar
+   Ans(5) = fk
+   Ans(6) = ssarm
+   Ans(7) = ssdr
+   Ans(8) = fn
+   Ans(9) = ssdrm
+   Ans(10) = f
+END SUBROUTINE multr

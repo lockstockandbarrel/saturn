@@ -1,0 +1,95 @@
+!*==msub.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MSUB
+!
+!        PURPOSE
+!           SUBTRACT TWO MATRICES ELEMENT BY ELEMENT TO FORM RESULTANT
+!           MATRIX
+!
+!        USAGE
+!           CALL MSUB(A,B,R,N,M,MSA,MSB)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX
+!           B - NAME OF INPUT MATRIX
+!           R - NAME OF OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A,B,R
+!           M - NUMBER OF COLUMNS IN A,B,R
+!           MSA - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!           MSB - SAME AS MSA EXCEPT FOR MATRIX B
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           STRUCTURE OF OUTPUT MATRIX IS FIRST DETERMINED. SUBTRACTION
+!           OF MATRIX B ELEMENTS FROM CORRESPONDING MATRIX A ELEMENTS
+!           IS THEN PERFORMED.
+!           THE FOLLOWING TABLE SHOWS THE STORAGE MODE OF THE OUTPUT
+!           MATRIX FOR ALL COMBINATIONS OF INPUT MATRICES
+!                         A                B                 R
+!                      GENERAL          GENERAL          GENERAL
+!                      GENERAL          SYMMETRIC        GENERAL
+!                      GENERAL          DIAGONAL         GENERAL
+!                      SYMMETRIC        GENERAL          GENERAL
+!                      SYMMETRIC        SYMMETRIC        SYMMETRIC
+!                      SYMMETRIC        DIAGONAL         SYMMETRIC
+!                      DIAGONAL         GENERAL          GENERAL
+!                      DIAGONAL         SYMMETRIC        SYMMETRIC
+!                      DIAGONAL         DIAGONAL         DIAGONAL
+!
+!     ..................................................................
+!
+SUBROUTINE msub(A,B,R,N,M,Msa,Msb)
+   IMPLICIT NONE
+
+   REAL A,ael,B,bel,R
+   INTEGER i,ija,ijb,ijr,j,M,Msa,Msb,msr,mtest,N,nm
+
+   DIMENSION A(*),B(*),R(*)
+!
+!        DETERMINE STORAGE MODE OF OUTPUT MATRIX
+!
+   IF ( Msa/=Msb ) THEN
+      mtest = Msa*Msb
+      msr = 0
+      IF ( mtest>0 ) msr = 1
+      IF ( mtest>2 ) msr = 2
+   ELSE
+      CALL loc(N,M,nm,N,M,Msa)
+!
+!        SUBTRACT MATRICES FOR OTHER CASES
+!
+      DO i = 1,nm
+         R(i) = A(i) - B(i)
+      ENDDO
+      RETURN
+   ENDIF
+!
+!        LOCATE ELEMENTS AND PERFORM SUBTRACTION
+!
+   DO j = 1,M
+      DO i = 1,N
+         CALL loc(i,j,ijr,N,M,msr)
+         IF ( ijr/=0 ) THEN
+            CALL loc(i,j,ija,N,M,Msa)
+            ael = 0.0
+            IF ( ija/=0 ) ael = A(ija)
+            CALL loc(i,j,ijb,N,M,Msb)
+            bel = 0.0
+            IF ( ijb/=0 ) bel = B(ijb)
+            R(ijr) = ael - bel
+         ENDIF
+      ENDDO
+   ENDDO
+   RETURN
+END SUBROUTINE msub

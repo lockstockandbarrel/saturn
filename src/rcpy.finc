@@ -1,0 +1,62 @@
+!*==rcpy.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RCPY
+!
+!        PURPOSE
+!           COPY SPECIFIED ROW OF A MATRIX INTO A VECTOR
+!
+!        USAGE
+!           CALL RCPY (A,L,R,N,M,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX
+!           L - ROW OF A TO BE MOVED TO R
+!           R - NAME OF OUTPUT VECTOR OF LENGTH M
+!           N - NUMBER OR ROWS IN A
+!           M - NUMBER OF COLUMNS IN A
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           ELEMENTS OF ROW L ARE MOVED TO CORRESPONDING POSITIONS
+!           OF VECTOR R
+!
+!     ..................................................................
+!
+SUBROUTINE rcpy(A,L,R,N,M,Ms)
+   IMPLICIT NONE
+
+   REAL A,R
+   INTEGER j,L,lj,M,Ms,N
+
+   DIMENSION A(*),R(*)
+!
+   DO j = 1,M
+!
+!        LOCATE ELEMENT FOR ANY MATRIX STORAGE MODE
+!
+      CALL loc(L,j,lj,N,M,Ms)
+!
+!        TEST FOR ZERO ELEMENT IN DIAGONAL MATRIX
+!
+      IF ( lj/=0 ) THEN
+!
+!        MOVE ELEMENT TO R
+!
+         R(j) = A(lj)
+      ELSE
+         R(j) = 0.0
+      ENDIF
+   ENDDO
+END SUBROUTINE rcpy

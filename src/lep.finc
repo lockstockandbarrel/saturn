@@ -1,0 +1,63 @@
+!*==lep.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE LEP
+!
+!        PURPOSE
+!           COMPUTE THE VALUES OF THE LEGENDRE POLYNOMIALS P(N,X)
+!           FOR ARGUMENT VALUE X AND ORDERS 0 UP TO N.
+!
+!        USAGE
+!           CALL LEP(Y,X,N)
+!
+!        DESCRIPTION OF PARAMETERS
+!           Y     - RESULT VECTOR OF DIMENSION N+1 CONTAINING THE VALUES
+!                   OF LEGENDRE POLYNOMIALS OF ORDER 0 UP TO N
+!                   FOR GIVEN ARGUMENT X.
+!                   VALUES ARE ORDERED FROM LOW TO HIGH ORDER
+!           X     - ARGUMENT OF LEGENDRE POLYNOMIAL
+!           N     - ORDER OF LEGENDRE POLYNOMIAL
+!
+!        REMARKS
+!           N LESS THAN 0 IS TREATED AS IF N WERE 0
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           EVALUATION IS BASED ON THE RECURRENCE EQUATION FOR
+!           LEGENDRE POLYNOMIALS P(N,X)
+!           P(N+1,X)=2*X*P(N,X)-P(N-1,X)-(X*P(N,X)-P(N-1,X))/(N+1),
+!           WHERE THE FIRST TERM IN BRACKETS IS THE ORDER,
+!           THE SECOND IS THE ARGUMENT.
+!           STARTING VALUES ARE P(0,X)=1, P(1,X)=X.
+!
+!     ..................................................................
+!
+SUBROUTINE lep(Y,X,N)
+   IMPLICIT NONE
+
+   REAL g,X,Y
+   INTEGER i,N
+
+!
+   DIMENSION Y(*)
+!
+!        TEST OF ORDER
+   Y(1) = 1.
+   IF ( N>0 ) THEN
+!
+      Y(2) = X
+      IF ( N>1 ) THEN
+!
+         DO i = 2,N
+            g = X*Y(i)
+            Y(i+1) = g - Y(i-1) + g - (g-Y(i-1))/float(i)
+         ENDDO
+         RETURN
+      ENDIF
+   ENDIF
+   RETURN
+END SUBROUTINE lep

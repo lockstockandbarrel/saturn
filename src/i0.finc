@@ -1,0 +1,49 @@
+!*==i0.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+!     ..................................................................
+!
+!        SUBROUTINE I0
+!
+!        PURPOSE
+!            COMPUTE THE MODIFIED BESSEL FUNCTION I OF ORDER ZERO
+!
+!        USAGE
+!            CALL I0(X,RI0)
+!
+!        DESCRIPTION OF PARAMETERS
+!            X    -GIVEN ARGUMENT OF THE BESSEL FUNCTION I OF ORDER 0
+!            RI0  -RESULTANT VALUE OF THE BESSEL FUNCTION I OF ORDER 0
+!
+!        REMARKS
+!            LARGE VALUES OF THE ARGUMENT MAY CAUSE OVERFLOW IN THE
+!            BUILTIN EXP-FUNCTION
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           POLYNOMIAL APPROXIMATIONS GIVEN BY E.E. ALLEN ARE USED FOR
+!           CALCULATION.
+!           FOR REFERENCE SEE
+!           M. ABRAMOWITZ AND I.A. STEGUN,'HANDBOOK OF MATHEMATICAL
+!           FUNCTIONS', U.S. DEPARTMENT OF COMMERCE, NATIONAL BUREAU OF
+!           STANDARDS APPLIED MATHEMATICS SERIES, 1966, P.378.
+!
+!     ..................................................................
+!
+SUBROUTINE i0(X,Ri0)
+   IMPLICIT NONE
+
+   REAL Ri0,X,z
+
+   Ri0 = abs(X)
+   IF ( Ri0<=3.75 ) THEN
+      z = X*X*7.111111E-2
+      Ri0 = (((((4.5813E-3*z+3.60768E-2)*z+2.659732E-1)*z+1.206749E0)*z+3.089942E0)*z+3.515623E0)*z + 1.
+      RETURN
+   ELSE
+      z = 3.75/Ri0
+      Ri0 = exp(Ri0)/sqrt(Ri0)                                                                                                      &
+          & *((((((((3.92377E-3*z-1.647633E-2)*z+2.635537E-2)*z-2.057706E-2)*z+9.16281E-3)*z-1.57565E-3)*z+2.25319E-3)              &
+          & *z+1.328592E-2)*z+3.989423E-1)
+   ENDIF
+END SUBROUTINE i0

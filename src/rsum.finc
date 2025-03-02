@@ -1,0 +1,65 @@
+!*==rsum.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RSUM
+!
+!        PURPOSE
+!           SUM ELEMENTS OF EACH ROW TO FORM COLUMN VECTOR
+!
+!        USAGE
+!           CALL RSUM (A,R,N,M,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX
+!           R - NAME OF VECTOR OF LENGTH N
+!           N - NUMBER OF ROWS IN A
+!           M - NUMBER OF COLUMNS IN A
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           VECTOR R CANNOT BE IN THE SAME LOCATION AS MATRIX A
+!           UNLESS A IS GENERAL
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           ELEMENTS ARE SUMMED ACROSS EACH ROW INTO A CORRESPONDING
+!           ELEMENT OF OUTPUT COLUMN VECTOR R
+!
+!     ..................................................................
+!
+SUBROUTINE rsum(A,R,N,M,Ms)
+   IMPLICIT NONE
+
+   REAL A,R
+   INTEGER i,ij,j,M,Ms,N
+
+   DIMENSION A(*),R(*)
+!
+   DO i = 1,N
+!
+!        CLEAR OUTPUT LOCATION
+!
+      R(i) = 0.0
+!
+      DO j = 1,M
+!
+!        LOCATE ELEMENT FOR ANY MATRIX STORAGE MODE
+!
+         CALL loc(i,j,ij,N,M,Ms)
+!
+!        TEST FOR ZERO ELEMENT IN DIAGONAL MATRIX
+!
+!
+!        ACCUMULATE IN OUTPUT VECTOR
+!
+         IF ( ij/=0 ) R(i) = R(i) + A(ij)
+      ENDDO
+   ENDDO
+END SUBROUTINE rsum

@@ -1,0 +1,167 @@
+!*==nroot.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE NROOT
+!
+!        PURPOSE
+!           COMPUTE EIGENVALUES AND EIGENVECTORS OF A REAL NONSYMMETRIC
+!           MATRIX OF THE FORM B-INVERSE TIMES A.  THIS SUBROUTINE IS
+!           NORMALLY CALLED BY SUBROUTINE CANOR IN PERFORMING A
+!           CANONICAL CORRELATION ANALYSIS.
+!
+!        USAGE
+!           CALL NROOT (M,A,B,XL,X)
+!
+!        DESCRIPTION OF PARAMETERS
+!           M  - ORDER OF SQUARE MATRICES A, B, AND X.
+!           A  - INPUT MATRIX (M X M).
+!           B  - INPUT MATRIX (M X M).
+!           XL - OUTPUT VECTOR OF LENGTH M CONTAINING EIGENVALUES OF
+!                B-INVERSE TIMES A.
+!           X  - OUTPUT MATRIX (M X M) CONTAINING EIGENVECTORS COLUMN-
+!                WISE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           EIGEN
+!
+!        METHOD
+!           REFER TO W. W. COOLEY AND P. R. LOHNES, 'MULTIVARIATE PRO-
+!           CEDURES FOR THE BEHAVIORAL SCIENCES', JOHN WILEY AND SONS,
+!           1962, CHAPTER 3.
+!
+!     ..................................................................
+!
+SUBROUTINE nroot(M,A,B,Xl,X)
+   IMPLICIT NONE
+
+   REAL A,B,sumv,X,Xl
+   INTEGER i,j,k,l,M,mv,n1,n2
+
+   DIMENSION A(*),B(*),Xl(*),X(*)
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION A,B,XL,X,SUMV
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!        CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  SQRT IN STATEMENTS
+!        110 AND 175 MUST BE CHANGED TO DSQRT.  ABS IN STATEMENT 110
+!        MUST BE CHANGED TO DABS.
+!
+!        ...............................................................
+!
+!     COMPUTE EIGENVALUES AND EIGENVECTORS OF B
+!
+   k = 1
+   DO j = 2,M
+      l = M*(j-1)
+      DO i = 1,j
+         l = l + 1
+         k = k + 1
+         B(k) = B(l)
+      ENDDO
+   ENDDO
+!
+!        THE MATRIX B IS A REAL SYMMETRIC MATRIX.
+!
+   mv = 0
+   CALL eigen(B,X,M,mv)
+!
+!     FORM RECIPROCALS OF SQUARE ROOT OF EIGENVALUES.  THE RESULTS
+!     ARE PREMULTIPLIED BY THE ASSOCIATED EIGENVECTORS.
+!
+   l = 0
+   DO j = 1,M
+      l = l + j
+      Xl(j) = 1.0/sqrt(abs(B(l)))
+   ENDDO
+   k = 0
+   DO j = 1,M
+      DO i = 1,M
+         k = k + 1
+         B(k) = X(k)*Xl(j)
+      ENDDO
+   ENDDO
+!
+!     FORM (B**(-1/2))PRIME * A * (B**(-1/2))
+!
+   DO i = 1,M
+      n2 = 0
+      DO j = 1,M
+         n1 = M*(i-1)
+         l = M*(j-1) + i
+         X(l) = 0.0
+         DO k = 1,M
+            n1 = n1 + 1
+            n2 = n2 + 1
+            X(l) = X(l) + B(n1)*A(n2)
+         ENDDO
+      ENDDO
+   ENDDO
+   l = 0
+   DO j = 1,M
+      DO i = 1,j
+         n1 = i - M
+         n2 = M*(j-1)
+         l = l + 1
+         A(l) = 0.0
+         DO k = 1,M
+            n1 = n1 + M
+            n2 = n2 + 1
+            A(l) = A(l) + X(n1)*B(n2)
+         ENDDO
+      ENDDO
+   ENDDO
+!
+!     COMPUTE EIGENVALUES AND EIGENVECTORS OF A
+!
+   CALL eigen(A,X,M,mv)
+   l = 0
+   DO i = 1,M
+      l = l + i
+      Xl(i) = A(l)
+   ENDDO
+!
+!     COMPUTE THE NORMALIZED EIGENVECTORS
+!
+   DO i = 1,M
+      n2 = 0
+      DO j = 1,M
+         n1 = i - M
+         l = M*(j-1) + i
+         A(l) = 0.0
+         DO k = 1,M
+            n1 = n1 + M
+            n2 = n2 + 1
+            A(l) = A(l) + B(n1)*X(n2)
+         ENDDO
+      ENDDO
+   ENDDO
+   l = 0
+   k = 0
+   DO j = 1,M
+      sumv = 0.0
+      DO i = 1,M
+         l = l + 1
+         sumv = sumv + A(l)*A(l)
+      ENDDO
+      sumv = sqrt(sumv)
+      DO i = 1,M
+         k = k + 1
+         X(k) = A(k)/sumv
+      ENDDO
+   ENDDO
+END SUBROUTINE nroot

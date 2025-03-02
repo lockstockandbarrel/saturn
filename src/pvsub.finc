@@ -1,0 +1,73 @@
+!*==pvsub.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PVSUB
+!
+!        PURPOSE
+!           SUBSTITUTE VARIABLE OF A POLYNOMIAL BY ANOTHER POLYNOMIAL
+!
+!        USAGE
+!           CALL PVSUB(Z,IDIMZ,X,IDIMX,Y,IDIMY,WORK1,WORK2)
+!
+!        DESCRIPTION OF PARAMETERS
+!           Z     - VECTOR OF COEFFICIENTS FOR RESULTANT POLYNOMIAL,
+!                   ORDERED FROM SMALLEST TO LARGEST POWER
+!           IDIMZ - DIMENSION OF Z
+!           X     - VECTOR OF COEFFICIENTS FOR ORIGINAL POLYNOMIAL,
+!                   ORDERED FROM SMALLEST TO LARGEST POWER
+!           IDIMX - DIMENSION OF X
+!           Y     - VECTOR OF COEFFICIENTS FOR POLYNOMIAL WHICH IS
+!                   SUBSTITUTED FOR VARIABLE, ORDERED FROM SMALLEST TO
+!                   LARGEST POWER
+!           IDIMY - DIMENSION OF Y
+!           WORK1 - WORKING STORAGE ARRAY (SAME DIMENSION AS Z)
+!           WORK2 - WORKING STORAGE ARRAY (SAME DIMENSION AS Z)
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           PMPY
+!           PADDM
+!           PCLA
+!
+!        METHOD
+!           VARIABLE OF POLYNOMIAL X IS SUBSTITUTED BY POLYNOMIAL Y
+!           TO FORM POLYNOMIAL Z. DIMENSION OF NEW POLYNOMIAL IS
+!           (IDIMX-1)*(IDIMY-1)+1. SUBROUTINE REQUIRES TWO WORK AREAS
+!
+!     ..................................................................
+!
+SUBROUTINE pvsub(Z,Idimz,X,Idimx,Y,Idimy,Work1,Work2)
+   IMPLICIT NONE
+
+   REAL fact,Work1,Work2,X,Y,Z
+   INTEGER i,idimr,Idimx,Idimy,Idimz,iw1,iw2
+
+   DIMENSION Z(*),X(*),Y(*),Work1(*),Work2(*)
+!
+!     TEST OF DIMENSIONS
+!
+   IF ( Idimx<1 ) THEN
+      Idimz = 0
+   ELSE
+!
+      Idimz = 1
+      Z(1) = X(1)
+      IF ( Idimy*Idimx>Idimy ) THEN
+         iw1 = 1
+         Work1(1) = 1.
+!
+         DO i = 2,Idimx
+            CALL pmpy(Work2,iw2,Y,Idimy,Work1,iw1)
+            CALL pcla(Work1,iw1,Work2,iw2)
+            fact = X(i)
+            CALL paddm(Z,idimr,Z,Idimz,fact,Work1,iw1)
+            Idimz = idimr
+         ENDDO
+      ENDIF
+   ENDIF
+   RETURN
+END SUBROUTINE pvsub

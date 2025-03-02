@@ -1,0 +1,66 @@
+!*==psub.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PSUB
+!
+!        PURPOSE
+!           SUBTRACT ONE POLYNOMIAL FROM ANOTHER
+!
+!        USAGE
+!           CALL PSUB(Z,IDIMZ,X,IDIMX,Y,IDIMY)
+!
+!        DESCRIPTION OF PARAMETERS
+!           Z     - VECTOR OF RESULTANT COEFFICIENTS, ORDERED FROM
+!                   SMALLEST TO LARGEST POWER
+!           IDIMZ - DIMENSION OF Z (CALCULATED)
+!           X     - VECTOR OF COEFFICIENTS FOR FIRST POLYNOMIAL, ORDERED
+!                   FROM SMALLEST TO LARGEST POWER
+!           IDIMX - DIMENSION OF X (DEGREE IS IDIMX-1)
+!           Y     - VECTOR OF COEFFICIENTS FOR SECOND POLYNOMIAL,
+!                   ORDERED FROM SMALLEST TO LARGEST POWER
+!           IDIMY - DIMENSION OF Y (DEGREE IS IDIMY-1)
+!
+!        REMARKS
+!           VECTOR Z MAY BE IN SAME LOCATION AS EITHER VECTOR X OR
+!           VECTOR Y ONLY IF THE DIMENSION OF THAT VECTOR IS NOT LESS
+!           THAN THE OTHER INPUT VECTOR
+!           THE RESULTANT POLYNOMIAL MAY HAVE TRAILING ZERO COEFFICIENTS
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DIMENSION OF RESULTANT VECTOR IDIMZ IS CALCULATED AS THE
+!           LARGER OF THE TWO INPUT VECTOR DIMENSIONS. COEFFICIENTS IN
+!           VECTOR Y ARE THEN SUBTRACTED FROM CORRESPONDING COEFFICIENTS
+!           IN VECTOR X.
+!
+!     ..................................................................
+!
+SUBROUTINE psub(Z,Idimz,X,Idimx,Y,Idimy)
+   IMPLICIT NONE
+
+   INTEGER i,Idimx,Idimy,Idimz,ndim
+   REAL X,Y,Z
+
+   DIMENSION Z(*),X(*),Y(*)
+!
+!     TEST DIMENSIONS OF SUMMANDS
+!
+   ndim = Idimx
+   IF ( Idimx<Idimy ) ndim = Idimy
+   IF ( ndim>0 ) THEN
+      DO i = 1,ndim
+         IF ( i>Idimx ) THEN
+            Z(i) = -Y(i)
+         ELSEIF ( i<=Idimy ) THEN
+            Z(i) = X(i) - Y(i)
+         ELSE
+            Z(i) = X(i)
+         ENDIF
+      ENDDO
+   ENDIF
+   Idimz = ndim
+END SUBROUTINE psub

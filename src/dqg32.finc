@@ -1,0 +1,78 @@
+!*==dqg32.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQG32
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(FCT(X), SUMMED OVER X FROM XL TO XU)
+!
+!        USAGE
+!           CALL DQG32 (XL,XU,FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           XL     - DOUBLE PRECISION LOWER BOUND OF THE INTERVAL.
+!           XU     - DOUBLE PRECISION UPPER BOUND OF THE INTERVAL.
+!           FCT    - THE NAME OF AN EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           Y      - THE RESULTING DOUBLE PRECISION INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 32-POINT GAUSS QUADRATURE
+!           FORMULA, WHICH INTEGRATES POLYNOMIALS UP TO DEGREE 63
+!           EXACTLY. FOR REFERENCE, SEE
+!           V.I.KRYLOV, APPROXIMATE CALCULATION OF INTEGRALS,
+!           MACMILLAN, NEW YORK/LONDON, 1962, PP.100-111 AND 337-340.
+!
+!     ..................................................................
+!
+SUBROUTINE dqg32(Xl,Xu,fct,Y)
+   IMPLICIT NONE
+!
+!
+   DOUBLE PRECISION Xl,Xu,Y,a,b,c,fct
+!
+   a = .5D0*(Xu+Xl)
+   b = Xu - Xl
+   c = .49863193092474078D0*b
+   Y = .35093050047350483D-2*(fct(a+c)+fct(a-c))
+   c = .49280575577263417D0*b
+   Y = Y + .8137197365452835D-2*(fct(a+c)+fct(a-c))
+   c = .48238112779375322D0*b
+   Y = Y + .12696032654631030D-1*(fct(a+c)+fct(a-c))
+   c = .46745303796886984D0*b
+   Y = Y + .17136931456510717D-1*(fct(a+c)+fct(a-c))
+   c = .44816057788302606D0*b
+   Y = Y + .21417949011113340D-1*(fct(a+c)+fct(a-c))
+   c = .42468380686628499D0*b
+   Y = Y + .25499029631188088D-1*(fct(a+c)+fct(a-c))
+   c = .39724189798397120D0*b
+   Y = Y + .29342046739267774D-1*(fct(a+c)+fct(a-c))
+   c = .36609105937014484D0*b
+   Y = Y + .32911111388180923D-1*(fct(a+c)+fct(a-c))
+   c = .33152213346510760D0*b
+   Y = Y + .36172897054424253D-1*(fct(a+c)+fct(a-c))
+   c = .29385787862038116D0*b
+   Y = Y + .39096947893535153D-1*(fct(a+c)+fct(a-c))
+   c = .25344995446611470D0*b
+   Y = Y + .41655962113473378D-1*(fct(a+c)+fct(a-c))
+   c = .21067563806531767D0*b
+   Y = Y + .43826046502201906D-1*(fct(a+c)+fct(a-c))
+   c = .16593430114106382D0*b
+   Y = Y + .45586939347881942D-1*(fct(a+c)+fct(a-c))
+   c = .11964368112606854D0*b
+   Y = Y + .46922199540402283D-1*(fct(a+c)+fct(a-c))
+   c = .7223598079139825D-1*b
+   Y = Y + .47819360039637430D-1*(fct(a+c)+fct(a-c))
+   c = .24153832843869158D-1*b
+   Y = b*(Y+.48270044257363900D-1*(fct(a+c)+fct(a-c)))
+END SUBROUTINE dqg32

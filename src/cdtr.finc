@@ -1,0 +1,292 @@
+!*==cdtr.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE CDTR
+!
+!        PURPOSE
+!           COMPUTES P(X) = PROBABILITY THAT THE RANDOM VARIABLE U,
+!           DISTRIBUTED ACCORDING TO THE CHI-SQUARE DISTRIBUTION WITH G
+!           DEGREES OF FREEDOM, IS LESS THAN OR EQUAL TO X.  F(G,X), THE
+!           ORDINATE OF THE CHI-SQUARE DENSITY AT X, IS ALSO COMPUTED.
+!
+!        USAGE
+!           CALL CDTR(X,G,P,D,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X   - INPUT SCALAR FOR WHICH P(X) IS COMPUTED.
+!           G   - NUMBER OF DEGREES OF FREEDOM OF THE CHI-SQUARE
+!                 DISTRIBUTION.  G IS A CONTINUOUS PARAMETER.
+!           P   - OUTPUT PROBABILITY.
+!           D   - OUTPUT DENSITY.
+!           IER - RESULTANT ERROR CODE WHERE
+!               IER= 0 --- NO ERROR
+!               IER=-1 --- AN INPUT PARAMETER IS INVALID.  X IS LESS
+!                          THAN 0.0, OR G IS LESS THAN 0.5 OR GREATER
+!                          THAN 2*10**(+5). P AND D ARE SET TO
+!                          -HUGE(0.0).
+!               IER=+1 --- INVALID OUTPUT.  P IS LESS THAN ZERO OR
+!                          GREATER THAN ONE, OR SERIES FOR T1 (SEE
+!                          MATHEMATICAL DESCRIPTION) HAS FAILED TO
+!                          CONVERGE.  P IS SET TO HUGE(0.0).
+!
+!        REMARKS
+!           SEE MATHEMATICAL DESCRIPTION.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           DLGAM
+!           NDTR
+!
+!        METHOD
+!           REFER TO R.E. BARGMANN AND S.P. GHOSH, STATISTICAL
+!           DISTRIBUTION PROGRAMS FOR A COMPUTER LANGUAGE,
+!           IBM RESEARCH REPORT RC-1094, 1963.
+!
+!     ..................................................................
+!
+SUBROUTINE cdtr(X,G,P,D,Ier)
+   IMPLICIT NONE
+
+   REAL D,dummy,G,P,sc,t1,t2,t3,X
+   INTEGER i,i3,Ier,iok,it1,j,k
+
+   DOUBLE PRECISION xx,dlxx,x2,dlx2,gg,g2,dlt3,theta,thp1,glg2,dd,t11,ser,cc,xi,fac,tlog,term,  &
+                  & gth,a2,a,b,c,dt2,dt3,thpi
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        TEST FOR VALID INPUT DATA
+!
+         IF ( G>=(.5-1.E-5) ) THEN
+            IF ( G-2.E+5<=0 ) THEN
+               IF ( X>=0 ) THEN
+!
+!        TEST FOR X NEAR 0.0
+!
+                  IF ( X<=1.E-8 ) THEN
+                     P = 0.0
+                     IF ( G<2. ) THEN
+                        D = huge(0.0)
+                     ELSEIF ( G==2. ) THEN
+                        D = 0.5
+                     ELSE
+                        D = 0.0
+                     ENDIF
+                     Ier = 0
+                     RETURN
+!
+!        TEST FOR X GREATER THAN 1.E+6
+!
+                  ELSEIF ( X-1.E+6<=0 ) THEN
+!
+!        SET PROGRAM PARAMETERS
+!
+                     xx = dble(X)
+                     dlxx = dlog(xx)
+                     x2 = xx/2.D0
+                     dlx2 = dlog(x2)
+                     gg = dble(G)
+                     g2 = gg/2.D0
+!
+!        COMPUTE ORDINATE
+!
+                     CALL dlgam(g2,glg2,iok)
+                     dd = (g2-1.D0)*dlxx - x2 - g2*.6931471805599453 - glg2
+                     IF ( dd>1.68D02 ) THEN
+                        D = huge(0.0)
+                     ELSEIF ( dd+1.68D02<=0 ) THEN
+                        D = 0.0
+                     ELSE
+                        dd = dexp(dd)
+                        D = sngl(dd)
+                     ENDIF
+!
+!        TEST FOR G GREATER THAN 1000.0
+!        TEST FOR X GREATER THAN 2000.0
+!
+                     IF ( G>1000. ) THEN
+                        a = dlog(xx/gg)/3.D0
+                        a = dexp(a)
+                        b = 2.D0/(9.D0*gg)
+                        c = (a-1.D0+b)/dsqrt(b)
+                        sc = sngl(c)
+                        CALL ndtr(sc,P,dummy)
+                     ELSEIF ( X<=2000. ) THEN
+!
+!        COMPUTE THETA
+!
+                        k = idint(g2)
+                        theta = g2 - dfloat(k)
+                        IF ( theta<=1.D-8 ) theta = 0.D0
+                        thp1 = theta + 1.D0
+!
+!        SELECT METHOD OF COMPUTING T1
+!
+                        IF ( theta>0 ) THEN
+                           IF ( xx<=10.D0 ) THEN
+!
+!        COMPUTE T1 FOR THETA GREATER THAN 0.0 AND
+!        X LESS THAN OR EQUAL TO 10.0
+!
+                              ser = x2*(1.D0/thp1-x2/(thp1+1.D0))
+                              j = +1
+                              cc = dfloat(j)
+                              DO it1 = 3,30
+                                 xi = dfloat(it1)
+                                 CALL dlgam(xi,fac,iok)
+                                 tlog = xi*dlx2 - fac - dlog(xi+theta)
+                                 term = dexp(tlog)
+                                 term = dsign(term,cc)
+                                 ser = ser + term
+                                 cc = -cc
+                                 IF ( dabs(term)<1.D-9 ) GOTO 2
+                              ENDDO
+                              spag_nextblock_1 = 2
+                              CYCLE SPAG_DispatchLoop_1
+                           ELSE
+!
+!        COMPUTE T1 FOR THETA GREATER THAN 0.0 AND
+!        X GREATER THAN 10.0 AND LESS THAN 2000.0
+!
+                              a2 = 0.D0
+                              DO i = 1,25
+                                 xi = dfloat(i)
+                                 CALL dlgam(thp1,gth,iok)
+                                 t11 = -(13.D0*xx)/xi + thp1*dlog(13.D0*xx/xi) - gth - dlog(xi)
+                                 IF ( t11+1.68D02>0 ) THEN
+                                    t11 = dexp(t11)
+                                    a2 = a2 + t11
+                                 ENDIF
+                              ENDDO
+                              a = 1.01282051 + theta/156.D0 - xx/312.D0
+                              b = dabs(a)
+                              c = -x2 + thp1*dlx2 + dlog(b) - gth - 3.951243718581427
+                              IF ( c+1.68D02<=0 ) THEN
+                                 c = 0.D0
+                              ELSEIF ( a<0 ) THEN
+                                 c = -dexp(c)
+                              ELSEIF ( a==0 ) THEN
+                                 c = 0.D0
+                              ELSE
+                                 c = dexp(c)
+                              ENDIF
+                              c = a2 + c
+                              t11 = 1.D0 - c
+                              t1 = sngl(t11)
+                              GOTO 4
+                           ENDIF
+ 2                         IF ( ser<=0 ) THEN
+                              spag_nextblock_1 = 2
+                              CYCLE SPAG_DispatchLoop_1
+                           ENDIF
+                           CALL dlgam(thp1,gth,iok)
+                           tlog = theta*dlx2 + dlog(ser) - gth
+                           IF ( tlog+1.68D02<=0 ) THEN
+                              t1 = 0.0
+                           ELSE
+                              t11 = dexp(tlog)
+                              t1 = sngl(t11)
+                           ENDIF
+!
+!        COMPUTE T1 FOR THETA EQUALS 0.0
+!
+                        ELSEIF ( x2<1.68D02 ) THEN
+                           t11 = 1.D0 - dexp(-x2)
+                           t1 = sngl(t11)
+                        ELSE
+                           t1 = 1.0
+                        ENDIF
+!
+!        SELECT PROPER EXPRESSION FOR P
+!
+ 4                      IF ( G<2. ) THEN
+!
+!        COMPUTE P FOR G GREATER THAN ZERO AND LESS THAN 2.0
+!
+                           CALL dlgam(thp1,gth,iok)
+                           dt2 = theta*dlxx - x2 - thp1*.6931471805599453 - gth
+                           IF ( dt2+1.68D02<=0 ) THEN
+                              P = t1
+                           ELSE
+                              dt2 = dexp(dt2)
+                              t2 = sngl(dt2)
+                              P = t1 + t2 + t2
+                           ENDIF
+                        ELSEIF ( G<4. ) THEN
+!
+!        COMPUTE P FOR G GREATER THAN OR EQUAL TO 2.0
+!        AND LESS THAN 4.0
+!
+                           P = t1
+                        ELSE
+!
+!        COMPUTE P FOR G GREATER THAN OR EQUAL TO 4.0
+!        AND LESS THAN OR EQUAL TO 1000.0
+!
+                           dt3 = 0.D0
+                           DO i3 = 2,k
+                              thpi = dfloat(i3) + theta
+                              CALL dlgam(thpi,gth,iok)
+                              dlt3 = thpi*dlx2 - dlxx - x2 - gth
+                              IF ( dlt3+1.68D02>0 ) dt3 = dt3 + dexp(dlt3)
+                           ENDDO
+                           t3 = sngl(dt3)
+                           P = t1 - t3 - t3
+                        ENDIF
+                     ELSE
+                        P = 1.0
+                        Ier = 0
+                        RETURN
+                     ENDIF
+!
+!        SET ERROR INDICATOR
+!
+                     IF ( P<0 ) THEN
+                        IF ( abs(P)>1.E-7 ) THEN
+                           spag_nextblock_1 = 2
+                           CYCLE SPAG_DispatchLoop_1
+                        ENDIF
+                        P = 0.0
+                        Ier = 0
+                        RETURN
+                     ELSEIF ( 1.<P ) THEN
+                        IF ( abs(1.-P)>1.E-7 ) THEN
+                           spag_nextblock_1 = 2
+                           CYCLE SPAG_DispatchLoop_1
+                        ENDIF
+                        P = 1.0
+                        Ier = 0
+                        RETURN
+                     ELSE
+                        IF ( P<=1.E-8 ) THEN
+                           P = 0.0
+                        ELSEIF ( (1.0-P)<=1.E-8 ) THEN
+                           P = 1.0
+                        ENDIF
+                        Ier = 0
+                        RETURN
+                     ENDIF
+                  ELSE
+                     D = 0.0
+                     P = 1.0
+                     Ier = 0
+                     RETURN
+                  ENDIF
+               ENDIF
+            ENDIF
+         ENDIF
+         Ier = -1
+         D = -huge(0.0)
+         P = -huge(0.0)
+         RETURN
+      CASE (2)
+         Ier = +1
+         P = huge(0.0)
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE cdtr

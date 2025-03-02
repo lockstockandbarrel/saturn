@@ -1,0 +1,154 @@
+!*==srate.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE SRATE
+!
+!        PURPOSE
+!           TO COMPUTE THE PROPORTION OF SUBJECTS SURVIVING, THE
+!           SURVIVAL RATES AND THE STANDARD ERRORS FOR SUCCESSIVELY
+!           REDUCED TIME PERIODS.  THE SURVIVAL RATE IS COMPUTED FOR
+!           EACH OF K PERIODS, WHERE K IS A CONSTANT TO BE SPECIFIED AND
+!           IS LESS THAN OR EQUAL TO N (WHERE N = TOTAL NUMBER OF
+!           PERIODS).
+!
+!        USAGE
+!           CALL SRATE (N,K,X,IE)
+!
+!        DESCRIPTION OF PARAMETERS
+!           N - THE TOTAL NUMBER OF PERIODS AFTER TREATMENT OR DIAGNOSIS
+!           K - THE SPECIFIED PERIOD UP TO WHICH SURVIVAL RATES ARE TO
+!               BE CALCULATED
+!           X - AN INPUT AND OUTPUT MATRIX (N X 9) CONTAINING THE
+!               FOLLOWING INFORMATION
+!               FOR INPUT--STORED IN THE N ROWS OF EACH COLUMN
+!                  COL 1 - NUMBER OF SUBJECTS ALIVE AT THE BEGINNING OF
+!                          PERIOD
+!                  COL 2 - NUMBER OF SUBJECTS WHICH DIED DURING THE
+!                          PERIOD
+!                  COL 3 - NUMBER OF SUBJECTS LOST TO FOLLOW-UP DURING
+!                          THE PERIOD
+!                  COL 4 - NUMBER OF SUBJECTS WITHDRAWN ALIVE DURING THE
+!                          PERIOD
+!                    FOR OUTPUT--STORED IN THE FIRST K ROWS OF EACH
+!                    COLUMN
+!                  COL 5 - EFFECTIVE NUMBER EXPOSED TO THE RISK OF DYING
+!                  COL 6 - PROPORTION WHO DIED DURING THE PERIOD
+!                  COL 7 - PROPORTION WHO SURVIVED DURING THE PERIOD
+!                  COL 8 - SURVIAL RATE
+!                  COL 9 - STANDARD ERROR OF THE SURVIVAL RATE
+!           IE- 1, IF K IS NOT IN THE CLOSED INTERVAL (0,N).
+!               2, IF THE NUMBER OF SUBJECTS ALIVE AT THE BEGINNING
+!               OF PERIOD I IS LESS THAN THE SUM OF THOSE WHICH DIED,
+!               WERE LOST, OR WERE WITHDRAWN DURING PERIOD I (I=1,...N)
+!               3, IF THE NUMBER OF SUBJECTS WHICH DIED, WERE LOST, OR
+!               WERE WITHDRAWN IN PERIOD I IS NOT EQUAL TO THE NUMBER
+!               ALIVE AT THE BEGINNING OF PERIOD I LESS THE NUMBER
+!               ALIVE AT THE BEGINNING OF PERIOD I + 1 (I=1,...N-1)
+!
+!        REMARKS
+!           IF THE SUBJECTS IN A GIVEN GROUP ARE ALL DIAGNOSED OR
+!           TREATED AT THE SAME TIME, THE CONSTANT K MAY BE SET EQUAL TO
+!           N .  IF THE SUBJECTS IN A GIVEN GOUP ENTER THE STUDY AT
+!           VARYING TIMES, K CAN BE NO GREATER THAN N-1.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           REFER TO S. J. CUTLER AND F. EDERER 'MAXIMUM UTILIZATION OF
+!           THE LIFE TABLE METHOD IN ANALYZING SURVIVAL', JOURNAL OF
+!           CHRONIC DISEASES, DECEMBER, 1958.  PP 699-712.
+!
+!     ..................................................................
+!
+SUBROUTINE srate(N,K,X,Ie)
+   IMPLICIT NONE
+
+   INTEGER i,Ie,K,l1,l2,l3,l4,l5,l6,l7,l8,l9,ld,le,lq,N,np1,np4,np9
+   REAL sum,X
+
+!
+   DIMENSION X(*)
+!
+!        INITIALIZATION AND ERROR CHECKING
+!
+   Ie = 0
+   np4 = 4*N + 1
+   np9 = np4 + np4 + N - 2
+   DO i = np4,np9
+      X(i) = 0.0
+   ENDDO
+   IF ( K<=0 ) THEN
+      Ie = 1
+   ELSEIF ( K<=N ) THEN
+      DO i = 1,N
+         np4 = i + N
+         np9 = np4 + N
+         np1 = np9 + N
+         IF ( int(X(i)-X(np4)-X(np9)-X(np1)+.01)<0 ) THEN
+            Ie = 2
+            RETURN
+         ELSEIF ( i<N ) THEN
+            IF ( int(X(i+1)-X(i)+X(np4)+X(np9)+X(np1)+.01)/=0 ) THEN
+               Ie = 3
+               RETURN
+            ENDIF
+         ENDIF
+      ENDDO
+      l1 = 0
+      l2 = l1 + N
+      l3 = l2 + N
+      l4 = l3 + N
+      l5 = l4 + N
+      l6 = l5 + N
+      l7 = l6 + N
+      l8 = l7 + N
+      l9 = l8 + N
+      ld = l2
+      le = l5
+      lq = l6
+      sum = 0.0
+!
+      DO i = 1,K
+!
+!        COMPUTE EFFECTIVE NUMBER EXPOSED TO RISK OF DYING
+!
+         l1 = l1 + 1
+         l3 = l3 + 1
+         l4 = l4 + 1
+         l5 = l5 + 1
+         X(l5) = X(l1) - (X(l3)+X(l4))/2.0
+!
+!        COMPUTE PROPORTION OF DYING
+!
+         l2 = l2 + 1
+         l6 = l6 + 1
+         X(l6) = X(l2)/X(l5)
+!
+!        COMPUTE PROPORTION OF SURVIVING
+!
+         l7 = l7 + 1
+         X(l7) = 1.0 - X(l6)
+!
+!        COMPUTE SURVIVAL RATE
+!
+         l8 = l8 + 1
+         IF ( i<=1 ) THEN
+            X(l8) = X(l7)
+         ELSE
+            X(l8) = X(l8-1)*X(l7)
+         ENDIF
+!
+!        COMPUTE STANDARD ERROR OF SURVIVAL RATE
+!
+         l9 = l9 + 1
+         sum = sum + X(l6)/(X(l5)-X(l2))
+         X(l9) = X(l8)*sqrt(sum)
+      ENDDO
+   ELSE
+      Ie = 1
+   ENDIF
+!
+END SUBROUTINE srate

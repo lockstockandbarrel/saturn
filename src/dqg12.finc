@@ -1,0 +1,58 @@
+!*==dqg12.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQG12
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(FCT(X), SUMMED OVER X FROM XL TO XU)
+!
+!        USAGE
+!           CALL DQG12 (XL,XU,FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           XL     - DOUBLE PRECISION LOWER BOUND OF THE INTERVAL.
+!           XU     - DOUBLE PRECISION UPPER BOUND OF THE INTERVAL.
+!           FCT    - THE NAME OF AN EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           Y      - THE RESULTING DOUBLE PRECISION INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 12-POINT GAUSS QUADRATURE
+!           FORMULA, WHICH INTEGRATES POLYNOMIALS UP TO DEGREE 23
+!           EXACTLY. FOR REFERENCE, SEE
+!           V.I.KRYLOV, APPROXIMATE CALCULATION OF INTEGRALS,
+!           MACMILLAN, NEW YORK/LONDON, 1962, PP.100-111 AND 337-340.
+!
+!     ..................................................................
+!
+SUBROUTINE dqg12(Xl,Xu,fct,Y)
+   IMPLICIT NONE
+!
+!
+   DOUBLE PRECISION Xl,Xu,Y,a,b,c,fct
+!
+   a = .5D0*(Xu+Xl)
+   b = Xu - Xl
+   c = .49078031712335963D0*b
+   Y = .23587668193255914D-1*(fct(a+c)+fct(a-c))
+   c = .45205862818523743D0*b
+   Y = Y + .53469662997659215D-1*(fct(a+c)+fct(a-c))
+   c = .38495133709715234D0*b
+   Y = Y + .8003916427167311D-1*(fct(a+c)+fct(a-c))
+   c = .29365897714330872D0*b
+   Y = Y + .10158371336153296D0*(fct(a+c)+fct(a-c))
+   c = .18391574949909010D0*b
+   Y = Y + .11674626826917740D0*(fct(a+c)+fct(a-c))
+   c = .62616704255734458D-1*b
+   Y = b*(Y+.12457352290670139D0*(fct(a+c)+fct(a-c)))
+END SUBROUTINE dqg12

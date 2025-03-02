@@ -1,0 +1,255 @@
+!*==eigen.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE EIGEN
+!
+!        PURPOSE
+!           COMPUTE EIGENVALUES AND EIGENVECTORS OF A REAL SYMMETRIC
+!           MATRIX
+!
+!        USAGE
+!           CALL EIGEN(A,R,N,MV)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - ORIGINAL MATRIX (SYMMETRIC), DESTROYED IN COMPUTATION.
+!               RESULTANT EIGENVALUES ARE DEVELOPED IN DIAGONAL OF
+!               MATRIX A IN DESCENDING ORDER.
+!           R - RESULTANT MATRIX OF EIGENVECTORS (STORED COLUMNWISE,
+!               IN SAME SEQUENCE AS EIGENVALUES)
+!           N - ORDER OF MATRICES A AND R
+!           MV- INPUT CODE
+!                   0   COMPUTE EIGENVALUES AND EIGENVECTORS
+!                   1   COMPUTE EIGENVALUES ONLY (R NEED NOT BE
+!                       DIMENSIONED BUT MUST STILL APPEAR IN CALLING
+!                       SEQUENCE)
+!
+!        REMARKS
+!           ORIGINAL MATRIX A MUST BE REAL SYMMETRIC (STORAGE MODE=1)
+!           MATRIX A CANNOT BE IN THE SAME LOCATION AS MATRIX R
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DIAGONALIZATION METHOD ORIGINATED BY JACOBI AND ADAPTED
+!           BY VON NEUMANN FOR LARGE COMPUTERS AS FOUND IN 'MATHEMATICAL
+!           METHODS FOR DIGITAL COMPUTERS', EDITED BY A. RALSTON AND
+!           H.S. WILF, JOHN WILEY AND SONS, NEW YORK, 1962, CHAPTER 7
+!
+!     ..................................................................
+!
+SUBROUTINE eigen(A,R,N,Mv)
+   IMPLICIT NONE
+
+   REAL A,anorm,anrmx,cosx,cosx2,R,range,sincs,sinx,sinx2,thr,x,y
+   INTEGER i,ia,ij,il,ilq,ilr,im,imq,imr,ind,iq,j,jq,k,l,ll,lm,lq,m,mm
+   INTEGER mq,Mv,N
+
+   DIMENSION A(*),R(*)
+   INTEGER :: spag_nextblock_1
+   INTEGER :: spag_nextblock_2
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION A,R,ANORM,ANRMX,THR,X,Y,SINX,SINX2,COSX,
+!    1                 COSX2,SINCS,RANGE
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!        CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  SQRT IN STATEMENTS
+!        40, 68, 75, AND 78 MUST BE CHANGED TO DSQRT.  ABS IN STATEMENT
+!        62 MUST BE CHANGED TO DABS. THE CONSTANT IN STATEMENT 5 SHOULD
+!        BE CHANGED TO 1.0D-12.
+!
+!        ...............................................................
+!
+!        GENERATE IDENTITY MATRIX
+!
+         range = 1.0E-6
+         IF ( Mv/=1 ) THEN
+            iq = -N
+            DO j = 1,N
+               iq = iq + N
+               DO i = 1,N
+                  ij = iq + i
+                  R(ij) = 0.0
+                  IF ( i==j ) R(ij) = 1.0
+               ENDDO
+            ENDDO
+         ENDIF
+!
+!        COMPUTE INITIAL AND FINAL NORMS (ANORM AND ANORMX)
+!
+         anorm = 0.0
+         DO i = 1,N
+            DO j = i,N
+               IF ( i/=j ) THEN
+                  ia = i + (j*j-j)/2
+                  anorm = anorm + A(ia)*A(ia)
+               ENDIF
+            ENDDO
+         ENDDO
+         IF ( anorm<=0 ) THEN
+            spag_nextblock_1 = 3
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         anorm = 1.414*sqrt(anorm)
+         anrmx = anorm*range/float(N)
+!
+!        INITIALIZE INDICATORS AND COMPUTE THRESHOLD, THR
+!
+         ind = 0
+         thr = anorm
+         thr = thr/float(N)
+         l = 1
+         m = l + 1
+         spag_nextblock_1 = 2
+      CASE (2)
+!
+!        COMPUTE SIN AND COS
+!
+         mq = (m*m-m)/2
+         lq = (l*l-l)/2
+         lm = l + mq
+         IF ( abs(A(lm))>=thr ) THEN
+            ind = 1
+            ll = l + lq
+            mm = m + mq
+            x = 0.5*(A(ll)-A(mm))
+            y = -A(lm)/sqrt(A(lm)*A(lm)+x*x)
+            IF ( x<0 ) y = -y
+            sinx = y/sqrt(2.0*(1.0+(sqrt(1.0-y*y))))
+            sinx2 = sinx*sinx
+            cosx = sqrt(1.0-sinx2)
+            cosx2 = cosx*cosx
+            sincs = sinx*cosx
+!
+!        ROTATE L AND M COLUMNS
+!
+            ilq = N*(l-1)
+            imq = N*(m-1)
+            DO i = 1,N
+               spag_nextblock_2 = 1
+               SPAG_DispatchLoop_2: DO
+                  SELECT CASE (spag_nextblock_2)
+                  CASE (1)
+                     iq = (i*i-i)/2
+                     IF ( i/=l ) THEN
+                        IF ( i<m ) THEN
+                           im = i + mq
+                        ELSEIF ( i==m ) THEN
+                           spag_nextblock_2 = 2
+                           CYCLE SPAG_DispatchLoop_2
+                        ELSE
+                           im = m + iq
+                        ENDIF
+                        IF ( i<l ) THEN
+                           il = i + lq
+                        ELSE
+                           il = l + iq
+                        ENDIF
+                        x = A(il)*cosx - A(im)*sinx
+                        A(im) = A(il)*sinx + A(im)*cosx
+                        A(il) = x
+                     ENDIF
+                     spag_nextblock_2 = 2
+                  CASE (2)
+                     IF ( Mv/=1 ) THEN
+                        ilr = ilq + i
+                        imr = imq + i
+                        x = R(ilr)*cosx - R(imr)*sinx
+                        R(imr) = R(ilr)*sinx + R(imr)*cosx
+                        R(ilr) = x
+                     ENDIF
+                     EXIT SPAG_DispatchLoop_2
+                  END SELECT
+               ENDDO SPAG_DispatchLoop_2
+            ENDDO
+            x = 2.0*A(lm)*sincs
+            y = A(ll)*cosx2 + A(mm)*sinx2 - x
+            x = A(ll)*sinx2 + A(mm)*cosx2 + x
+            A(lm) = (A(ll)-A(mm))*sincs + A(lm)*(cosx2-sinx2)
+            A(ll) = y
+            A(mm) = x
+         ENDIF
+!
+!        TESTS FOR COMPLETION
+!
+!        TEST FOR M = LAST COLUMN
+!
+         IF ( m/=N ) THEN
+            m = m + 1
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+!
+!        TEST FOR L = SECOND FROM LAST COLUMN
+!
+         ELSEIF ( l/=(N-1) ) THEN
+            l = l + 1
+            m = l + 1
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ELSEIF ( ind/=1 ) THEN
+!
+!        COMPARE THRESHOLD WITH FINAL NORM
+!
+            IF ( thr>anrmx ) THEN
+               thr = thr/float(N)
+               l = 1
+               m = l + 1
+               spag_nextblock_1 = 2
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ELSE
+            ind = 0
+            l = 1
+            m = l + 1
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         spag_nextblock_1 = 3
+      CASE (3)
+!
+!        SORT EIGENVALUES AND EIGENVECTORS
+!
+         iq = -N
+         DO i = 1,N
+            iq = iq + N
+            ll = i + (i*i-i)/2
+            jq = N*(i-2)
+            DO j = i,N
+               jq = jq + N
+               mm = j + (j*j-j)/2
+               IF ( A(ll)<A(mm) ) THEN
+                  x = A(ll)
+                  A(ll) = A(mm)
+                  A(mm) = x
+                  IF ( Mv/=1 ) THEN
+                     DO k = 1,N
+                        ilr = iq + k
+                        imr = jq + k
+                        x = R(ilr)
+                        R(ilr) = R(imr)
+                        R(imr) = x
+                     ENDDO
+                  ENDIF
+               ENDIF
+            ENDDO
+         ENDDO
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE eigen

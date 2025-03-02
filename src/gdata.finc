@@ -1,0 +1,162 @@
+!*==gdata.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE GDATA
+!
+!        PURPOSE
+!           GENERATE INDEPENDENT VARIABLES UP TO THE M-TH POWER (THE
+!           HIGHEST DEGREE POLYNOMIAL SPECIFIED) AND COMPUTE MEANS,
+!           STANDARD DEVIATIONS, AND CORRELATION COEFFICIENTS.  THIS
+!           SUBROUTINE IS NORMALLY CALLED BEFORE SUBROUTINES ORDER,
+!           MINV AND MULTR IN THE PERFORMANCE OF A POLYNOMIAL
+!           REGRESSION.
+!
+!        USAGE
+!           CALL GDATA (N,M,X,XBAR,STD,D,SUMSQ)
+!
+!        DESCRIPTION OF PARAMETERS
+!           N     - NUMBER OF OBSERVATIONS.
+!           M     - THE HIGHEST DEGREE POLYNOMIAL TO BE FITTED.
+!           X     - INPUT MATRIX (N BY M+1) .  WHEN THE SUBROUTINE IS
+!                   CALLED, DATA FOR THE INDEPENDENT VARIABLE ARE
+!                   STORED IN THE FIRST COLUMN OF MATRIX X, AND DATA FOR
+!                   THE DEPENDENT VARIABLE ARE STORED IN THE LAST
+!                   COLUMN OF THE MATRIX.  UPON RETURNING TO THE
+!                   CALLING ROUTINE, GENERATED POWERS OF THE INDEPENDENT
+!                   VARIABLE ARE STORED IN COLUMNS 2 THROUGH M.
+!           XBAR  - OUTPUT VECTOR OF LENGTH M+1 CONTAINING MEANS OF
+!                   INDEPENDENT AND DEPENDENT VARIABLES.
+!           STD   - OUTPUT VECTOR OF LENGTH M+1 CONTAINING STANDARD
+!                   DEVIATIONS OF INDEPENDENT AND DEPENDENT VARIABLES.
+!           D     - OUTPUT MATRIX (ONLY UPPER TRIANGULAR PORTION OF THE
+!                   SYMMETRIC MATRIX OF M+1 BY M+1) CONTAINING CORRELA-
+!                   TION COEFFICIENTS.  (STORAGE MODE OF 1)
+!           SUMSQ - OUTPUT VECTOR OF LENGTH M+1 CONTAINING SUMS OF
+!                   PRODUCTS OF DEVIATIONS FROM MEANS  OF INDEPENDENT
+!                   AND DEPENDENT VARIABLES.
+!
+!        REMARKS
+!           N MUST BE GREATER THAN M+1.
+!           IF M IS EQUAL TO 5 OR GREATER, SINGLE PRECISION MAY NOT BE
+!           SUFFICIENT TO GIVE SATISFACTORY COMPUTATIONAL RESULTS.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           REFER TO B. OSTLE, 'STATISTICS IN RESEARCH', THE IOWA STATE
+!           COLLEGE PRESS, 1954, CHAPTER 6.
+!
+!     ..................................................................
+!
+SUBROUTINE gdata(N,M,X,Xbar,Std,D,Sumsq)
+   IMPLICIT NONE
+
+   REAL D,df,Std,Sumsq,t1,t2,X,Xbar
+   INTEGER i,j,k,l,l1,l2,M,mm,N
+
+   DIMENSION X(*),Xbar(*),Std(*),D(*),Sumsq(*)
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION X,XBAR,STD,D,SUMSQ,T1,T2
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!        CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  SQRT AND ABS IN
+!        STATEMENT 180 MUST BE CHANGED TO DSQRT AND DABS.
+!
+!        ...............................................................
+!
+!     GENERATE INDEPENDENT VARIABLES
+!
+   IF ( M>1 ) THEN
+      l1 = 0
+      DO i = 2,M
+         l1 = l1 + N
+         DO j = 1,N
+            l = l1 + j
+            k = l - N
+            X(l) = X(k)*X(j)
+         ENDDO
+      ENDDO
+   ENDIF
+!
+!     CALCULATE MEANS
+!
+   mm = M + 1
+   df = N
+   l = 0
+   DO i = 1,mm
+      Xbar(i) = 0.0
+      DO j = 1,N
+         l = l + 1
+         Xbar(i) = Xbar(i) + X(l)
+      ENDDO
+      Xbar(i) = Xbar(i)/df
+   ENDDO
+!
+   DO i = 1,mm
+      Std(i) = 0.0
+   ENDDO
+!
+!     CALCULATE SUMS OF CROSS-PRODUCTS OF DEVIATIONS
+!
+   l = ((mm+1)*mm)/2
+   DO i = 1,l
+      D(i) = 0.0
+   ENDDO
+   DO k = 1,N
+      l = 0
+      DO j = 1,mm
+         l2 = N*(j-1) + k
+         t2 = X(l2) - Xbar(j)
+         Std(j) = Std(j) + t2
+         DO i = 1,j
+            l1 = N*(i-1) + k
+            t1 = X(l1) - Xbar(i)
+            l = l + 1
+            D(l) = D(l) + t1*t2
+         ENDDO
+      ENDDO
+   ENDDO
+   l = 0
+   DO j = 1,mm
+      DO i = 1,j
+         l = l + 1
+         D(l) = D(l) - Std(i)*Std(j)/df
+      ENDDO
+   ENDDO
+   l = 0
+   DO i = 1,mm
+      l = l + i
+      Sumsq(i) = D(l)
+      Std(i) = sqrt(abs(D(l)))
+   ENDDO
+!
+!     CALCULATE CORRELATION COEFFICIENTS
+!
+   l = 0
+   DO j = 1,mm
+      DO i = 1,j
+         l = l + 1
+         D(l) = D(l)/(Std(i)*Std(j))
+      ENDDO
+   ENDDO
+!
+!     CALCULATE STANDARD DEVIATIONS
+!
+   df = sqrt(df-1.0)
+   DO i = 1,mm
+      Std(i) = Std(i)/df
+   ENDDO
+END SUBROUTINE gdata

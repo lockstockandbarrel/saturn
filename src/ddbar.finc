@@ -1,0 +1,158 @@
+!*==ddbar.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!     SUBROUTINE DDBAR
+!
+!     PURPOSE
+!        TO COMPUTE, AT A GIVEN POINT X, AN APPROXIMATION Z TO THE
+!        DERIVATIVE OF AN ANALYTICALLY GIVEN FUNCTION FCT THAT IS 11-
+!        TIMES DIFFERENTIABLE IN A DOMAIN CONTAINING A CLOSED INTERVAL -
+!        THE SET OF T BETWEEN X AND X+H (H POSITIVE OR NEGATIVE) - USING
+!        FUNCTION VALUES ONLY ON THAT INTERVAL.
+!
+!      USAGE
+!        CALL DDBAR(X,H,IH,FCT,Z,)
+!        PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!     DESCRIPTION OF PARAMETERS
+!        X   - THE POINT AT WHICH THE DERIVATIVE IS TO BE COMPUTED
+!              X IS IN DOUBLE PRECISION
+!        H   - THE NUMBER THAT DEFINES THE CLOSED INTERVAL WHOSE END-
+!              POINTS ARE X AND X+H (SEE PURPOSE)
+!              H IS IN SINGLE PRECISION
+!        IH  - INPUT PARAMETER (SEE REMARKS AND METHOD)
+!              IH NON-ZERO - THE SUBROUTINE GENERATES THE INTERNAL
+!                            VALUE HH
+!              IH    =   0 - THE INTERNAL VALUE HH IS SET TO H
+!        FCT - THE NAME OF THE EXTERNAL DOUBLE PRECISION FUNCTION
+!              SUBPROGRAM THAT WILL GENERATE THE NECESSARY FUNCTION
+!              VALUES.
+!        Z   - RESULTING DERIVATIVE VALUE - DOUBLE PRECISION
+!
+!     REMARKS
+!        (1)  IF H = 0, THEN THERE IS NO COMPUTATION.
+!        (2)  THE (MAGNITUDE OF THE) INTERNAL VALUE HH, WHICH IS DETER-
+!             MINED ACCORDING TO IH, IS THE MAXIMUM STEP-SIZE USED IN
+!             THE COMPUTATION OF THE ONE-SIDED DIVIDED DIFFERENCES (SEE
+!             METHOD.)  IF IH IS NON-ZERO, THEN THE SUBROUTINE GENERATES
+!             HH ACCORDING TO CRITERIA THAT BALANCE ROUND-OFF AND TRUN-
+!             CATION ERROR.  HH ALWAYS HAS THE SAME SIGN AS H AND IT IS
+!             ALWAYS LESS THAN OR EQUAL TO THE MAGNITUDE OF H IN AB-
+!             SOLUTE VALUE, SO THAT ALL COMPUTATION OCCURS IN THE CLOSED
+!             INTERVAL DETERMINED BY H.
+!
+!     SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!        THE EXTERNAL FUNCTION SUBPROGRAM FCT(T) MUST BE FURNISHED BY
+!        THE USER. FCT(T) IS IN DOUBLE PRECISION
+!
+!     METHOD
+!        THE COMPUTATION OF Z IS BASED ON RICHARDSON'S AND ROMBERG'S
+!        EXTRAPOLATION METHOD AS APPLIED TO THE SEQUENCE OF ONE-SIDED
+!        DIVIDED DIFFERENCES ASSOCIATED WITH THE POINT PAIRS
+!        (X,X+(K*HH)/10)K=1,...,10.  (SEE FILLIPI, S. AND ENGELS, H.,
+!        ALTES UND NEUES ZUR NUMERISCHEN DIFFERENTIATION, ELECTRONISCHE
+!        DATENVERARBEITUNG, ISS. 2 (1966), PP. 57-65.)
+!
+!     ..................................................................
+!
+SUBROUTINE ddbar(X,H,Ih,fct,Z)
+   IMPLICIT NONE
+
+   REAL d1,d2,dz,H
+   INTEGER i,Ih,j,jj
+
+!
+!
+   DIMENSION aux(10)
+   DOUBLE PRECISION X,fct,Z,aux,a,b,c,d,dh,hh
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        NO ACTION IN CASE OF ZERO INTERVAL LENGTH
+         IF ( H==0 ) RETURN
+!
+!        GENERATE STEPSIZE HH FOR DIVIDED DIFFERENCES
+         c = abs(H)
+         b = H
+         d = X
+         d = fct(d)
+         IF ( Ih/=0 ) THEN
+            hh = .5D-2
+            IF ( c<hh ) hh = b
+            hh = dsign(hh,b)
+            Z = dabs((fct(X+hh)-d)/hh)
+            a = dabs(d)
+            hh = 1.D-2
+            IF ( a>1.D0 ) hh = hh*a
+            IF ( Z>1.D0 ) hh = hh/Z
+            IF ( hh>c ) hh = b
+         ELSE
+            hh = b
+         ENDIF
+         hh = dsign(hh,b)
+!
+!        INITIALIZE DIFFERENTIATION LOOP
+         Z = (fct(X+hh)-d)/hh
+         j = 10
+         jj = j - 1
+         aux(j) = Z
+         dh = hh/dfloat(j)
+         dz = huge(0.0)
+         spag_nextblock_1 = 2
+      CASE (2)
+!
+!        START DIFFERENTIATION LOOP
+         j = j - 1
+         c = j
+         hh = c*dh
+         aux(j) = (fct(X+hh)-d)/hh
+!
+!        INITIALIZE EXTRAPOLATION LOOP
+         d2 = huge(0.0)
+         b = 0.D0
+         a = 1.D0/c
+!
+!        START EXTRAPOLATION LOOP
+         DO i = j,jj
+            d1 = d2
+            b = b + a
+            hh = (aux(i)-aux(i+1))/b
+            aux(i+1) = aux(i) + hh
+!
+!        TEST ON OSCILLATING INCREMENTS
+            d2 = dabs(hh)
+            IF ( d2>=d1 ) THEN
+               spag_nextblock_1 = 3
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ENDDO
+!        END OF EXTRAPOLATION LOOP
+!
+!        UPDATE RESULT VALUE Z
+         i = jj + 1
+         spag_nextblock_1 = 4
+         CYCLE SPAG_DispatchLoop_1
+      CASE (3)
+         d2 = d1
+         jj = i
+         spag_nextblock_1 = 4
+      CASE (4)
+         IF ( d2<dz ) THEN
+            dz = d2
+            Z = aux(i)
+         ENDIF
+         IF ( j>1 ) THEN
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+!        END OF DIFFERENTIATION LOOP
+!
+END SUBROUTINE ddbar

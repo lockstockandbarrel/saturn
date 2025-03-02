@@ -1,0 +1,204 @@
+!*==mtds.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MTDS
+!
+!        PURPOSE
+!           MULTIPLY A GENERAL MATRIX A ON THE LEFT OR RIGHT BY
+!           INVERSE(T),INVERSE(TRANSPOSE(T)) OR INVERSE(TRANSPOSE(T*T))
+!           THE TRIANGULAR MATRIX T IS STORED COLUMNWISE IN COMPRESSED
+!           FORM, I.E. UPPER TRIANGULAR PART ONLY.
+!
+!        USAGE
+!           CALL MTDS(A,M,N,T,IOP,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - GIVEN GENERAL MATRIX WHITH M ROWS AND N COLUMNS.
+!           M     - NUMBER OF ROWS OF MATRIX A
+!           N     - NUMBER OF COLUMNS OF MATRIX A
+!           T     - GIVEN TRIANGULAR MATRIX STORED COLUMNWISE UPPER
+!                   TRIANGULAR PART ONLY. ITS NUMBER OF ROWS AND
+!                   COLUMNS K IS IMPLIED BY COMPATIBILITY.
+!                   K = M IF IOP IS POSITIVE,
+!                   K = N IF IOP IS NEGATIVE.
+!                   T OCCUPIES K*(K+1)/2 STORAGE POSITIONS.
+!           IOP   - INPUT VARIABLE FOR SELECTION OF OPERATION
+!                   IOP = 1 - A IS REPLACED BY INVERSE(T)*A
+!                   IOP =-1 - A IS REPLACED BY A*INVERSE(T)
+!                   IOP = 2 - A IS REPLACED BY INVERSE(TRANSPOSE(T))*A
+!                   IOP =-2 - A IS REPLACED BY A*INVERSE(TRANSPOSE(T))
+!                   IOP = 3 - A IS REPLACED BY INVERSE(TRANSPOSE(T)*T)*A
+!                   IOP =-3 - A IS REPLACED BY A*INVERSE(TRANSPOSE(T)*T)
+!           IER   - RESULTING ERROR PARAMETER
+!                   IER =-1 MEANS M AND N ARE NOT BOTH POSITIVE
+!                                 AND/OR IOP IS ILLEGAL
+!                   IER = 0 MEANS OPERATION WAS SUCCESSFUL
+!                   IER = 1 MEANS TRIANGULAR MATRIX T IS SINGULAR
+!
+!        REMARKS
+!           SUBROUTINE MTDS MAY BE USED TO CALCULATE THE SOLUTION OF
+!           A SYSTEM OF EQUATIONS WITH SYMMETRIC POSITIVE DEFINITE
+!           COEFFICIENT MATRIX. THE FIRST STEP TOWARDS THE SOLUTION
+!           IS TRIANGULAR FACTORIZATION BY MEANS OF MFSD, THE SECOND
+!           STEP IS APPLICATION OF MTDS.
+!           SUBROUTINES MFSD AND MTDS MAY BE USED IN ORDER TO CALCULATE
+!           THE PRODUCT TRANSPOSE(A)*INVERSE(B)*A WITH GIVEN SYMMETRIC
+!           POSITIVE DEFINITE B AND GIVEN A EFFICIENTLY IN THREE STEPS
+!           1) TRIANGULAR FACTORIZATION OF B (B=TRANSPOSE(T)*T)
+!           2) MULTIPLICATION OF A ON THE LEFT BY INVERSE(TRANSPOSE(T))
+!              A IS REPLACED BY C=INVERSE(TRANSPOSE(T))*A
+!           3) CALCULATION OF THE RESULT FORMING TRANSPOSE(C)*C
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           CALCULATION OF X = INVERSE(T)*A IS DONE USING BACKWARD
+!           SUBSTITUTION TO OBTAIN X FROM T*X = A.
+!           CALCULATION OF Y = INVERSE(TRANSPOSE(T))*A IS DONE USING
+!           FORWARD SUBSTITUTION TO OBTAIN Y FROM TRANSPOSE(T)*Y = A.
+!           CALCULATION OF Z = INVERSE(TRANSPOSE(T)*T)*A IS DONE
+!           SOLVING FIRST TRANSPOSE(T)*Y = A AND THEN T*Z = Y, IE.
+!           USING THE ABOVE TWO STEPS IN REVERSE ORDER
+!
+!     ..................................................................
+!
+SUBROUTINE mtds(A,M,N,T,Iop,Ier)
+   IMPLICIT NONE
+
+   REAL A,T
+   INTEGER i,ics,Ier,imend,Iop,iope,irs,j,k,l,ld,ldx,ll,lld,lx,M,mdel,mend,mm,mm1
+   INTEGER mn,msta,mx,N
+
+!
+!
+   DIMENSION A(*),T(*)
+   DOUBLE PRECISION dsum
+!
+!        TEST OF DIMENSION
+   IF ( M>0 ) THEN
+      IF ( N>0 ) THEN
+!
+!        INITIALIZE DIVISION PROCESS
+         mn = M*N
+         mm = M*(M+1)/2
+         mm1 = M - 1
+         Ier = 0
+         ics = M
+         irs = 1
+         imend = M
+!
+!        TEST SPECIFIED OPERATION
+         IF ( Iop<0 ) THEN
+            mm = N*(N+1)/2
+            mm1 = N - 1
+            irs = M
+            ics = 1
+            imend = mn - M + 1
+            mn = M
+         ELSEIF ( Iop==0 ) THEN
+            CALL spag_block_1
+            RETURN
+         ENDIF
+         iope = mod(Iop+3,3)
+         IF ( iabs(Iop)<=3 ) THEN
+            IF ( iope==1 ) THEN
+               CALL spag_block_4
+               RETURN
+            ENDIF
+!
+!        INITIALIZE SOLUTION OF TRANSPOSE(T)*X = A
+            mend = 1
+            lld = irs
+            msta = 1
+            mdel = 1
+            mx = 1
+            ld = 1
+            lx = 0
+            CALL spag_block_3
+            RETURN
+         ENDIF
+      ENDIF
+   ENDIF
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+!
+!        ERROR RETURN IN CASE OF ILLEGAL DIMENSIONS
+      Ier = -1
+      RETURN
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+!
+!        ERROR RETURN IN CASE OF SINGULAR MATRIX T
+      Ier = 1
+      RETURN
+   END SUBROUTINE spag_block_2
+   SUBROUTINE spag_block_3
+!
+!        TEST FOR NONZERO DIAGONAL TERM IN T
+      IF ( T(msta)==0 ) THEN
+         CALL spag_block_2
+         RETURN
+      ENDIF
+      DO i = mend,mn,ics
+         A(i) = A(i)/dble(T(msta))
+      ENDDO
+!
+!        IS M EQUAL 1
+      IF ( mm1<0 ) THEN
+         CALL spag_block_1
+         RETURN
+      ENDIF
+      IF ( mm1/=0 ) THEN
+         DO j = 1,mm1
+            msta = msta + mdel
+            mdel = mdel + mx
+            DO i = mend,mn,ics
+               dsum = 0.D0
+               l = msta
+               ldx = ld
+               ll = i
+               DO k = 1,j
+                  dsum = dsum - T(l)*A(ll)
+                  ll = ll + lld
+                  l = l + ldx
+                  ldx = ldx + lx
+               ENDDO
+               IF ( T(l)==0 ) THEN
+                  CALL spag_block_2
+                  RETURN
+               ENDIF
+               A(ll) = (dsum+A(ll))/T(l)
+            ENDDO
+         ENDDO
+      ENDIF
+!
+!        TEST END OF OPERATION
+      IF ( Ier==0 ) THEN
+         IF ( iope<=0 ) THEN
+            CALL spag_block_4
+            RETURN
+         ENDIF
+      ENDIF
+      Ier = 0
+      RETURN
+   END SUBROUTINE spag_block_3
+   SUBROUTINE spag_block_4
+!
+!        INITIALIZE SOLUTION OF T*X = A
+      Ier = 1
+      mend = imend
+      mn = M*N
+      lld = -irs
+      msta = mm
+      mdel = -1
+      mx = 0
+      ld = -mm1
+      lx = 1
+      CALL spag_block_3
+      RETURN
+   END SUBROUTINE spag_block_4
+END SUBROUTINE mtds

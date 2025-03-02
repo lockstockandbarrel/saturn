@@ -1,0 +1,331 @@
+!*==pqfb.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PQFB
+!
+!        PURPOSE
+!           TO FIND AN APPROXIMATION Q(X)=Q1+Q2*X+X*X TO A QUADRATIC
+!           FACTOR OF A GIVEN POLYNOMIAL P(X) WITH REAL COEFFICIENTS.
+!
+!        USAGE
+!           CALL PQFB(C,IC,Q,LIM,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           C   - INPUT VECTOR CONTAINING THE COEFFICIENTS OF P(X) -
+!                 C(*) IS THE CONSTANT TERM (DIMENSION IC)
+!           IC  - DIMENSION OF C
+!           Q   - VECTOR OF DIMENSION 4 - ON INPUT Q(*) AND Q(2) MUST
+!                 CONTAIN INITIAL GUESSES FOR Q1 AND Q2 - ON RETURN Q(1)
+!                 AND Q(2) CONTAIN THE REFINED COEFFICIENTS Q1 AND Q2 OF
+!                 Q(X), WHILE Q(3) AND Q(4) CONTAIN THE COEFFICIENTS A
+!                 AND B OF A+B*X, WHICH IS THE REMAINDER OF THE QUOTIENT
+!                 OF P(X) BY Q(X)
+!           LIM - INPUT VALUE SPECIFYING THE MAXIMUM NUMBER OF
+!                 ITERATIONS TO BE PERFORMED
+!           IER - RESULTING ERROR PARAMETER (SEE REMARKS)
+!                 IER= 0 - NO ERROR
+!                 IER= 1 - NO CONVERGENCE WITHIN LIM ITERATIONS
+!                 IER=-1 - THE POLYNOMIAL P(X) IS CONSTANT OR UNDEFINED
+!                          - OR OVERFLOW OCCURRED IN NORMALIZING P(X)
+!                 IER=-2 - THE POLYNOMIAL P(X) IS OF DEGREE 1
+!                 IER=-3 - NO FURTHER REFINEMENT OF THE APPROXIMATION TO
+!                          A QUADRATIC FACTOR IS FEASIBLE, DUE TO EITHER
+!                          DIVISION BY 0, OVERFLOW OR AN INITIAL GUESS
+!                          THAT IS NOT SUFFICIENTLY CLOSE TO A FACTOR OF
+!                          P(X)
+!
+!        REMARKS
+!           (1)  IF IER=-1 THERE IS NO COMPUTATION OTHER THAN THE
+!                POSSIBLE NORMALIZATION OF C.
+!           (2)  IF IER=-2 THERE IS NO COMPUTATION OTHER THAN THE
+!                NORMALIZATION OF C.
+!           (3)  IF IER =-3  IT IS SUGGESTED THAT A NEW INITIAL GUESS BE
+!                MADE FOR A QUADRATIC FACTOR.  Q, HOWEVER, WILL CONTAIN
+!                THE VALUES ASSOCIATED WITH THE ITERATION THAT YIELDED
+!                THE SMALLEST NORM OF THE MODIFIED LINEAR REMAINDER.
+!           (4)  IF IER=1, THEN, ALTHOUGH THE NUMBER OF ITERATIONS LIM
+!                WAS TOO SMALL TO INDICATE CONVERGENCE, NO OTHER PROB-
+!                LEMS HAVE BEEN DETECTED, AND Q WILL CONTAIN THE VALUES
+!                ASSOCIATED WITH THE ITERATION THAT YIELDED THE SMALLEST
+!                NORM OF THE MODIFIED LINEAR REMAINDER.
+!           (5)  FOR COMPLETE DETAIL SEE THE DOCUMENTATION FOR
+!                SUBROUTINES PQFB AND DPQFB.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           COMPUTATION IS BASED ON BAIRSTOW'S ITERATIVE METHOD.  (SEE
+!           WILKINSON, J.H., THE EVALUATION OF THE ZEROS OF ILL-CON-
+!           DITIONED POLYNOMIALS (PART ONE AND TWO), NUMERISCHE MATHE-
+!           MATIK, VOL.1 (1959), PP. 150-180, OR HILDEBRAND, F.B.,
+!           INTRODUCTION TO NUMERICAL ANALYSIS, MC GRAW-HILL, NEW YORK/
+!           TORONTO/LONDON, 1956, PP. 472-476.)
+!
+!     ..................................................................
+!
+SUBROUTINE pqfb(C,Ic,Q,Lim,Ier)
+   IMPLICIT NONE
+
+   REAL a,a1,aa,b,b1,bb,C,c1,ca,cb,cc,cd,dq1,dq2,eps,eps1,h,hh,Q,q1
+   REAL q2,qq1,qq2,qqq1,qqq2
+   INTEGER i,Ic,Ier,j,l,Lim,ll,n
+
+!
+!
+   DIMENSION C(*),Q(*)
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        TEST ON LEADING ZERO COEFFICIENTS
+         Ier = 0
+         j = Ic + 1
+         SPAG_Loop_1_1: DO
+            j = j - 1
+            IF ( j<=1 ) THEN
+               spag_nextblock_1 = 5
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            IF ( C(j)/=0 ) THEN
+!
+!        NORMALIZATION OF REMAINING COEFFICIENTS
+               a = C(j)
+               IF ( a/=1. ) THEN
+                  DO i = 1,j
+                     C(i) = C(i)/a
+                     CALL overfl(n)
+                     IF ( n<2 ) THEN
+                        spag_nextblock_1 = 5
+                        CYCLE SPAG_DispatchLoop_1
+                     ENDIF
+                  ENDDO
+               ENDIF
+!
+!        TEST ON NECESSITY OF BAIRSTOW ITERATION
+               IF ( j<3 ) THEN
+!
+!        ERROR EXIT IN CASE OF LINEAR POLYNOMIAL
+                  Ier = -2
+                  RETURN
+               ELSEIF ( j==3 ) THEN
+!        END OF BAIRSTOW ITERATION
+!
+!        EXIT IN CASE OF QUADRATIC POLYNOMIAL
+                  Q(1) = C(1)
+                  Q(2) = C(2)
+                  Q(3) = 0.
+                  Q(4) = 0.
+                  RETURN
+               ELSE
+                  EXIT SPAG_Loop_1_1
+               ENDIF
+            ENDIF
+         ENDDO SPAG_Loop_1_1
+         spag_nextblock_1 = 2
+      CASE (2)
+!
+!        PREPARE BAIRSTOW ITERATION
+         eps = 1.E-6
+         eps1 = 1.E-3
+         l = 0
+         ll = 0
+         q1 = Q(1)
+         q2 = Q(2)
+         qq1 = 0.
+         qq2 = 0.
+         aa = C(1)
+         bb = C(2)
+         cb = abs(aa)
+         ca = abs(bb)
+         IF ( cb<ca ) THEN
+            cc = cb + cb
+            cb = cb/ca
+            ca = 1.
+         ELSEIF ( cb==ca ) THEN
+            cc = ca + ca
+            ca = 1.
+            cb = 1.
+         ELSE
+            cc = ca + ca
+            ca = ca/cb
+            cb = 1.
+         ENDIF
+         cd = cc*.1
+         spag_nextblock_1 = 3
+      CASE (3)
+!
+!        START BAIRSTOW ITERATION
+!        PREPARE NESTED MULTIPLICATION
+         a = 0.
+         b = a
+         a1 = a
+         b1 = a
+         i = j
+         qqq1 = q1
+         qqq2 = q2
+         dq1 = hh
+         dq2 = h
+         SPAG_Loop_1_2: DO
+!
+!        START NESTED MULTIPLICATION
+            h = -q1*b - q2*a + C(i)
+            CALL overfl(n)
+            IF ( n<2 ) THEN
+!
+!        ERROR EXIT IN CASE OF NONREFINED QUADRATIC FACTOR
+               Ier = -3
+               spag_nextblock_1 = 6
+               CYCLE SPAG_DispatchLoop_1
+            ELSE
+               b = a
+               a = h
+               i = i - 1
+               IF ( i<1 ) THEN
+!        END OF NESTED MULTIPLICATION
+!
+!        TEST ON SATISFACTORY ACCURACY
+                  h = ca*abs(a) + cb*abs(b)
+                  IF ( ll>0 ) THEN
+                     spag_nextblock_1 = 4
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  l = l + 1
+                  IF ( abs(a)>eps*abs(C(1)) ) EXIT SPAG_Loop_1_2
+                  IF ( abs(b)>eps*abs(C(2)) ) EXIT SPAG_Loop_1_2
+                  spag_nextblock_1 = 4
+                  CYCLE SPAG_DispatchLoop_1
+               ELSEIF ( i==1 ) THEN
+                  h = 0.
+               ENDIF
+               h = -q1*b1 - q2*a1 + h
+               CALL overfl(n)
+               IF ( n<2 ) THEN
+                  Ier = -3
+                  spag_nextblock_1 = 6
+                  CYCLE SPAG_DispatchLoop_1
+               ELSE
+                  c1 = b1
+                  b1 = a1
+                  a1 = h
+               ENDIF
+            ENDIF
+         ENDDO SPAG_Loop_1_2
+!
+!        TEST ON LINEAR REMAINDER OF MINIMUM NORM
+         IF ( h<=cc ) THEN
+            aa = a
+            bb = b
+            cc = h
+            qq1 = q1
+            qq2 = q2
+         ENDIF
+!
+!        TEST ON LAST ITERATION STEP
+         IF ( l<=Lim ) THEN
+!
+!        PERFORM ITERATION STEP
+            hh = amax1(abs(a1),abs(b1),abs(c1))
+            IF ( hh<=0 ) THEN
+               Ier = -3
+               spag_nextblock_1 = 6
+               CYCLE SPAG_DispatchLoop_1
+            ELSE
+               a1 = a1/hh
+               b1 = b1/hh
+               c1 = c1/hh
+               h = a1*c1 - b1*b1
+               IF ( h/=0 ) THEN
+                  a = a/hh
+                  b = b/hh
+                  hh = (b*a1-a*b1)/h
+                  h = (a*c1-b*b1)/h
+                  q1 = q1 + hh
+                  q2 = q2 + h
+!        END OF ITERATION STEP
+!
+!        TEST ON SATISFACTORY RELATIVE ERROR OF ITERATED VALUES
+                  IF ( abs(hh)<=eps*abs(q1) ) THEN
+                     IF ( abs(h)<=eps*abs(q2) ) THEN
+                        ll = 1
+                        spag_nextblock_1 = 3
+                        CYCLE SPAG_DispatchLoop_1
+                     ENDIF
+                  ENDIF
+!
+!        TEST ON DECREASING RELATIVE ERRORS
+                  IF ( l<=1 ) THEN
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  IF ( abs(hh)>eps1*abs(q1) ) THEN
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  IF ( abs(h)>eps1*abs(q2) ) THEN
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  IF ( abs(qqq1*hh)>=abs(q1*dq1) ) THEN
+                     spag_nextblock_1 = 6
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  IF ( abs(qqq2*h)>=abs(q2*dq2) ) THEN
+                     spag_nextblock_1 = 6
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  spag_nextblock_1 = 3
+                  CYCLE SPAG_DispatchLoop_1
+               ELSE
+                  Ier = -3
+                  spag_nextblock_1 = 6
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+            ENDIF
+!
+!        TEST ON RESTART OF BAIRSTOW ITERATION WITH ZERO INITIAL GUESS
+         ELSEIF ( h<=cd ) THEN
+!
+!        ERROR EXIT IN CASE OF UNSATISFACTORY ACCURACY
+            Ier = 1
+            spag_nextblock_1 = 6
+            CYCLE SPAG_DispatchLoop_1
+         ELSE
+            IF ( Q(1)==0 ) THEN
+               IF ( Q(2)==0 ) THEN
+                  Ier = -3
+                  spag_nextblock_1 = 6
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+            ENDIF
+            Q(1) = 0.
+            Q(2) = 0.
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+      CASE (4)
+!
+!        EXIT IN CASE OF SUFFICIENT ACCURACY
+         Q(1) = q1
+         Q(2) = q2
+         Q(3) = a
+         Q(4) = b
+         RETURN
+      CASE (5)
+!
+!        ERROR EXIT IN CASE OF ZERO OR CONSTANT POLYNOMIAL
+         Ier = -1
+         RETURN
+      CASE (6)
+         Q(1) = qq1
+         Q(2) = qq2
+         Q(3) = aa
+         Q(4) = bb
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE pqfb

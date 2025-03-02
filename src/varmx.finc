@@ -1,0 +1,282 @@
+!*==varmx.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE VARMX
+!
+!        PURPOSE
+!           PERFORM ORTHOGONAL ROTATIONS OF A FACTOR MATRIX.  THIS
+!           SUBROUTINE NORMALLY OCCURS IN A SEQUENCE OF CALLS TO SUB-
+!           ROUTINES CORRE, EIGEN, TRACE, LOAD, VARMX IN THE PERFORMANCE
+!           OF A FACTOR ANALYSIS.
+!
+!        USAGE
+!           CALL VARMX (M,K,A,NC,TV,H,F,D,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           M     - NUMBER OF VARIABLES AND NUMBER OF ROWS OF MATRIX A.
+!           K     - NUMBER OF FACTORS.
+!           A     - INPUT IS THE ORIGINAL FACTOR MATRIX, AND OUTPUT IS
+!                   THE ROTATED FACTOR MATRIX.  THE ORDER OF MATRIX A
+!                   IS M X K.
+!           NC    - OUTPUT VARIABLE CONTAINING THE NUMBER OF ITERATION
+!                   CYCLES PERFORMED.
+!           TV    - OUTPUT VECTOR CONTAINING THE VARIANCE OF THE FACTOR
+!                   MATRIX FOR EACH ITERATION CYCLE.  THE VARIANCE PRIOR
+!                   TO THE FIRST ITERATION CYCLE IS ALSO CALCULATED.
+!                   THIS MEANS THAT NC+1 VARIANCES ARE STORED IN VECTOR
+!                   TV.  MAXIMUM NUMBER OF ITERATION CYCLES ALLOWED IN
+!                   THIS SUBROUTINE IS 50.  THEREFORE, THE LENGTH OF
+!                   VECTOR TV IS 51.
+!           H     - OUTPUT VECTOR OF LENGTH M CONTAINING THE ORIGINAL
+!                   COMMUNALITIES.
+!           F     - OUTPUT VECTOR OF LENGTH M CONTAINING THE FINAL
+!                   COMMUNALITIES.
+!           D     - OUTPUT VECTOR OF LENGTH M CONTAINING THE DIFFERENCES
+!                   BETWEEN THE ORIGINAL AND FINAL COMMUNALITIES.
+!           IER   - ERROR INDICATOR
+!                   IER=0 - NO ERROR
+!                   IER=1 - CONVERGENCE WAS NOT ACHIEVED IN 50 CYCLES
+!                           OF ROTATION
+!
+!        REMARKS
+!           IF VARIANCE COMPUTED AFTER EACH ITERATION CYCLE DOES NOT
+!           INCREASE FOR FOUR SUCCESSIVE TIMES, THE SUBROUTINE STOPS
+!           ROTATION.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           KAISER'S VARIMAX ROTATION AS DESCRIBED IN 'COMPUTER PROGRAM
+!           FOR VARIMAX ROTATION IN FACTOR ANALYSIS' BY THE SAME AUTHOR,
+!           EDUCATIONAL AND PSYCHOLOGICAL MEASUREMENT, VOL XIX, NO. 3,
+!           1959.
+!
+!     ..................................................................
+!
+SUBROUTINE varmx(M,K,A,Nc,Tv,H,F,D,Ier)
+   IMPLICIT NONE
+
+   REAL A,aa,b,bb,cc,cons,cos2t,cos4t,cosp,cost,ctn4t,D,dd,eps,F,ffn,fn,H,sin2t,sin4t
+   REAL sinp,sint,t,tan4t,Tv,tvlt,u
+   INTEGER i,Ier,ii,j,K,k1,l,l1,l2,l3,l4,lb,ll,M,Nc,nv
+
+   DIMENSION A(*),Tv(*),H(*),F(*),D(*)
+   INTEGER :: spag_nextblock_1
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!
+!     DOUBLE PRECISION A,TV,H,F,D,TVLT,CONS,AA,BB,CC,DD,U,T,B,COS4T,
+!    1                 SIN4T,TAN4T,SINP,COSP,CTN4T,COS2T,SIN2T,COST,SINT
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!        CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  SQRT IN STATEMENTS
+!        115, 290, 330, 350, AND 355 MUST BE CHANGED TO DSQRT.  ABS IN
+!        STATEMENTS 280, 320, AND 375 MUST BE CHANGED TO DABS.
+!
+!        ...............................................................
+!
+!     INITIALIZATION
+!
+   Ier = 0
+   eps = 0.00116
+   tvlt = 0.0
+   ll = K - 1
+   nv = 1
+   Nc = 0
+   fn = M
+   ffn = fn*fn
+   cons = 0.7071066
+!
+!     CALCULATE ORIGINAL COMMUNALITIES
+!
+   DO i = 1,M
+      H(i) = 0.0
+      DO j = 1,K
+         l = M*(j-1) + i
+         H(i) = H(i) + A(l)*A(l)
+      ENDDO
+   ENDDO
+!
+!     CALCULATE NORMALIZED FACTOR MATRIX
+!
+   DO i = 1,M
+      H(i) = sqrt(H(i))
+      DO j = 1,K
+         l = M*(j-1) + i
+         A(l) = A(l)/H(i)
+      ENDDO
+   ENDDO
+   SPAG_Loop_1_1: DO
+      Tv(nv) = 0.0
+      DO j = 1,K
+         aa = 0.0
+         bb = 0.0
+         lb = M*(j-1)
+         DO i = 1,M
+            l = lb + i
+            cc = A(l)*A(l)
+            aa = aa + cc
+            bb = bb + cc*cc
+         ENDDO
+         Tv(nv) = Tv(nv) + (fn*bb-aa*aa)/ffn
+      ENDDO
+      IF ( nv<51 ) THEN
+!
+!     PERFORM CONVERGENCE TEST
+!
+         IF ( (Tv(nv)-tvlt)<=(1.E-7) ) THEN
+            Nc = Nc + 1
+            IF ( Nc>3 ) EXIT SPAG_Loop_1_1
+         ENDIF
+!
+!     ROTATION OF TWO FACTORS CONTINUES UP TO
+!     THE STATEMENT 120.
+!
+         DO j = 1,ll
+            l1 = M*(j-1)
+            ii = j + 1
+!
+!        CALCULATE NUM AND DEN
+!
+            DO k1 = ii,K
+               spag_nextblock_1 = 1
+               SPAG_DispatchLoop_1: DO
+                  SELECT CASE (spag_nextblock_1)
+                  CASE (1)
+                     l2 = M*(k1-1)
+                     aa = 0.0
+                     bb = 0.0
+                     cc = 0.0
+                     dd = 0.0
+                     DO i = 1,M
+                        l3 = l1 + i
+                        l4 = l2 + i
+                        u = (A(l3)+A(l4))*(A(l3)-A(l4))
+                        t = A(l3)*A(l4)
+                        t = t + t
+                        cc = cc + (u+t)*(u-t)
+                        dd = dd + 2.0*u*t
+                        aa = aa + u
+                        bb = bb + t
+                     ENDDO
+                     t = dd - 2.0*aa*bb/fn
+                     b = cc - (aa*aa-bb*bb)/fn
+!
+!        COMPARISON OF NUM AND DEN
+!
+                     IF ( t<b ) THEN
+!
+!        NUM IS LESS THAN DEN
+!
+                        tan4t = abs(t)/abs(b)
+                        IF ( tan4t<eps ) THEN
+                           IF ( b>=0 ) CYCLE
+                           sinp = cons
+                           cosp = cons
+                           spag_nextblock_1 = 2
+                           CYCLE SPAG_DispatchLoop_1
+                        ELSE
+                           cos4t = 1.0/sqrt(1.0+tan4t*tan4t)
+                           sin4t = tan4t*cos4t
+                        ENDIF
+                     ELSEIF ( t==b ) THEN
+                        IF ( (t+b)<eps ) CYCLE
+!
+!        NUM + DEN IS GREATER THAN OR EQUAL TO THE
+!        TOLERANCE FACTOR
+!
+                        cos4t = cons
+                        sin4t = cons
+                     ELSE
+!
+!        NUM IS GREATER THAN DEN
+!
+                        ctn4t = abs(t/b)
+                        IF ( ctn4t<eps ) THEN
+                           cos4t = 0.0
+                           sin4t = 1.0
+                        ELSE
+                           sin4t = 1.0/sqrt(1.0+ctn4t*ctn4t)
+                           cos4t = ctn4t*sin4t
+                        ENDIF
+                     ENDIF
+!
+!        DETERMINE COS THETA AND SIN THETA
+!
+                     cos2t = sqrt((1.0+cos4t)/2.0)
+                     sin2t = sin4t/(2.0*cos2t)
+                     cost = sqrt((1.0+cos2t)/2.0)
+                     sint = sin2t/(2.0*cost)
+!
+!        DETERMINE COS PHI AND SIN PHI
+!
+                     IF ( b<=0 ) THEN
+                        cosp = cons*cost + cons*sint
+                        sinp = abs(cons*cost-cons*sint)
+                     ELSE
+                        cosp = cost
+                        sinp = sint
+                     ENDIF
+                     IF ( t<=0 ) sinp = -sinp
+                     spag_nextblock_1 = 2
+                  CASE (2)
+!
+!        PERFORM ROTATION
+!
+                     DO i = 1,M
+                        l3 = l1 + i
+                        l4 = l2 + i
+                        aa = A(l3)*cosp + A(l4)*sinp
+                        A(l4) = -A(l3)*sinp + A(l4)*cosp
+                        A(l3) = aa
+                     ENDDO
+                     EXIT SPAG_DispatchLoop_1
+                  END SELECT
+               ENDDO SPAG_DispatchLoop_1
+            ENDDO
+         ENDDO
+!
+!     CALCULATE VARIANCE FOR FACTOR MATRIX
+!
+         nv = nv + 1
+         tvlt = Tv(nv-1)
+      ELSE
+         Ier = 1
+         EXIT SPAG_Loop_1_1
+      ENDIF
+   ENDDO SPAG_Loop_1_1
+!
+!     DENORMALIZE VARIMAX LOADINGS
+!
+   DO i = 1,M
+      DO j = 1,K
+         l = M*(j-1) + i
+         A(l) = A(l)*H(i)
+      ENDDO
+   ENDDO
+!
+!     CHECK ON COMMUNALITIES
+!
+   Nc = nv - 1
+   DO i = 1,M
+      H(i) = H(i)*H(i)
+   ENDDO
+   DO i = 1,M
+      F(i) = 0.0
+      DO j = 1,K
+         l = M*(j-1) + i
+         F(i) = F(i) + A(l)*A(l)
+      ENDDO
+      D(i) = H(i) - F(i)
+   ENDDO
+END SUBROUTINE varmx

@@ -1,0 +1,112 @@
+!*==pecn.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PECN
+!
+!        PURPOSE
+!           ECONOMIZE A POLYNOMIAL FOR SYMMETRIC RANGE
+!
+!        USAGE
+!           CALL PECN (P,N,BOUND,EPS,TOL,WORK)
+!
+!        DESCRIPTION OF PARAMETERS
+!           P     - COEFFICIENT VECTOR OF GIVEN POLYNOMIAL
+!                   ON RETURN P CONTAINS THE ECONOMIZED POLYNOMIAL
+!           N     - DIMENSION OF COEFFICIENT VECTOR P
+!                   ON RETURN N CONTAINS DIMENSION OF ECONOMIZED
+!                   POLYNOMIAL
+!           BOUND - RIGHT HAND BOUNDARY OF RANGE
+!           EPS   - INITIAL ERROR BOUND
+!                   ON RETURN EPS CONTAINS AN ERROR BOUND FOR THE
+!                   ECONOMIZED POLYNOMIAL
+!           TOL   - TOLERANCE FOR ERROR
+!                   FINAL VALUE OF EPS MUST BE LESS THAN TOL
+!           WORK  - WORKING STORAGE OF DIMENSION N (STARTING VALUE
+!                   OF N RATHER THAN FINAL VALUE)
+!
+!        REMARKS
+!           THE OPERATION IS BYPASSED IN CASE OF N LESS THAN 1.
+!           IN CASE OF AN ARBITRARY INTERVAL (XL,XR) IT IS NECESSARY
+!           FIRST TO CALCULATE THE EXPANSION OF THE GIVEN POLYNOMIAL
+!           WITH ARGUMENT X IN POWERS OF T = (X-(XR-XL)/2).
+!           THIS IS ACCOMPLISHED THROUGH SUBROUTINE PCLD.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           SUBROUTINE PECN TAKES AN (N-1)ST DEGREE POLYNOMIAL
+!           APPROXIMATION TO A FUNCTION F(X) VALID WITHIN A TOLERANCE
+!           EPS OVER THE INTERVAL (-BOUND,BOUND) AND REDUCES IT IF
+!           POSSIBLE TO A POLYNOMIAL OF LOWER DEGREE VALID WITHIN
+!           THE GIVEN TOLERANCE TOL.
+!           THE INITIAL COEFFICIENT VECTOR P IS REPLACED BY THE FINAL
+!           VECTOR. THE INITIAL ERROR BOUND EPS IS REPLACED BY A FINAL
+!           ERROR BOUND.
+!           N IS REPLACED BY THE DIMENSION OF THE REDUCED POLYNOMIAL.
+!           THE COEFFICIENT VECTOR OF THE N-TH CHEBYSHEV POLYNOMIAL
+!           IS CALCULATED FROM THE RECURSION FORMULA
+!           A(K-1)=-A(K+1)*K*L*L*(K-1)/((N+K-2)*(N-K+2))
+!           REFERENCE
+!           K. A. BRONS, ALGORITHM 38, TELESCOPE 2, CACM VOL. 4, 1961,
+!           NO. 3, PP. 151-152.
+!
+!     ..................................................................
+!
+SUBROUTINE pecn(P,N,Bound,Eps,Tol,Work)
+   IMPLICIT NONE
+
+   REAL Bound,Eps,fk,fl,fn,P,Tol,Work
+   INTEGER j,k,N,nend
+
+!
+   DIMENSION P(*),Work(*)
+   fl = Bound*Bound
+   SPAG_Loop_1_1: DO
+!
+!     TEST OF DIMENSION
+!
+      IF ( N<1 ) THEN
+         RETURN
+      ELSEIF ( N==1 ) THEN
+         IF ( Eps+abs(P(1))<=Tol ) THEN
+            N = 0
+            Eps = Eps + abs(P(1))
+         ENDIF
+         EXIT SPAG_Loop_1_1
+      ELSE
+!
+!     CALCULATE EXPANSION OF CHEBYSHEV POLYNOMIAL
+!
+         nend = N - 2
+         Work(N) = -P(N)
+         DO j = 1,nend,2
+            k = N - j
+            fn = (nend-1+k)*(nend+3-k)
+            fk = k*(k-1)
+            Work(k-1) = -Work(k+1)*fk*fl/fn
+         ENDDO
+!
+!     TEST FOR FEASIBILITY OF REDUCTION
+!
+         IF ( k<=2 ) THEN
+            fn = abs(Work(1))
+         ELSE
+            fn = N - 1
+            fn = abs(Work(2)/fn)
+         ENDIF
+         IF ( Eps+fn>Tol ) EXIT SPAG_Loop_1_1
+!
+!     REDUCE POLYNOMIAL
+!
+         Eps = Eps + fn
+         N = N - 1
+         DO j = k,N,2
+            P(j-1) = P(j-1) + Work(j-1)
+         ENDDO
+      ENDIF
+   ENDDO SPAG_Loop_1_1
+   RETURN
+END SUBROUTINE pecn

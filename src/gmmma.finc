@@ -1,0 +1,112 @@
+!*==gmmma.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE GMMMA
+!
+!        PURPOSE
+!           COMPUTES THE GAMMA FUNCTION FOR A GIVEN ARGUMENT
+!
+!        USAGE
+!           CALL GMMMA(XX,GX,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           XX -THE ARGUMENT FOR THE GAMMA FUNCTION
+!           GX -THE RESULTANT GAMMA FUNCTION VALUE
+!           IER-RESULTANT ERROR CODE WHERE
+!               IER=0  NO ERROR
+!               IER=1  XX IS WITHIN .000001 OF BEING A NEGATIVE INTEGER
+!               IER=2  XX GT 57, OVERFLOW, GX SET TO HUGE(0.0)
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE RECURSION RELATION AND POLYNOMIAL APPROXIMATION
+!           BY C.HASTINGS,JR., 'APPROXIMATIONS FOR DIGITAL COMPUTERS',
+!           PRINCETON UNIVERSITY PRESS, 1955
+!
+!     ..................................................................
+!
+SUBROUTINE gmmma(Xx,Gx,Ier)
+   IMPLICIT NONE
+
+   REAL err,Gx,gy,x,Xx,y
+   INTEGER Ier
+
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+         IF ( Xx<=57. ) THEN
+            x = Xx
+            err = 1.0E-6
+            Ier = 0
+            Gx = 1.0
+            IF ( x>2.0 ) THEN
+               DO
+                  x = x - 1.0
+                  Gx = Gx*x
+                  IF ( x<=2.0 ) THEN
+                     spag_nextblock_1 = 4
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+               ENDDO
+            ELSEIF ( x<1.0 ) THEN
+!
+!        SEE IF X IS NEAR NEGATIVE INTEGER OR ZERO
+!
+               IF ( x>err ) THEN
+                  spag_nextblock_1 = 3
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+               y = float(int(x)) - x
+               IF ( abs(y)<=err ) THEN
+                  Ier = 1
+                  RETURN
+               ELSEIF ( 1.0-y<=err ) THEN
+                  Ier = 1
+                  RETURN
+               ENDIF
+            ELSEIF ( x==1.0 ) THEN
+               spag_nextblock_1 = 5
+               CYCLE SPAG_DispatchLoop_1
+            ELSE
+               spag_nextblock_1 = 4
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ELSE
+            Ier = 2
+            Gx = huge(0.0)
+            RETURN
+         ENDIF
+         spag_nextblock_1 = 2
+      CASE (2)
+!
+!        X NOT NEAR A NEGATIVE INTEGER OR ZERO
+!
+         IF ( x>1.0 ) THEN
+            spag_nextblock_1 = 4
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         spag_nextblock_1 = 3
+      CASE (3)
+         Gx = Gx/x
+         x = x + 1.0
+         spag_nextblock_1 = 2
+         CYCLE SPAG_DispatchLoop_1
+      CASE (4)
+         y = x - 1.0
+         gy = 1.0 + y*(-0.5771017+y*(+0.9858540+y*(-0.8764218+y*(+0.8328212+y*(-0.5684729+y*(+0.2548205+y*(-0.05149930)))))))
+         Gx = Gx*gy
+         spag_nextblock_1 = 5
+      CASE (5)
+         RETURN
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE gmmma

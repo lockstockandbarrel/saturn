@@ -1,0 +1,100 @@
+!*==bound.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE BOUND
+!
+!        PURPOSE
+!           SELECT FROM A SET (OR A SUBSET) OF OBSERVATIONS THE NUMBER
+!           OF OBSERVATIONS UNDER, BETWEEN AND OVER TWO GIVEN BOUNDS
+!           FOR EACH VARIABLE
+!
+!        USAGE
+!           CALL BOUND (A,S,BLO,BHI,UNDER,BETW,OVER,NO,NV,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - OBSERVATION MATRIX, NO BY NV
+!           S     - VECTOR INDICATING SUBSET OF A. ONLY THOSE
+!                   OBSERVATIONS WITH A NON-ZERO S(J) ARE CONSIDERED.
+!                   VECTOR LENGTH IS NO.
+!           BLO   - INPUT VECTOR OF LOWER BOUNDS ON ALL VARIABLES.
+!                   VECTOR LENGTH IS NV.
+!           BHI   - INPUT VECTOR OF UPPER BOUNDS ON ALL VARIABLES.
+!                   VECTOR LENGTH IS NV.
+!           UNDER - OUTPUT VECTOR INDICATING, FOR EACH VARIABLE, NUMBER
+!                   OF OBSERVATIONS UNDER LOWER BOUNDS. VECTOR LENGTH
+!                   IS NV.
+!           BETW  - OUTPUT VECTOR INDICATING, FOR EACH VARIABLE, NUMBER
+!                   OF OBSERVATIONS EQUAL TO OR BETWEEN LOWER AND UPPER
+!                   BOUNDS. VECTOR LENGTH IS NV.
+!           OVER  - OUTPUT VECTOR INDICATING, FOR EACH VARIABLE, NUMBER
+!                   OF OBSERVATIONS OVER UPPER BOUNDS. VECTOR LENGTH
+!                   IS NV.
+!           NO    - NUMBER OF OBSERVATIONS
+!           NV    - NUMBER OF VARIABLES FOR EACH OBSERVATION
+!           IER   - ZERO, IF NO ERROR.
+!                 - 1, IF LOWER BOUND IS GREATER THAN THE UPPER BOUND
+!                   FOR SOME VARIABLE
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           EACH ROW (OBSERVATION) OF MATRIX A WITH CORRESPONDING
+!           NON-ZERO ELEMENT IN S VECTOR IS TESTED. OBSERVATIONS ARE
+!           COMPARED WITH SPECIFIED LOWER AND UPPER VARIABLE BOUNDS AND
+!           A COUNT IS KEPT IN VECTORS UNDER, BETWEEN, AND OVER.
+!
+!     ..................................................................
+!
+SUBROUTINE bound(A,S,Blo,Bhi,Under,Betw,Over,No,Nv)
+   IMPLICIT NONE
+
+   REAL A,Betw,Bhi,Blo,Over,S,Under
+   INTEGER i,ier,ij,j,k,No,Nv
+
+   DIMENSION A(*),S(*),Blo(*),Bhi(*),Under(*),Betw(*),Over(*)
+!
+!        CLEAR OUTPUT VECTORS.
+!
+   ier = 0
+   DO i = 1,Nv
+      IF ( Blo(i)>Bhi(i) ) THEN
+         ier = 1
+         RETURN
+      ENDIF
+   ENDDO
+   DO k = 1,Nv
+      Under(k) = 0.0
+      Betw(k) = 0.0
+      Over(k) = 0.0
+   ENDDO
+!
+!        TEST SUBSET VECTOR
+!
+   DO j = 1,No
+      ij = j - No
+      IF ( S(j)/=0 ) THEN
+!
+!        COMPARE OBSERVATIONS WITH BOUNDS
+!
+         DO i = 1,Nv
+            ij = ij + No
+            IF ( A(ij)<Blo(i) ) THEN
+               Under(i) = Under(i) + 1.0
+            ELSEIF ( A(ij)<=Bhi(i) ) THEN
+!
+!       COUNT
+!
+               Betw(i) = Betw(i) + 1.0
+            ELSE
+               Over(i) = Over(i) + 1.0
+            ENDIF
+         ENDDO
+      ENDIF
+   ENDDO
+END SUBROUTINE bound

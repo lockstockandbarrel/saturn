@@ -1,0 +1,109 @@
+!*==csrt.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE CSRT
+!
+!        PURPOSE
+!           SORT COLUMNS OF A MATRIX
+!
+!        USAGE
+!           CALL CSRT(A,B,R,N,M,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX TO BE SORTED
+!           B - NAME OF INPUT VECTOR WHICH CONTAINS SORTING KEY
+!           R - NAME OF SORTED OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A AND R
+!           M - NUMBER OF COLUMNS IN A AND R AND LENGTH OF B
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRIX A
+!           MATRIX R IS ALWAYS A GENERAL MATRIX
+!           M MUST BE GREATER THAN ONE.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!           CCPY
+!
+!        METHOD
+!           COLUMNS OF INPUT MATRIX A ARE SORTED TO FORM OUTPUT MATRIX
+!           R. THE SORTED COLUMN SEQUENCE IS DETERMINED BY THE VALUES OF
+!           ELEMENTS IN ROW VECTOR B. THE LOWEST VALUED ELEMENT IN
+!           B WILL CAUSE THE CORRESPONDING COLUMN OF A TO BE PLACED IN
+!           THE FIRST COLUMN OF R. THE HIGHEST VALUED ELEMENT OF B WILL
+!           CAUSE THE CORRESPONDING ROW OF A TO BE PLACED IN THE LAST
+!           COLUMN OF R. IF DUPLICATE VALUES EXIST IN B, THE
+!           CORRESPONDING COLUMNS OF A ARE MOVED TO R IN THE SAME ORDER
+!           AS IN A.
+!
+!     ..................................................................
+!
+SUBROUTINE csrt(A,B,R,N,M,Ms)
+   IMPLICIT NONE
+
+   REAL A,B,R,rsave,saver
+   INTEGER i2,ik,in,ip,iq,ir,isort,j,l,M,Ms,N
+
+   DIMENSION A(*),B(*),R(*)
+!
+!        MOVE SORTING KEY VECTOR TO FIRST ROW OF OUTPUT MATRIX
+!        AND BUILD ORIGINAL SEQUENCE LIST IN SECOND ROW
+!
+   ik = 1
+   DO j = 1,M
+      R(ik) = B(j)
+      R(ik+1) = j
+      ik = ik + N
+   ENDDO
+!
+!        SORT ELEMENTS IN SORTING KEY VECTOR (ORIGINAL SEQUENCE LIST
+!        IS RESEQUENCED ACCORDINGLY)
+!
+   l = M + 1
+   SPAG_Loop_1_1: DO
+      isort = 0
+      l = l - 1
+      ip = 1
+      iq = N + 1
+      DO j = 2,l
+         IF ( R(iq)<R(ip) ) THEN
+            isort = 1
+            rsave = R(iq)
+            R(iq) = R(ip)
+            R(ip) = rsave
+            saver = R(iq+1)
+            R(iq+1) = R(ip+1)
+            R(ip+1) = saver
+         ENDIF
+         ip = ip + N
+         iq = iq + N
+      ENDDO
+      IF ( isort==0 ) THEN
+!
+!        MOVE COLUMNS FROM MATRIX A TO MATRIX R (NUMBER IN SECOND ROW
+!        OF R REPRESENTS COLUMN NUMBER OF MATRIX A TO BE MOVED)
+!
+         iq = -N
+         DO j = 1,M
+            iq = iq + N
+!
+!        GET COLUMN NUMBER IN MATRIX A
+!
+            i2 = iq + 2
+            in = R(i2)
+!
+!        MOVE COLUMN
+!
+            ir = iq + 1
+            CALL ccpy(A,in,R(ir),N,M,Ms)
+         ENDDO
+         EXIT SPAG_Loop_1_1
+      ENDIF
+   ENDDO SPAG_Loop_1_1
+END SUBROUTINE csrt

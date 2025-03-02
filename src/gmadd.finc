@@ -1,0 +1,49 @@
+!*==gmadd.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE GMADD
+!
+!        PURPOSE
+!           ADD TWO GENERAL MATRICES TO FORM RESULTANT GENERAL MATRIX
+!
+!        USAGE
+!           CALL GMADD(A,B,R,N,M)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF FIRST INPUT MATRIX
+!           B - NAME OF SECOND INPUT MATRIX
+!           R - NAME OF OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A,B,R
+!           M - NUMBER OF COLUMNS IN A,B,R
+!
+!        REMARKS
+!           ALL MATRICES MUST BE STORED AS GENERAL MATRICES
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           ADDITION IS PERFORMED ELEMENT BY ELEMENT
+!
+!     ..................................................................
+!
+SUBROUTINE gmadd(A,B,R,N,M)
+   IMPLICIT NONE
+
+   REAL A,B,R
+   INTEGER i,M,N,nm
+
+   DIMENSION A(*),B(*),R(*)
+!
+!        CALCULATE NUMBER OF ELEMENTS
+!
+   nm = N*M
+!
+!        ADD MATRICES
+!
+   DO i = 1,nm
+      R(i) = A(i) + B(i)
+   ENDDO
+END SUBROUTINE gmadd

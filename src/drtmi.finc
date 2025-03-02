@@ -1,0 +1,212 @@
+!*==drtmi.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DRTMI
+!
+!        PURPOSE
+!           TO SOLVE GENERAL NONLINEAR EQUATIONS OF THE FORM FCT(X)=0
+!           BY MEANS OF MUELLER-S ITERATION METHOD.
+!
+!        USAGE
+!           CALL DRTMI (X,F,FCT,XLI,XRI,EPS,IEND,IER)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT.
+!
+!        DESCRIPTION OF PARAMETERS
+!           X      - DOUBLE PRECISION RESULTANT ROOT OF EQUATION
+!                    FCT(X)=0.
+!           F      - DOUBLE PRECISION RESULTANT FUNCTION VALUE
+!                    AT ROOT X.
+!           FCT    - NAME OF THE EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           XLI    - DOUBLE PRECISION INPUT VALUE WHICH SPECIFIES THE
+!                    INITIAL LEFT BOUND OF THE ROOT X.
+!           XRI    - DOUBLE PRECISION INPUT VALUE WHICH SPECIFIES THE
+!                    INITIAL RIGHT BOUND OF THE ROOT X.
+!           EPS    - SINGLE PRECISION INPUT VALUE WHICH SPECIFIES THE
+!                    UPPER BOUND OF THE ERROR OF RESULT X.
+!           IEND   - MAXIMUM NUMBER OF ITERATION STEPS SPECIFIED.
+!           IER    - RESULTANT ERROR PARAMETER CODED AS FOLLOWS
+!                     IER=0 - NO ERROR,
+!                     IER=1 - NO CONVERGENCE AFTER IEND ITERATION STEPS
+!                             FOLLOWED BY IEND SUCCESSIVE STEPS OF
+!                             BISECTION,
+!                     IER=2 - BASIC ASSUMPTION FCT(XLI)*FCT(XRI) LESS
+!                             THAN OR EQUAL TO ZERO IS NOT SATISFIED.
+!
+!        REMARKS
+!           THE PROCEDURE ASSUMES THAT FUNCTION VALUES AT INITIAL
+!           BOUNDS XLI AND XRI HAVE NOT THE SAME SIGN. IF THIS BASIC
+!           ASSUMPTION IS NOT SATISFIED BY INPUT VALUES XLI AND XRI, THE
+!           PROCEDURE IS BYPASSED AND GIVES THE ERROR MESSAGE IER=2.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           SOLUTION OF EQUATION FCT(X)=0 IS DONE BY MEANS OF MUELLER-S
+!           ITERATION METHOD OF SUCCESSIVE BISECTIONS AND INVERSE
+!           PARABOLIC INTERPOLATION, WHICH STARTS AT THE INITIAL BOUNDS
+!           XLI AND XRI. CONVERGENCE IS QUADRATIC IF THE DERIVATIVE OF
+!           FCT(X) AT ROOT X IS NOT EQUAL TO ZERO. ONE ITERATION STEP
+!           REQUIRES TWO EVALUATIONS OF FCT(X). FOR TEST ON SATISFACTORY
+!           ACCURACY SEE FORMULAE (3,4) OF MATHEMATICAL DESCRIPTION.
+!           FOR REFERENCE, SEE G. K. KRISTIANSEN, ZERO OF ARBITRARY
+!           FUNCTION, BIT, VOL. 3 (1963), PP.205-206.
+!
+!     ..................................................................
+!
+SUBROUTINE drtmi(X,F,fct,Xli,Xri,Eps,Iend,Ier)
+   IMPLICIT NONE
+
+   REAL Eps
+   INTEGER i,Iend,Ier,k
+
+!
+!
+   DOUBLE PRECISION X,F,fct,Xli,Xri,xl,xr,fl,fr,tol,tolf,a,dx,xm,fm
+!
+!     PREPARE ITERATION
+   Ier = 0
+   xl = Xli
+   xr = Xri
+   X = xl
+   tol = X
+   F = fct(tol)
+   IF ( F==0 ) THEN
+      CALL spag_block_3
+      RETURN
+   ENDIF
+   fl = F
+   X = xr
+   tol = X
+   F = fct(tol)
+   IF ( F==0 ) THEN
+      CALL spag_block_3
+      RETURN
+   ENDIF
+   fr = F
+   IF ( dsign(1.D0,fl)+dsign(1.D0,fr)/=0 ) THEN
+!     END OF ITERATION LOOP
+!
+!
+!     ERROR RETURN IN CASE OF WRONG INPUT DATA
+      Ier = 2
+      RETURN
+   ELSE
+!
+!     BASIC ASSUMPTION FL*FR LESS THAN 0 IS SATISFIED.
+!     GENERATE TOLERANCE FOR FUNCTION VALUES.
+      i = 0
+      tolf = 100.*Eps
+   ENDIF
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+!
+!
+!     START ITERATION LOOP
+      i = i + 1
+!
+!     START BISECTION LOOP
+      DO k = 1,Iend
+         X = .5D0*(xl+xr)
+         tol = X
+         F = fct(tol)
+         IF ( F==0 ) THEN
+            CALL spag_block_3
+            RETURN
+         ENDIF
+         IF ( dsign(1.D0,F)+dsign(1.D0,fr)==0 ) THEN
+!
+!     INTERCHANGE XL AND XR IN ORDER TO GET THE SAME SIGN IN F AND FR
+            tol = xl
+            xl = xr
+            xr = tol
+            tol = fl
+            fl = fr
+            fr = tol
+         ENDIF
+         tol = F - fl
+         a = F*tol
+         a = a + a
+         IF ( a<fr*(fr-fl) ) THEN
+            IF ( i<=Iend ) THEN
+               CALL spag_block_4
+               RETURN
+            ENDIF
+         ENDIF
+         xr = X
+         fr = F
+!
+!     TEST ON SATISFACTORY ACCURACY IN BISECTION LOOP
+         tol = Eps
+         a = dabs(xr)
+         IF ( a>1.D0 ) tol = tol*a
+         IF ( dabs(xr-xl)<=tol ) THEN
+            IF ( dabs(fr-fl)<=tolf ) THEN
+               CALL spag_block_2
+               RETURN
+            ENDIF
+         ENDIF
+      ENDDO
+!     END OF BISECTION LOOP
+!
+!     NO CONVERGENCE AFTER IEND ITERATION STEPS FOLLOWED BY IEND
+!     SUCCESSIVE STEPS OF BISECTION OR STEADILY INCREASING FUNCTION
+!     VALUES AT RIGHT BOUNDS. ERROR RETURN.
+      Ier = 1
+      CALL spag_block_2
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+      IF ( dabs(fr)>dabs(fl) ) THEN
+         X = xl
+         F = fl
+      ENDIF
+      CALL spag_block_3
+   END SUBROUTINE spag_block_2
+   SUBROUTINE spag_block_3
+      RETURN
+   END SUBROUTINE spag_block_3
+   SUBROUTINE spag_block_4
+!
+!     COMPUTATION OF ITERATED X-VALUE BY INVERSE PARABOLIC INTERPOLATION
+      a = fr - F
+      dx = (X-xl)*fl*(1.D0+F*(a-tol)/(a*(fr-fl)))/tol
+      xm = X
+      fm = F
+      X = xl - dx
+      tol = X
+      F = fct(tol)
+      IF ( F==0 ) THEN
+         CALL spag_block_3
+         RETURN
+      ENDIF
+!
+!     TEST ON SATISFACTORY ACCURACY IN ITERATION LOOP
+      tol = Eps
+      a = dabs(X)
+      IF ( a>1.D0 ) tol = tol*a
+      IF ( dabs(dx)<=tol ) THEN
+         IF ( dabs(F)<=tolf ) THEN
+            CALL spag_block_3
+            RETURN
+         ENDIF
+      ENDIF
+!
+!     PREPARATION OF NEXT BISECTION LOOP
+      IF ( dsign(1.D0,F)+dsign(1.D0,fl)/=0 ) THEN
+         xl = X
+         fl = F
+         xr = xm
+         fr = fm
+      ELSE
+         xr = X
+         fr = F
+      ENDIF
+      CALL spag_block_1
+      RETURN
+   END SUBROUTINE spag_block_4
+END SUBROUTINE drtmi

@@ -1,0 +1,595 @@
+!*==dharm.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DHARM
+!
+!        PURPOSE
+!           PERFORMS DISCRETE COMPLEX FOURIER TRANSFORMS ON A COMPLEX
+!           DOUBLE PRECISION,THREE DIMENSIONAL ARRAY
+!
+!        USAGE
+!           CALL DHARM(A,M,INV,S,IFSET,IFERR)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - A DOUBLE PRECISION VECTOR
+!                   AS INPUT, A CONTAINS THE COMPLEX, 3-DIMENSIONAL
+!                   ARRAY TO BE TRANSFORMED.  THE REAL PART OF
+!                   A(I1,I2,I3) IS STORED IN VECTOR FASHION IN A CELL
+!                   WITH INDEX 2*(I3*N1*N2 + I2*N1 + I1) + 1 WHERE
+!                   NI = 2**M(I), I=1,2,3 AND I1 = 0,1,...,N1-1 ETC.
+!                   THE IMAGINARY PART IS IN THE CELL IMMEDIATELY
+!                   FOLLOWING.  NOTE THAT THE SUBSCRIPT I1 INCREASES
+!                   MOST RAPIDLY AND I3 INCREASES LEAST RAPIDLY.
+!                   AS OUTPUT, A CONTAINS THE COMPLEX FOURIER
+!                   TRANSFORM.  THE NUMBER OF CORE LOCATIONS OF
+!                   ARRAY A IS 2*(N1*N2*N3)
+!           M     - A THREE CELL VECTOR WHICH DETERMINES THE SIZES
+!                   OF THE 3 DIMENSIONS OF THE ARRAY A.   THE SIZE,
+!                   NI, OF THE I DIMENSION OF A IS 2**M(I), I = 1,2,3
+!           INV   - A VECTOR WORK AREA FOR BIT AND INDEX MANIPULATION
+!                   OF DIMENSION ONE FOURTH OF THE QUANTITY
+!                   MAX(N1,N2,N3)
+!           S     - A DOUBLE PRECISION VECTOR WORK AREA FOR SINE TABLES
+!                   WITH DIMENSION THE SAME AS INV
+!           IFSET - AN OPTION PARAMETER WITH THE FOLLOWING SETTINGS
+!                      0    SET UP SINE AND INV TABLES ONLY
+!                      1    SET UP SINE AND INV TABLES ONLY AND
+!                           CALCULATE FOURIER TRANSFORM
+!                     -1    SET UP SINE AND INV TABLES ONLY AND
+!                           CALCULATE INVERSE FOURIER TRANSFORM (FOR
+!                           THE MEANING OF INVERSE SEE THE EQUATIONS
+!                           UNDER METHOD BELOW)
+!                      2    CALCULATE FOURIER TRANSFORM ONLY (ASSUME
+!                           SINE AND INV TABLES EXIST)
+!                     -2    CALCULATE INVERSE FOURIER TRANSFORM ONLY
+!                           (ASSUME SINE AND INV TABLES EXIST)
+!           IFERR - ERROR INDICATOR.   WHEN IFSET IS 0,+1,-1,
+!                   IFERR = 1 MEANS THE MAXIMUM M(I) IS GREATER THAN
+!                   20, I=1,2,3   WHEN IFSET IS 2,-2,IFERR = 1
+!                   MEANS THAT THE SINE AND INV TABLES ARE NOT LARGE
+!                   ENOUGH OR HAVE NOT BEEN COMPUTED .
+!                   IF ON RETURN IFERR = 0 THEN NONE OF THE ABOVE
+!                   CONDITIONS ARE PRESENT
+!
+!        REMARKS
+!           THIS SUBROUTINE IS TO BE USED FOR COMPLEX, DOUBLE PRECISION,
+!           3-DIMENSIONAL ARRAYS IN WHICH EACH DIMENSION IS A POWER OF
+!           2. THE MAXIMUM M(I) MUST NOT BE LESS THAN 3 OR GREATER THAN
+!           20, I = 1,2,3.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           FOR IFSET = +1, OR +2, THE FOURIER TRANSFORM OF COMPLEX
+!           ARRAY A IS OBTAINED.
+!
+!                  N1-1   N2-1   N3-1                L1   L2   L3
+!     X(J1,J2,J3)=SUM    SUM    SUM    A(K1,K2,K3)*W1  *W2  *W3
+!                  K1=0   K2=0   K3=0
+!
+!                  WHERE WI IS THE N(I) ROOT OF UNITY AND L1=K1*J1,
+!                        L2=K2*J2, L3=K3*J3
+!
+!
+!           FOR IFSET = -1, OR -2, THE INVERSE FOURIER TRANSFORM A OF
+!           COMPLEX ARRAY X IS OBTAINED.
+!
+!     A(K1,K2,K3)=
+!               1      N1-1   N2-1   N3-1                -L1  -L2  -L3
+!           -------- *SUM    SUM    SUM    X(J1,J2,J3)*W1  *W2  *W3
+!           N1*N2*N3   J1=0   J2=0   J3=0
+!
+!
+!           SEE J.W. COOLEY AND J.W. TUKEY, 'AN ALGORITHM FOR THE
+!           MACHINE CALCULATION OF COMPLEX FOURIER SERIES',
+!           MATHEMATICS OF COMPUTATIONS, VOL. 19 (APR. 1965), P. 297.
+!
+!     ..................................................................
+!
+SUBROUTINE dharm(A,M,Inv,S,Ifset,Iferr)
+   IMPLICIT NONE
+
+   INTEGER i,i2,i2c,i2cc,i3,i3c,i3cc,i3ccc,ic,id,idif,Iferr,Ifset,igo1,igo2,igo3,il,il1,ilast,&
+         & Inv
+   INTEGER ip1,ip2,ip3,ipp1,ipp2,ipp3,j,jc,jc1,jd,jdif,jj,jj1,jj2,jj3,jjd1,jjd2,jjd3,jjdif,   &
+         & jlast
+   INTEGER jp1,jp2,jp3,jpp1,jpp2,jpp3,jstep,jstep2,k,k1,k2,k3,kbit,kd,kl,klast,l,lfirst,lm1exp ,&
+         & M
+   INTEGER m1,m1mt,m2,m2mt,m3,m3mt,mev,mi,minn1,minn2,minn3,mt,mtlexp,mtt,n,n1,n1vnt,n2,n2vnt,&
+         & n3
+   INTEGER n3vnt,np,nt,ntsq,ntv2,ntvn1,ntvn2,ntvn3,nx
+
+   DIMENSION A(*),Inv(*),S(*),n(3),M(3),np(3),w(2),w2(2),w3(2)
+   DOUBLE PRECISION A,r,w3,awi,theta,root2,S,t,w,w2,fn,awr
+   EQUIVALENCE (n1,n(1)),(n2,n(2)),(n3,n(3))
+   IF ( iabs(Ifset)<=1 ) THEN
+!
+!     THE FOLLOWING PROGRAM COMPUTES THE SIN AND INV TABLES.
+!
+      mt = max0(M(1),M(2),M(3)) - 2
+      mt = max0(2,mt)
+      IF ( mt>18 ) THEN
+         CALL spag_block_1
+         RETURN
+      ENDIF
+      Iferr = 0
+      nt = 2**mt
+      ntv2 = nt/2
+!
+!     SET UP SIN TABLE
+!     THETA=PIE/2**(L+1) FOR L=1
+      theta = .7853981633974483
+!
+!     JSTEP=2**(MT-L+1) FOR L=1
+      jstep = nt
+!
+!     JDIF=2**(MT-L) FOR L=1
+      jdif = ntv2
+      S(jdif) = dsin(theta)
+      DO l = 2,mt
+         theta = theta/2.0D0
+         jstep2 = jstep
+         jstep = jdif
+         jdif = jstep/2
+         S(jdif) = dsin(theta)
+         jc1 = nt - jdif
+         S(jc1) = dcos(theta)
+         jlast = nt - jstep2
+         IF ( jlast>=jstep ) THEN
+            DO j = jstep,jlast,jstep
+               jc = nt - j
+               jd = j + jdif
+               S(jd) = S(j)*S(jc1) + S(jdif)*S(jc)
+            ENDDO
+         ENDIF
+      ENDDO
+!
+!     SET UP INV(J) TABLE
+!
+      mtlexp = ntv2
+!
+!     MTLEXP=2**(MT-L). FOR L=1
+      lm1exp = 1
+!
+!     LM1EXP=2**(L-1). FOR L=1
+      Inv(1) = 0
+      DO l = 1,mt
+         Inv(lm1exp+1) = mtlexp
+         DO j = 2,lm1exp
+            jj = j + lm1exp
+            Inv(jj) = Inv(j) + mtlexp
+         ENDDO
+         mtlexp = mtlexp/2
+         lm1exp = lm1exp*2
+      ENDDO
+      IF ( Ifset==0 ) THEN
+         CALL spag_block_2
+         RETURN
+      ENDIF
+   ENDIF
+   mtt = max0(M(1),M(2),M(3)) - 2
+   root2 = dsqrt(2.0D0)
+   IF ( mtt<=mt ) THEN
+!                   IFERR = 1 MEANS THE MAXIMUM M(I) IS GREATER THAN
+!                  20,I=1,2,3   WHEN IFSET IS 2,-2,IFERR = 1
+!                   MEANS THAT THE SINE AND INV TABLES ARE NOT LARGE
+!                   ENOUGH OR HAVE NOT BEEN COMPUTED .
+!                   IF ON RETURN IFERR = 0 THEN NONE OF THE ABOVE
+!                   CONDITIONS ARE PRESENT
+!           -------- *SUM    SUM    SUM    X(J1,J2,J3)*W1  *W2  *W3
+      Iferr = 0
+      m1 = M(1)
+      m2 = M(2)
+      m3 = M(3)
+      n1 = 2**m1
+      n2 = 2**m2
+      n3 = 2**m3
+      IF ( Ifset<=0 ) THEN
+         nx = n1*n2*n3
+         fn = nx
+         DO i = 1,nx
+            A(2*i-1) = A(2*i-1)/fn
+            A(2*i) = -A(2*i)/fn
+         ENDDO
+      ENDIF
+      np(1) = n1*2
+      np(2) = np(1)*n2
+      np(3) = np(2)*n3
+      DO id = 1,3
+         il = np(3) - np(id)
+         il1 = il + 1
+         mi = M(id)
+         IF ( mi>0 ) THEN
+            idif = np(id)
+            kbit = np(id)
+            mev = 2*(mi/2)
+            IF ( mi<=mev ) THEN
+!
+!     M IS EVEN
+               lfirst = 2
+               jlast = 0
+            ELSE
+!
+!     M IS ODD. DO L=1 CASE
+               kbit = kbit/2
+               kl = kbit - 2
+               DO i = 1,il1,idif
+                  klast = kl + i
+                  DO k = i,klast,2
+                     kd = k + kbit
+!
+!     DO ONE STEP WITH L=1,J=0
+!     A(K)=A(K)+A(KD)
+!     A(KD)=A(K)-A(KD)
+!
+                     t = A(kd)
+                     A(kd) = A(k) - t
+                     A(k) = A(k) + t
+                     t = A(kd+1)
+                     A(kd+1) = A(k+1) - t
+                     A(k+1) = A(k+1) + t
+                  ENDDO
+               ENDDO
+               IF ( mi<=1 ) CYCLE
+               lfirst = 3
+!
+!     DEF - JLAST = 2**(L-2) -1
+               jlast = 1
+            ENDIF
+            DO l = lfirst,mi,2
+               jjdif = kbit
+               kbit = kbit/4
+               kl = kbit - 2
+!
+!     DO FOR J=0
+               DO i = 1,il1,idif
+                  klast = i + kl
+                  DO k = i,klast,2
+                     k1 = k + kbit
+                     k2 = k1 + kbit
+                     k3 = k2 + kbit
+!
+!     DO TWO STEPS WITH J=0
+!     A(K)=A(K)+A(K2)
+!     A(K2)=A(K)-A(K2)
+!     A(K1)=A(K1)+A(K3)
+!     A(K3)=A(K1)-A(K3)
+!
+!     A(K)=A(K)+A(K1)
+!     A(K1)=A(K)-A(K1)
+!     A(K2)=A(K2)+A(K3)*I
+!     A(K3)=A(K2)-A(K3)*I
+!
+                     t = A(k2)
+                     A(k2) = A(k) - t
+                     A(k) = A(k) + t
+                     t = A(k2+1)
+                     A(k2+1) = A(k+1) - t
+                     A(k+1) = A(k+1) + t
+!
+                     t = A(k3)
+                     A(k3) = A(k1) - t
+                     A(k1) = A(k1) + t
+                     t = A(k3+1)
+                     A(k3+1) = A(k1+1) - t
+                     A(k1+1) = A(k1+1) + t
+!
+                     t = A(k1)
+                     A(k1) = A(k) - t
+                     A(k) = A(k) + t
+                     t = A(k1+1)
+                     A(k1+1) = A(k+1) - t
+                     A(k+1) = A(k+1) + t
+!
+                     r = -A(k3+1)
+                     t = A(k3)
+                     A(k3) = A(k2) - r
+                     A(k2) = A(k2) + r
+                     A(k3+1) = A(k2+1) - t
+                     A(k2+1) = A(k2+1) + t
+                  ENDDO
+               ENDDO
+               IF ( jlast>0 ) THEN
+                  jj = jjdif + 1
+!
+!     DO FOR J=1
+                  ilast = il + jj
+                  DO i = jj,ilast,idif
+                     klast = kl + i
+                     DO k = i,klast,2
+                        k1 = k + kbit
+                        k2 = k1 + kbit
+                        k3 = k2 + kbit
+!
+!     LETTING W=(1+I)/ROOT2,W3=(-1+I)/ROOT2,W2=I,
+!     A(K)=A(K)+A(K2)*I
+!     A(K2)=A(K)-A(K2)*I
+!     A(K1)=A(K1)*W+A(K3)*W3
+!     A(K3)=A(K1)*W-A(K3)*W3
+!
+!     A(K)=A(K)+A(K1)
+!     A(K1)=A(K)-A(K1)
+!     A(K2)=A(K2)+A(K3)*I
+!     A(K3)=A(K2)-A(K3)*I
+!
+                        r = -A(k2+1)
+                        t = A(k2)
+                        A(k2) = A(k) - r
+                        A(k) = A(k) + r
+                        A(k2+1) = A(k+1) - t
+                        A(k+1) = A(k+1) + t
+!
+                        awr = A(k1) - A(k1+1)
+                        awi = A(k1+1) + A(k1)
+                        r = -A(k3) - A(k3+1)
+                        t = A(k3) - A(k3+1)
+                        A(k3) = (awr-r)/root2
+                        A(k3+1) = (awi-t)/root2
+                        A(k1) = (awr+r)/root2
+                        A(k1+1) = (awi+t)/root2
+                        t = A(k1)
+                        A(k1) = A(k) - t
+                        A(k) = A(k) + t
+                        t = A(k1+1)
+                        A(k1+1) = A(k+1) - t
+                        A(k+1) = A(k+1) + t
+                        r = -A(k3+1)
+                        t = A(k3)
+                        A(k3) = A(k2) - r
+                        A(k2) = A(k2) + r
+                        A(k3+1) = A(k2+1) - t
+                        A(k2+1) = A(k2+1) + t
+                     ENDDO
+                  ENDDO
+                  IF ( jlast>1 ) THEN
+                     jj = jj + jjdif
+!
+!     NOW DO THE REMAINING J'S
+                     DO j = 2,jlast
+!
+!     FETCH W'S
+!     DEF- W=W**INV(J), W2=W**2, W3=W**3
+                        i = Inv(j+1)
+                        ic = nt - i
+                        w(1) = S(ic)
+                        w(2) = S(i)
+                        i2 = 2*i
+                        i2c = nt - i2
+                        IF ( i2c<0 ) THEN
+!
+!     2*I IS IN SECOND QUADRANT
+                           i2cc = i2c + nt
+                           i2c = -i2c
+                           w2(1) = -S(i2c)
+                           w2(2) = S(i2cc)
+                        ELSEIF ( i2c==0 ) THEN
+                           w2(1) = 0.
+                           w2(2) = 1.
+                        ELSE
+!
+!     2*I IS IN FIRST QUADRANT
+                           w2(1) = S(i2c)
+                           w2(2) = S(i2)
+                        ENDIF
+                        i3 = i + i2
+                        i3c = nt - i3
+                        IF ( i3c<0 ) THEN
+!
+                           i3cc = i3c + nt
+                           IF ( i3cc<0 ) THEN
+!
+!     3*I IN THIRD QUADRANT
+                              i3ccc = nt + i3cc
+                              i3cc = -i3cc
+                              w3(1) = -S(i3ccc)
+                              w3(2) = -S(i3cc)
+                           ELSEIF ( i3cc==0 ) THEN
+                              w3(1) = -1.
+                              w3(2) = 0.
+                           ELSE
+!
+!     I3 IN SECOND QUADRANT
+                              i3c = -i3c
+                              w3(1) = -S(i3c)
+                              w3(2) = S(i3cc)
+                           ENDIF
+                        ELSEIF ( i3c==0 ) THEN
+                           w3(1) = 0.
+                           w3(2) = 1.
+                        ELSE
+!
+!     I3 IN FIRST QUADRANT
+                           w3(1) = S(i3c)
+                           w3(2) = S(i3)
+                        ENDIF
+                        ilast = il + jj
+                        DO i = jj,ilast,idif
+                           klast = kl + i
+                           DO k = i,klast,2
+                              k1 = k + kbit
+                              k2 = k1 + kbit
+                              k3 = k2 + kbit
+!
+!     DO TWO STEPS WITH J NOT 0
+!     A(K)=A(K)+A(K2)*W2
+!     A(K2)=A(K)-A(K2)*W2
+!     A(K1)=A(K1)*W+A(K3)*W3
+!     A(K3)=A(K1)*W-A(K3)*W3
+!
+!     A(K)=A(K)+A(K1)
+!     A(K1)=A(K)-A(K1)
+!     A(K2)=A(K2)+A(K3)*I
+!     A(K3)=A(K2)-A(K3)*I
+!
+                              r = A(k2)*w2(1) - A(k2+1)*w2(2)
+                              t = A(k2)*w2(2) + A(k2+1)*w2(1)
+                              A(k2) = A(k) - r
+                              A(k) = A(k) + r
+                              A(k2+1) = A(k+1) - t
+                              A(k+1) = A(k+1) + t
+!
+                              r = A(k3)*w3(1) - A(k3+1)*w3(2)
+                              t = A(k3)*w3(2) + A(k3+1)*w3(1)
+                              awr = A(k1)*w(1) - A(k1+1)*w(2)
+                              awi = A(k1)*w(2) + A(k1+1)*w(1)
+                              A(k3) = awr - r
+                              A(k3+1) = awi - t
+                              A(k1) = awr + r
+                              A(k1+1) = awi + t
+                              t = A(k1)
+                              A(k1) = A(k) - t
+                              A(k) = A(k) + t
+                              t = A(k1+1)
+                              A(k1+1) = A(k+1) - t
+                              A(k+1) = A(k+1) + t
+                              r = -A(k3+1)
+                              t = A(k3)
+                              A(k3) = A(k2) - r
+                              A(k2) = A(k2) + r
+                              A(k3+1) = A(k2+1) - t
+                              A(k2+1) = A(k2+1) + t
+                           ENDDO
+                        ENDDO
+!     END OF I AND K LOOPS
+!
+                        jj = jjdif + jj
+                     ENDDO
+                  ENDIF
+               ENDIF
+!     END OF J-LOOP
+!
+               jlast = 4*jlast + 3
+            ENDDO
+         ENDIF
+!     END OF  L  LOOP
+!
+      ENDDO
+!     END OF  ID  LOOP
+!
+!     WE NOW HAVE THE COMPLEX FOURIER SUMS BUT THEIR ADDRESSES ARE
+!     BIT-REVERSED.  THE FOLLOWING ROUTINE PUTS THEM IN ORDER
+      ntsq = nt*nt
+      m3mt = m3 - mt
+      IF ( m3mt<0 ) THEN
+!
+!     M3 LESS THAN MT
+         igo3 = 2
+         n3vnt = 1
+         ntvn3 = nt/n3
+         minn3 = n3
+      ELSE
+!
+!     M3 GR. OR EQ. MT
+         igo3 = 1
+         n3vnt = n3/nt
+         minn3 = nt
+      ENDIF
+      jjd3 = ntsq/n3
+      m2mt = m2 - mt
+      IF ( m2mt<0 ) THEN
+!
+!     M2 LESS THAN MT
+         igo2 = 2
+         n2vnt = 1
+         ntvn2 = nt/n2
+         minn2 = n2
+      ELSE
+!
+!     M2 GR. OR EQ. MT
+         igo2 = 1
+         n2vnt = n2/nt
+         minn2 = nt
+      ENDIF
+      jjd2 = ntsq/n2
+      m1mt = m1 - mt
+      IF ( m1mt<0 ) THEN
+!
+!     M1 LESS THAN MT
+         igo1 = 2
+         n1vnt = 1
+         ntvn1 = nt/n1
+         minn1 = n1
+      ELSE
+!
+!     M1 GR. OR EQ. MT
+         igo1 = 1
+         n1vnt = n1/nt
+         minn1 = nt
+      ENDIF
+      jjd1 = ntsq/n1
+      jj3 = 1
+      j = 1
+      DO jpp3 = 1,n3vnt
+         ipp3 = Inv(jj3)
+         DO jp3 = 1,minn3
+            IF ( igo3==2 ) THEN
+               ip3 = Inv(jp3)/ntvn3
+            ELSE
+               ip3 = Inv(jp3)*n3vnt
+            ENDIF
+            i3 = (ipp3+ip3)*n2
+            jj2 = 1
+            DO jpp2 = 1,n2vnt
+               ipp2 = Inv(jj2) + i3
+               DO jp2 = 1,minn2
+                  IF ( igo2==2 ) THEN
+                     ip2 = Inv(jp2)/ntvn2
+                  ELSE
+                     ip2 = Inv(jp2)*n2vnt
+                  ENDIF
+                  i2 = (ipp2+ip2)*n1
+                  jj1 = 1
+                  DO jpp1 = 1,n1vnt
+                     ipp1 = Inv(jj1) + i2
+                     DO jp1 = 1,minn1
+                        IF ( igo1==2 ) THEN
+                           ip1 = Inv(jp1)/ntvn1
+                        ELSE
+                           ip1 = Inv(jp1)*n1vnt
+                        ENDIF
+                        i = 2*(ipp1+ip1) + 1
+                        IF ( j<i ) THEN
+                           t = A(i)
+                           A(i) = A(j)
+                           A(j) = t
+                           t = A(i+1)
+                           A(i+1) = A(j+1)
+                           A(j+1) = t
+                        ENDIF
+                        j = j + 2
+                     ENDDO
+                     jj1 = jj1 + jjd1
+                  ENDDO
+               ENDDO
+!     END OF JPP1 AND JP2
+!
+               jj2 = jj2 + jjd2
+            ENDDO
+         ENDDO
+!     END OF JPP2 AND JP3 LOOPS
+!
+         jj3 = jj3 + jjd3
+      ENDDO
+!     END OF JPP3 LOOP
+!
+      IF ( Ifset<0 ) THEN
+         DO i = 1,nx
+            A(2*i) = -A(2*i)
+         ENDDO
+      ENDIF
+      CALL spag_block_2
+      RETURN
+   ENDIF
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+      Iferr = 1
+      RETURN
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+      RETURN
+   END SUBROUTINE spag_block_2
+END SUBROUTINE dharm

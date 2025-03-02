@@ -1,0 +1,117 @@
+!*==dgt3.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DGT3
+!
+!        PURPOSE
+!           TO COMPUTE A VECTOR OF DERIVATIVE VALUES GIVEN VECTORS OF
+!           ARGUMENT VALUES AND CORRESPONDING FUNCTION VALUES.
+!
+!        USAGE
+!           CALL DGT3(X,Y,Z,NDIM,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X     -  GIVEN VECTOR OF ARGUMENT VALUES (DIMENSION NDIM)
+!           Y     -  GIVEN VECTOR OF FUNCTION VALUES CORRESPONDING TO X
+!                    (DIMENSION NDIM)
+!           Z     -  RESULTING VECTOR OF DERIVATIVE VALUES (DIMENSION
+!                    NDIM)
+!           NDIM  -  DIMENSION OF VECTORS X,Y AND Z
+!           IER   -  RESULTING ERROR PARAMETER
+!                    IER  = -1  - NDIM IS LESS THAN 3
+!                    IER  =  0  - NO ERROR
+!                    IER POSITIVE  - X(IER) = X(IER-1) OR X(IER) =
+!                                    X(IER-2)
+!
+!        REMARKS
+!           (1)   IF IER = -1,2,3, THEN THERE IS NO COMPUTATION.
+!           (2)   IF IER =  4,...,N, THEN THE DERIVATIVE VALUES Z(1)
+!                 ,..., Z(IER-1) HAVE BEEN COMPUTED.
+!           (3)   Z CAN HAVE THE SAME STORAGE ALLOCATION AS X OR Y.  IF
+!                 X OR Y IS DISTINCT FROM Z, THEN IT IS NOT DESTROYED.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           EXCEPT AT THE ENDPOINTS X(1) AND X(NDIM), Z(I) IS THE
+!           DERIVATIVE AT X(I) OF THE LAGRANGIAN INTERPOLATION
+!           POLYNOMIAL OF DEGREE 2 RELEVANT TO THE 3 SUCCESSIVE POINTS
+!           (X(I+K),Y(I+K)) K = -1,0,1. (SEE HILDEBRAND, F.B.,
+!           INTRODUCTION TO NUMERICAL ANALYSIS, MC GRAW-HILL, NEW YORK/
+!           TORONTO/LONDON, 1956, PP. 64-68.)
+!
+!     ..................................................................
+!
+SUBROUTINE dgt3(X,Y,Z,Ndim,Ier)
+   IMPLICIT NONE
+
+   REAL a,b,dy1,dy2,dy3,X,Y,Z
+   INTEGER i,Ier,Ndim
+
+!
+!
+   DIMENSION X(*),Y(*),Z(*)
+!
+!        TEST OF DIMENSION AND ERROR EXIT IN CASE NDIM IS LESS THAN 3
+   Ier = -1
+   IF ( Ndim>=3 ) THEN
+!
+!        PREPARE DIFFERENTIATION LOOP
+      a = X(1)
+      b = Y(1)
+      i = 2
+      dy2 = X(2) - a
+      IF ( dy2==0 ) THEN
+         CALL spag_block_2
+         RETURN
+      ENDIF
+      dy2 = (Y(2)-b)/dy2
+!
+!        START DIFFERENTIATION LOOP
+      DO i = 3,Ndim
+         a = X(i) - a
+         IF ( a==0 ) THEN
+            CALL spag_block_2
+            RETURN
+         ENDIF
+         a = (Y(i)-b)/a
+         b = X(i) - X(i-1)
+         IF ( b==0 ) THEN
+            CALL spag_block_2
+            RETURN
+         ENDIF
+         dy1 = dy2
+         dy2 = (Y(i)-Y(i-1))/b
+         dy3 = a
+         a = X(i-1)
+         b = Y(i-1)
+         IF ( i<=3 ) Z(1) = dy1 + dy3 - dy2
+         Z(i-1) = dy1 + dy2 - dy3
+      ENDDO
+!        END DIFFERENTIATION LOOP
+!
+!        NORMAL EXIT
+      Ier = 0
+      i = Ndim
+      Z(i) = dy2 + dy3 - dy1
+   ENDIF
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+      RETURN
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+   integer :: ii
+!
+!        ERROR EXIT IN CASE OF IDENTICAL ARGUMENTS
+      ii=i
+      Ier = ii
+      ii = ii - 1
+      IF ( ii>2 ) Z(ii) = dy2 + dy3 - dy1
+      CALL spag_block_1
+      RETURN
+   END SUBROUTINE spag_block_2
+END SUBROUTINE dgt3

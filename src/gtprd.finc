@@ -1,0 +1,62 @@
+!*==gtprd.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE GTPRD
+!
+!        PURPOSE
+!           PREMULTIPLY A GENERAL MATRIX BY THE TRANSPOSE OF ANOTHER
+!           GENERAL MATRIX
+!
+!        USAGE
+!           CALL GTPRD(A,B,R,N,M,L)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF FIRST INPUT MATRIX
+!           B - NAME OF SECOND INPUT MATRIX
+!           R - NAME OF OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A AND B
+!           M - NUMBER OF COLUMNS IN A AND ROWS IN R
+!           L - NUMBER OF COLUMNS IN B AND R
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRIX A
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRIX B
+!           ALL MATRICES MUST BE STORED AS GENERAL MATRICES
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           MATRIX TRANSPOSE OF A IS NOT ACTUALLY CALCULATED. INSTEAD,
+!           ELEMENTS OF MATRIX A ARE TAKEN COLUMNWISE RATHER THAN
+!           ROWWISE FOR POSTMULTIPLICATION BY MATRIX B.
+!
+!     ..................................................................
+!
+SUBROUTINE gtprd(A,B,R,N,M,L)
+   IMPLICIT NONE
+
+   REAL A,B,R
+   INTEGER i,ib,ij,ik,ir,j,k,L,M,N
+
+   DIMENSION A(*),B(*),R(*)
+!
+   ir = 0
+   ik = -N
+   DO k = 1,L
+      ij = 0
+      ik = ik + N
+      DO j = 1,M
+         ib = ik
+         ir = ir + 1
+         R(ir) = 0
+         DO i = 1,N
+            ij = ij + 1
+            ib = ib + 1
+            R(ir) = R(ir) + A(ij)*B(ib)
+         ENDDO
+      ENDDO
+   ENDDO
+END SUBROUTINE gtprd

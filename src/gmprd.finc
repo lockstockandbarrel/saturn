@@ -1,0 +1,63 @@
+!*==gmprd.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE GMPRD
+!
+!        PURPOSE
+!           MULTIPLY TWO GENERAL MATRICES TO FORM A RESULTANT GENERAL
+!           MATRIX
+!
+!        USAGE
+!           CALL GMPRD(A,B,R,N,M,L)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF FIRST INPUT MATRIX
+!           B - NAME OF SECOND INPUT MATRIX
+!           R - NAME OF OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A
+!           M - NUMBER OF COLUMNS IN A AND ROWS IN B
+!           L - NUMBER OF COLUMNS IN B
+!
+!        REMARKS
+!           ALL MATRICES MUST BE STORED AS GENERAL MATRICES
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRIX A
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRIX B
+!           NUMBER OF COLUMNS OF MATRIX A MUST BE EQUAL TO NUMBER OF ROW
+!           OF MATRIX B
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE M BY L MATRIX B IS PREMULTIPLIED BY THE N BY M MATRIX A
+!           AND THE RESULT IS STORED IN THE N BY L MATRIX R.
+!
+!     ..................................................................
+!
+SUBROUTINE gmprd(A,B,R,N,M,L)
+   IMPLICIT NONE
+
+   REAL A,B,R
+   INTEGER i,ib,ik,ir,j,ji,k,L,M,N
+
+   DIMENSION A(*),B(*),R(*)
+!
+   ir = 0
+   ik = -M
+   DO k = 1,L
+      ik = ik + M
+      DO j = 1,N
+         ir = ir + 1
+         ji = j - N
+         ib = ik
+         R(ir) = 0
+         DO i = 1,M
+            ji = ji + N
+            ib = ib + 1
+            R(ir) = R(ir) + A(ji)*B(ib)
+         ENDDO
+      ENDDO
+   ENDDO
+END SUBROUTINE gmprd

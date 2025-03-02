@@ -1,0 +1,119 @@
+!*==rsrt.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RSRT
+!
+!        PURPOSE
+!           SORT ROWS OF A MATRIX
+!
+!        USAGE
+!           CALL RSRT(A,B,R,N,M,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX TO BE SORTED
+!           B - NAME OF INPUT VECTOR WHICH CONTAINS SORTING KEY
+!           R - NAME OF SORTED OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A AND R AND LENGTH OF B
+!           M - NUMBER OF COLUMNS IN A AND R
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRIX A
+!           MATRIX R IS ALWAYS A GENERAL MATRIX
+!           N MUST BE GREATER THAN ONE.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           ROWS OF INPUT MATRIX A ARE SORTED TO FORM OUTPUT MATRIX R.
+!           THE SORTED ROW SEQUENCE IS DETERMINED BY THE VALUES OF
+!           ELEMENTS IN COLUMN VECTOR B. THE LOWEST VALUED ELEMENT IN
+!           B WILL CAUSE THE CORRESPONDING ROW OF A TO BE PLACED IN THE
+!           FIRST ROW OF R. THE HIGHEST VALUED ELEMENT OF B WILL CAUSE
+!           THE CORRESPONDING ROW OF A TO BE PLACED IN THE LAST ROW OF
+!           R. IF DUPLICATE VALUES EXIST IN B, THE CORRESPONDING ROWS
+!           OF A ARE MOVED TO R IN THE SAME ORDER AS IN A.
+!
+!     ..................................................................
+!
+SUBROUTINE rsrt(A,B,R,N,M,Ms)
+   IMPLICIT NONE
+
+   REAL A,B,R,rsave,saver
+   INTEGER i,i2,ia,in,ir,isort,j,l,M,Ms,N
+
+   DIMENSION A(*),B(*),R(*)
+!
+!        MOVE SORTING KEY VECTOR TO FIRST COLUMN OF OUTPUT MATRIX
+!        AND BUILD ORIGINAL SEQUENCE LIST IN SECOND COLUMN
+!
+   DO i = 1,N
+      R(i) = B(i)
+      i2 = i + N
+      R(i2) = i
+   ENDDO
+!
+!        SORT ELEMENTS IN SORTING KEY VECTOR (ORIGINAL SEQUENCE LIST
+!        IS RESEQUENCED ACCORDINGLY)
+!
+   l = N + 1
+   SPAG_Loop_1_1: DO
+      isort = 0
+      l = l - 1
+      DO i = 2,l
+         IF ( R(i)<R(i-1) ) THEN
+            isort = 1
+            rsave = R(i)
+            R(i) = R(i-1)
+            R(i-1) = rsave
+            i2 = i + N
+            saver = R(i2)
+            R(i2) = R(i2-1)
+            R(i2-1) = saver
+         ENDIF
+      ENDDO
+      IF ( isort==0 ) THEN
+!
+!        MOVE ROWS FROM MATRIX A TO MATRIX R (NUMBER IN SECOND COLUMN
+!        OF R REPRESENTS ROW NUMBER OF MATRIX A TO BE MOVED)
+!
+         DO i = 1,N
+!
+!        GET ROW NUMBER IN MATRIX A
+!
+            i2 = i + N
+            in = R(i2)
+!
+            ir = i - N
+            DO j = 1,M
+!
+!        LOCATE ELEMENT IN OUTPUT MATRIX
+!
+               ir = ir + N
+!
+!        LOCATE ELEMENT IN INPUT MATRIX
+!
+               CALL loc(in,j,ia,N,M,Ms)
+!
+!        TEST FOR ZERO ELEMENT IN DIAGONAL MATRIX
+!
+               IF ( ia/=0 ) THEN
+!
+!        MOVE ELEMENT TO OUTPUT MATRIX
+!
+                  R(ir) = A(ia)
+               ELSE
+                  R(ir) = 0
+               ENDIF
+            ENDDO
+         ENDDO
+         EXIT SPAG_Loop_1_1
+      ENDIF
+   ENDDO SPAG_Loop_1_1
+END SUBROUTINE rsrt

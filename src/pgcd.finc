@@ -1,0 +1,72 @@
+!*==pgcd.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PGCD
+!
+!        PURPOSE
+!           DETERMINE GREATEST COMMON DIVISOR OF TWO POLYNOMIALS
+!
+!        USAGE
+!           CALL PGCD(X,IDIMX,Y,IDIMY,WORK,EPS,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X     -  VECTOR OF COEFFICIENTS FOR FIRST POLYNOMIAL,
+!                    ORDERED FROM SMALLEST TO LARGEST POWER
+!           IDIMX -  DIMENSION OF X
+!           Y     -  VECTOR OF COEFFICIENTS FOR SECOND POLYNOMIAL,
+!                    ORDERED FROM SMALLEST TO LARGEST POWER.
+!                    THIS IS REPLACED BY GREATEST COMMON DIVISOR
+!           IDIMY -  DIMENSION OF Y
+!           WORK  -  WORKING STORAGE ARRAY
+!           EPS   -  TOLERANCE VALUE BELOW WHICH COEFFICIENT IS
+!                    ELIMINATED DURING NORMALIZATION
+!           IER   -  RESULTANT ERROR CODE WHERE
+!                    IER=0  NO ERROR
+!                    IER=1  X OR Y IS ZERO POLYNOMIAL
+!
+!        REMARKS
+!           IDIMX MUST BE GREATER THAN IDIMY
+!           IDIMY=1 ON RETURN MEANS X AND Y ARE PRIME, THE GCD IS A
+!           CONSTANT. IDIMX IS DESTROYED DURING COMPUTATION.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           PDIV
+!           PNORM
+!
+!        METHOD
+!           GREATEST COMMON DIVISOR OF TWO POLYNOMIALS X AND Y IS
+!           DETERMINED BY MEANS OF EUCLIDEAN ALGORITHM. COEFFICIENT
+!           VECTORS X AND Y ARE DESTROYED AND GREATEST COMMON
+!           DIVISOR IS GENERATED IN Y.
+!
+!     ..................................................................
+!
+SUBROUTINE pgcd(X,Idimx,Y,Idimy,Work,Eps,Ier)
+   IMPLICIT NONE
+
+   REAL Eps,Work,X,Y
+   INTEGER Idimx,Idimy,Ier,j,ndim
+
+   DIMENSION X(*),Y(*),Work(*)
+   SPAG_Loop_1_1: DO
+!
+!     DIMENSION REQUIRED FOR VECTOR NAMED  WORK  IS   IDIMX-IDIMY+1
+!
+      CALL pdiv(Work,ndim,X,Idimx,Y,Idimy,Eps,Ier)
+      IF ( Ier/=0 ) EXIT SPAG_Loop_1_1
+      IF ( Idimx<=0 ) EXIT SPAG_Loop_1_1
+!
+!     INTERCHANGE X AND Y
+!
+      DO j = 1,Idimy
+         Work(1) = X(j)
+         X(j) = Y(j)
+         Y(j) = Work(1)
+      ENDDO
+      ndim = Idimx
+      Idimx = Idimy
+      Idimy = ndim
+   ENDDO SPAG_Loop_1_1
+END SUBROUTINE pgcd

@@ -1,0 +1,86 @@
+!*==dsg13.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DSG13
+!
+!        PURPOSE
+!           TO COMPUTE A VECTOR OF SMOOTHED FUNCTION VALUES GIVEN
+!           VECTORS OF ARGUMENT VALUES AND CORRESPONDING FUNCTION
+!           VALUES.
+!
+!        USAGE
+!           CALL DSG13(X,Y,Z,NDIM,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X     -  GIVEN VECTOR OF DOUBLE PRECISION ARGUMENT VALUES
+!                    (DIMENSION NDIM)
+!           Y     -  GIVEN VECTOR OF DOUBLE PRECISION FUNCTION VALUES
+!                    CORRESPONDING TO X (DIMENSION NDIM)
+!           Z     -  RESULTING VECTOR OF DOUBLE PRECISION SMOOTHED
+!                    FUNCTION VALUES (DIMENSION NDIM)
+!           NDIM  -  DIMENSION OF VECTORS X,Y,AND Z
+!           IER   -  RESULTING ERROR PARAMETER
+!                    IER = -1  - NDIM IS LESS THAN 3
+!                    IER =  0  - NO ERROR
+!
+!        REMARKS
+!           (1)  IF IER=-1 THERE HAS BEEN NO COMPUTATION.
+!           (2)   Z CAN HAVE THE SAME STORAGE ALLOCATION AS X OR Y.  IF
+!                 X OR Y IS DISTINCT FROM Z, THEN IT IS NOT DESTROYED.
+!
+!        SUBROUTINES AND SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           EXCEPT AT THE ENDPOINTS X(1) AND X(NDIM), EACH SMOOTHED
+!           VALUE Z(I) IS OBTAINED BY EVALUATING AT X(I) THE LEAST-
+!           SQUARES POLYNOMIAL OF DEGREE 1 RELEVANT TO THE 3 SUCCESSIVE
+!           POINTS (X(I+K),Y(I+K)) K = -1,0,1.(SEE HILDEBRAND, F.B.,
+!           INTRODUCTION  TO NUMERICAL ANALYSIS, MC GRAW-HILL, NEW YORK/
+!           TORONTO/LONDON, 1956, PP.258-311.)
+!
+!     ..................................................................
+!
+SUBROUTINE dsg13(X,Y,Z,Ndim,Ier)
+   IMPLICIT NONE
+
+   INTEGER i,Ier,Ndim
+
+!
+!
+   DIMENSION X(*),Y(*),Z(*)
+   DOUBLE PRECISION X,Y,Z,xm,ym,t1,t2,t3,h
+!
+!        TEST OF DIMENSION
+   IF ( Ndim<3 ) THEN
+!
+!        ERROR EXIT IN CASE NDIM IS LESS THAN 3
+      Ier = -1
+      RETURN
+   ENDIF
+!
+!        START LOOP
+   DO i = 3,Ndim
+      xm = .33333333333333333D0*(X(i-2)+X(i-1)+X(i))
+      ym = .33333333333333333D0*(Y(i-2)+Y(i-1)+Y(i))
+      t1 = X(i-2) - xm
+      t2 = X(i-1) - xm
+      t3 = X(i) - xm
+      xm = t1*t1 + t2*t2 + t3*t3
+      IF ( xm>0 ) xm = (t1*(Y(i-2)-ym)+t2*(Y(i-1)-ym)+t3*(Y(i)-ym))/xm
+!
+!        CHECK FIRST POINT
+      IF ( i<=3 ) h = xm*t1 + ym
+      Z(i-2) = h
+      h = xm*t2 + ym
+   ENDDO
+!        END OF LOOP
+!
+!        UPDATE LAST TWO COMPONENTS
+   Z(Ndim-1) = h
+   Z(Ndim) = xm*t3 + ym
+   Ier = 0
+   RETURN
+END SUBROUTINE dsg13

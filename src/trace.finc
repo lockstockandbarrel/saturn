@@ -1,0 +1,93 @@
+!*==trace.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE TRACE
+!
+!        PURPOSE
+!           COMPUTE CUMULATIVE PERCENTAGE OF EIGENVALUES GREATER THAN
+!           OR EQUAL TO A CONSTANT SPECIFIED BY THE USER.  THIS SUB-
+!           ROUTINE NORMALLY OCCURS IN A SEQUENCE OF CALLS TO SUB-
+!           ROUTINES CORRE, EIGEN, TRACE, LOAD, AND VARMX IN THE PER-
+!           FORMANCE OF A FACTOR ANALYSIS.
+!
+!        USAGE
+!           CALL TRACE (M,R,CON,K,D)
+!
+!        DESCRIPTION OF PARAMETERS
+!           M     - NUMBER OF VARIABLES. M MUST BE > OR = TO 1
+!           R     - INPUT MATRIX (SYMMETRIC AND STORED IN COMPRESSED
+!                   FORM WITH ONLY UPPER TRIANGLE BY COLUMN IN CORE)
+!                   CONTAINING EIGENVALUES IN DIAGONAL.  EIGENVALUES ARE
+!                   ARRANGED IN DESCENDING ORDER.  THE ORDER OF MATRIX R
+!                   IS M BY M.  ONLY M*(M+1)/2 ELEMENTS ARE IN STORAGE.
+!                   (STORAGE MODE OF 1)
+!           CON   - A CONSTANT USED TO DECIDE HOW MANY EIGENVALUES TO
+!                   RETAIN.  CUMULATIVE PERCENTAGE OF EIGENVALUES
+!                   WHICH ARE GREATER THAN OR EQUAL TO THIS VALUE IS
+!                   CALCULATED.
+!           K     - OUTPUT VARIABLE CONTAINING THE NUMBER OF EIGENVALUES
+!                   GREATER THAN OR EQUAL TO CON.  (K IS THE NUMBER OF
+!                   FACTORS.)
+!           D     - OUTPUT VECTOR OF LENGTH M CONTAINING CUMULATIVE
+!                   PERCENTAGE OF EIGENVALUES WHICH ARE GREATER THAN
+!                   OR EQUAL TO CON.
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           EACH EIGENVALUE GREATER THAN OR EQUAL TO CON IS DIVIDED BY M
+!           AND THE RESULT IS ADDED TO THE PREVIOUS TOTAL TO OBTAIN
+!           THE CUMULATIVE PERCENTAGE FOR EACH EIGENVALUE.
+!
+!     ..................................................................
+!
+SUBROUTINE trace(M,R,Con,K,D)
+   IMPLICIT NONE
+
+   REAL Con,D,fm,R
+   INTEGER i,K,l,M
+
+   DIMENSION R(*),D(*)
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION R,D
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        ...............................................................
+!
+   fm = M
+   l = 0
+   DO i = 1,M
+      l = l + i
+      D(i) = R(l)
+   ENDDO
+   K = 0
+!
+!     TEST WHETHER I-TH EIGENVALUE IS GREATER
+!     THAN OR EQUAL TO THE CONSTANT
+!
+   SPAG_Loop_1_1: DO i = 1,M
+      IF ( D(i)<Con ) EXIT SPAG_Loop_1_1
+      K = K + 1
+      D(i) = D(i)/fm
+   ENDDO SPAG_Loop_1_1
+!
+!     COMPUTE CUMULATIVE PERCENTAGE OF EIGENVALUES
+!
+   DO i = 2,K
+      D(i) = D(i) + D(i-1)
+   ENDDO
+END SUBROUTINE trace

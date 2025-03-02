@@ -1,0 +1,53 @@
+!*==dcla.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+ 
+!
+!     ..................................................................
+!
+!        SUBROUTINE DCLA
+!
+!        PURPOSE
+!           SET EACH DIAGONAL ELEMENT OF A MATRIX EQUAL TO A SCALAR
+!
+!        USAGE
+!           CALL DCLA (A,C,N,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX
+!           C - SCALAR
+!           N - NUMBER OF ROWS AND COLUMNS IN MATRIX A
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           INPUT MATRIX MUST BE A SQUARE MATRIX
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           EACH ELEMENT ON DIAGONAL OF MATRIX IS REPLACED BY SCALAR C
+!
+!     ..................................................................
+!
+SUBROUTINE dcla(A,C,N,Ms)
+   IMPLICIT NONE
+
+   REAL A,C
+   INTEGER i,id,Ms,N
+
+   DIMENSION A(*)
+!
+   DO i = 1,N
+!
+!        LOCATE DIAGONAL ELEMENT FOR ANY MATRIX STORAGE MODE
+!
+      CALL loc(i,i,id,N,N,Ms)
+!
+!        REPLACE DIAGONAL ELEMENTS
+!
+      A(id) = C
+   ENDDO
+END SUBROUTINE dcla

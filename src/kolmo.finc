@@ -1,0 +1,231 @@
+!*==kolmo.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE KOLMO
+!
+!        PURPOSE
+!           TESTS THE DIFFERENCE BETWEEN EMPIRICAL AND THEORETICAL
+!           DISTRIBUTIONS  USING THE KOLMOGOROV-SMIRNOV TEST
+!
+!        USAGE
+!           CALL KOLMO(X,N,Z,PROB,IFCOD,U,S,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X    - INPUT VECTOR OF N INDEPENDENT OBSERVATIONS.  ON
+!                  RETURN FROM KOLMO, X HAS BEEN SORTED INTO A
+!                  MONOTONIC NON-DECREASING SEQUENCE.
+!           N    - NUMBER OF OBSERVATIONS IN X
+!           Z    - OUTPUT VARIABLE CONTAINING THE GREATEST VALUE WITH
+!                  RESPECT TO X OF  SQRT(N)*ABS(FN(X)-F(X)) WHERE
+!                  F(X) IS A  THEORETICAL DISTRIBUTION FUNCTION AND
+!                  FN(X) AN EMPIRICAL DISTRIBUTION FUNCTION.
+!           PROB - OUTPUT VARIABLE CONTAINING THE PROBABILITY OF
+!                  THE STATISTIC BEING GREATER THAN OR EQUAL TO Z IF
+!                  THE HYPOTHESIS THAT X IS FROM THE DENSITY UNDER
+!                  CONSIDERATION IS TRUE.  E.G., PROB = 0.05 IMPLIES
+!                  THAT ONE CAN REJECT THE NULL HYPOTHESIS THAT THE SET
+!                  X IS FROM THE DENSITY UNDER CONSIDERATION WITH 5 PER
+!                  CENT PROBABILITY OF BEING INCORRECT.  PROB = 1. -
+!                  SMIRN(Z).
+!           IFCOD- A CODE DENOTING THE PARTICULAR THEORETICAL
+!                  PROBABILITY DISTRIBUTION FUNCTION BEING CONSIDERED.
+!                  = 1---F(X) IS THE NORMAL PDF.
+!                  = 2---F(X) IS THE EXPONENTIAL PDF.
+!                  = 3---F(X) IS THE CAUCHY PDF.
+!                  = 4---F(X) IS THE UNIFORM PDF.
+!                  = 5---F(X) IS USER SUPPLIED.
+!           U    - WHEN IFCOD IS 1 OR 2, U IS THE MEAN OF THE DENSITY
+!                  GIVEN ABOVE.
+!                  WHEN IFCOD IS 3, U IS THE MEDIAN OF THE CAUCHY
+!                  DENSITY.
+!                  WHEN IFCOD IS 4, U IS THE LEFT ENDPOINT OF THE
+!                  UNIFORM DENSITY.
+!                  WHEN IFCOD IS 5, U IS USER SPECIFIED.
+!           S    - WHEN IFCOD IS 1 OR 2, S IS THE STANDARD DEVIATION OF
+!                  DENSITY GIVEN ABOVE, AND SHOULD BE POSITIVE.
+!                  WHEN IFCOD IS 3, U - S SPECIFIES THE FIRST QUARTILE
+!                  OF THE CAUCHY DENSITY.  S SHOULD BE NON-ZERO.
+!                  IF IFCOD IS 4, S IS THE RIGHT ENDPOINT OF THE UNIFORM
+!                  DENSITY.  S SHOULD BE GREATER THAN U.
+!                  IF IFCOD IS 5, S IS USER SPECIFIED.
+!           IER  - ERROR INDICATOR WHICH IS NON-ZERO IF S VIOLATES ABOVE
+!                  CONVENTIONS.  ON RETURN NO TEST HAS BEEN MADE, AND X
+!                  AND Y HAVE BEEN SORTED INTO MONOTONIC NON-DECREASING
+!                  SEQUENCES.  IER IS SET TO ZERO ON ENTRY TO KOLMO.
+!                  IER IS CURRENTLY SET TO ONE IF THE USER-SUPPLIED PDF
+!                  IS REQUESTED FOR TESTING.  THIS SHOULD BE CHANGED
+!                  (SEE REMARKS) WHEN SOME PDF IS SUPPLIED BY THE USER.
+!
+!        REMARKS
+!           N SHOULD BE GREATER THAN OR EQUAL TO 100.  (SEE THE
+!           MATHEMATICAL DESCRIPTION GIVEN FOR THE PROGRAM SMIRN,
+!           CONCERNING ASYMPTOTIC FORMULAE)  ALSO, PROBABILITY LEVELS
+!           DETERMINED BY THIS PROGRAM WILL NOT BE CORRECT IF THE
+!           SAME SAMPLES ARE USED TO ESTIMATE PARAMETERS FOR THE
+!           CONTINUOUS DISTRIBUTIONS WHICH ARE USED IN THIS TEST.
+!           (SEE THE MATHEMATICAL DESCRIPTION FOR THIS PROGRAM)
+!           F(X) SHOULD BE A CONTINUOUS FUNCTION.
+!           ANY USER SUPPLIED CUMULATIVE PROBABILITY DISTRIBUTION
+!           FUNCTION SHOULD BE CODED BEGINNING WITH STATEMENT 26 BELOW,
+!           AND SHOULD RETURN TO STATEMENT 27.
+!
+!           DOUBLE PRECISION USAGE---IT IS DOUBTFUL THAT THE USER WILL
+!           WISH TO PERFORM THIS TEST USING DOUBLE PRECISION ACCURACY.
+!           IF ONE WISHES TO COMMUNICATE WITH KOLMO IN A DOUBLE
+!           PRECISION PROGRAM, HE SHOULD CALL THE FORTRAN SUPPLIED
+!           PROGRAM SNGL(X) PRIOR TO CALLING KOLMO, AND CALL THE
+!           FORTRAN SUPPLIED PROGRAM DBLE(X) AFTER EXITING FROM KOLMO.
+!           (NOTE THAT SUBROUTINE SMIRN DOES HAVE DOUBLE PRECISION
+!           CAPABILITY AS SUPPLIED BY THIS PACKAGE.)
+!
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           SMIRN, NDTR, AND ANY USER SUPPLIED SUBROUTINES REQUIRED.
+!
+!        METHOD
+!           FOR REFERENCE, SEE (1) W. FELLER--ON THE KOLMOGOROV-SMIRNOV
+!           LIMIT THEOREMS FOR EMPIRICAL DISTRIBUTIONS--
+!           ANNALS OF MATH. STAT., 19, 1948.  177-189,
+!           (2) N. SMIRNOV--TABLE FOR ESTIMATING THE GOODNESS OF FIT
+!           OF EMPIRICAL DISTRIBUTIONS--ANNALS OF MATH. STAT., 19,
+!           1948.  279-281.
+!           (3) R. VON MISES--MATHEMATICAL THEORY OF PROBABILITY AND
+!           STATISTICS--ACADEMIC PRESS, NEW YORK, 1964.  490-493,
+!           (4) B.V. GNEDENKO--THE THEORY OF PROBABILITY--CHELSEA
+!           PUBLISHING COMPANY, NEW YORK, 1962.  384-401.
+!
+!     ..................................................................
+!
+SUBROUTINE kolmo(X,N,Z,Prob,Ifcod,U,S,Ier)
+   IMPLICIT NONE
+
+   REAL d,dn,ei,es,fi,fs,Prob,S,temp,U,X,xn,y,Z
+   INTEGER i,Ier,Ifcod,il,im,j,l,N,nm1
+
+   DIMENSION X(*)
+   INTEGER :: spag_nextblock_1
+   INTEGER :: spag_nextblock_2
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!          NON DECREASING ORDERING OF X(I)'S  (DUBY METHOD)
+!
+         Ier = 0
+         DO i = 2,N
+            spag_nextblock_2 = 1
+            SPAG_DispatchLoop_2: DO
+               SELECT CASE (spag_nextblock_2)
+               CASE (1)
+                  IF ( X(i)<X(i-1) ) THEN
+                     temp = X(i)
+                     im = i - 1
+                     DO j = 1,im
+                        l = i - j
+                        IF ( temp>=X(l) ) THEN
+                           spag_nextblock_2 = 2
+                           CYCLE SPAG_DispatchLoop_2
+                        ENDIF
+                        X(l+1) = X(l)
+                     ENDDO
+                     X(1) = temp
+                  ENDIF
+                  CYCLE
+               CASE (2)
+                  X(l+1) = temp
+                  EXIT SPAG_DispatchLoop_2
+               END SELECT
+            ENDDO SPAG_DispatchLoop_2
+         ENDDO
+!
+!           COMPUTES MAXIMUM DEVIATION DN IN ABSOLUTE VALUE BETWEEN
+!           EMPIRICAL AND THEORETICAL DISTRIBUTIONS
+!
+         nm1 = N - 1
+         xn = N
+         dn = 0.0
+         fs = 0.0
+         il = 1
+         spag_nextblock_1 = 2
+      CASE (2)
+         DO i = il,nm1
+            j = i
+            IF ( X(j)/=X(j+1) ) THEN
+               spag_nextblock_1 = 4
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ENDDO
+         spag_nextblock_1 = 3
+      CASE (3)
+         j = N
+         spag_nextblock_1 = 4
+      CASE (4)
+         il = j + 1
+         fi = fs
+         fs = float(j)/xn
+         IF ( Ifcod<2 ) THEN
+            IF ( S<=0 ) THEN
+               Ier = 1
+               RETURN
+            ELSE
+               Z = (X(j)-U)/S
+               CALL ndtr(Z,y,d)
+            ENDIF
+         ELSEIF ( Ifcod==2 ) THEN
+            IF ( S<=0 ) THEN
+               Ier = 1
+               RETURN
+            ELSE
+               Z = (X(j)-U)/S + 1.0
+               IF ( Z<=0 ) THEN
+                  y = 0.0
+               ELSE
+                  y = 1. - exp(-Z)
+               ENDIF
+            ENDIF
+         ELSEIF ( Ifcod<4 ) THEN
+            IF ( S/=0 ) THEN
+               y = atan((X(j)-U)/S)*0.3183099 + 0.5
+            ELSE
+               Ier = 1
+               RETURN
+            ENDIF
+         ELSEIF ( Ifcod==4 ) THEN
+            IF ( S<=U ) THEN
+               Ier = 1
+               RETURN
+            ELSEIF ( X(j)<=U ) THEN
+               y = 0.0
+            ELSEIF ( X(j)<=S ) THEN
+               y = (X(j)-U)/(S-U)
+            ELSE
+               y = 1.0
+            ENDIF
+         ELSE
+            Ier = 1
+            RETURN
+         ENDIF
+         ei = abs(y-fi)
+         es = abs(y-fs)
+         dn = amax1(dn,ei,es)
+         IF ( il<N ) THEN
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         IF ( il==N ) THEN
+            spag_nextblock_1 = 3
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!           COMPUTES Z=DN*SQRT(N)  AND  PROBABILITY
+!
+         Z = dn*sqrt(xn)
+         CALL smirn(Z,Prob)
+         Prob = 1.0 - Prob
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE kolmo

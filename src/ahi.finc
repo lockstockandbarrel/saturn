@@ -1,0 +1,174 @@
+!*==ahi.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+ 
+!
+!     ..................................................................
+!
+!        SUBROUTINE AHI
+!
+!        PURPOSE
+!           TO INTERPOLATE FUNCTION VALUE Y FOR A GIVEN ARGUMENT VALUE
+!           X USING A GIVEN TABLE (ARG,VAL) OF ARGUMENT, FUNCTION, AND
+!           DERIVATIVE VALUES.
+!
+!        USAGE
+!           CALL AHI (X,ARG,VAL,Y,NDIM,EPS,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X      - THE ARGUMENT VALUE SPECIFIED BY INPUT.
+!           ARG    - THE INPUT VECTOR (DIMENSION NDIM) OF ARGUMENT
+!                    VALUES OF THE TABLE (NOT DESTROYED).
+!           VAL    - THE INPUT VECTOR (DIMENSION 2*NDIM) OF FUNCTION
+!                    AND DERIVATIVE VALUES OF THE TABLE (DESTROYED).
+!                    FUNCTION AND DERIVATIVE VALUES MUST BE STORED IN
+!                    PAIRS, THAT MEANS BEGINNING WITH FUNCTION VALUE AT
+!                    POINT ARG(1) EVERY FUNCTION VALUE MUST BE FOLLOWED
+!                    BY THE VALUE OF DERIVATIVE AT THE SAME POINT.
+!           Y      - THE RESULTING INTERPOLATED FUNCTION VALUE.
+!           NDIM   - AN INPUT VALUE WHICH SPECIFIES THE NUMBER OF
+!                    POINTS IN TABLE (ARG,VAL).
+!           EPS    - AN INPUT CONSTANT WHICH IS USED AS UPPER BOUND
+!                    FOR THE ABSOLUTE ERROR.
+!           IER    - A RESULTING ERROR PARAMETER.
+!
+!        REMARKS
+!           (1) TABLE (ARG,VAL) SHOULD REPRESENT A SINGLE-VALUED
+!               FUNCTION AND SHOULD BE STORED IN SUCH A WAY, THAT THE
+!               DISTANCES ABS(ARG(I)-X) INCREASE WITH INCREASING
+!               SUBSCRIPT I. TO GENERATE THIS ORDER IN TABLE (ARG,VAL),
+!               SUBROUTINES ATSG, ATSM OR ATSE COULD BE USED IN A
+!               PREVIOUS STAGE.
+!           (2) NO ACTION BESIDES ERROR MESSAGE IN CASE NDIM LESS
+!               THAN 1.
+!           (3) INTERPOLATION IS TERMINATED EITHER IF THE DIFFERENCE
+!               BETWEEN TWO SUCCESSIVE INTERPOLATED VALUES IS
+!               ABSOLUTELY LESS THAN TOLERANCE EPS, OR IF THE ABSOLUTE
+!               VALUE OF THIS DIFFERENCE STOPS DIMINISHING, OR AFTER
+!               (2*NDIM-2) STEPS. FURTHER IT IS TERMINATED IF THE
+!               PROCEDURE DISCOVERS TWO ARGUMENT VALUES IN VECTOR ARG
+!               WHICH ARE IDENTICAL. DEPENDENT ON THESE FOUR CASES,
+!               ERROR PARAMETER IER IS CODED IN THE FOLLOWING FORM
+!                IER=0 - IT WAS POSSIBLE TO REACH THE REQUIRED
+!                        ACCURACY (NO ERROR).
+!                IER=1 - IT WAS IMPOSSIBLE TO REACH THE REQUIRED
+!                        ACCURACY BECAUSE OF ROUNDING ERRORS.
+!                IER=2 - IT WAS IMPOSSIBLE TO CHECK ACCURACY BECAUSE
+!                        NDIM IS LESS THAN 2, OR THE REQUIRED ACCURACY
+!                        COULD NOT BE REACHED BY MEANS OF THE GIVEN
+!                        TABLE. NDIM SHOULD BE INCREASED.
+!                IER=3 - THE PROCEDURE DISCOVERED TWO ARGUMENT VALUES
+!                        IN VECTOR ARG WHICH ARE IDENTICAL.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           INTERPOLATION IS DONE BY MEANS OF AITKENS SCHEME OF
+!           HERMITE INTERPOLATION. ON RETURN Y CONTAINS AN INTERPOLATED
+!           FUNCTION VALUE AT POINT X, WHICH IS IN THE SENSE OF REMARK
+!           (3) OPTIMAL WITH RESPECT TO GIVEN TABLE. FOR REFERENCE, SEE
+!           F.B.HILDEBRAND, INTRODUCTION TO NUMERICAL ANALYSIS,
+!           MCGRAW-HILL, NEW YORK/TORONTO/LONDON, 1956, PP.314-317, AND
+!           GERSHINSKY/LEVINE, AITKEN-HERMITE INTERPOLATION,
+!           JACM, VOL.11, ISS.3 (1964), PP.352-356.
+!
+!     ..................................................................
+!
+SUBROUTINE ahi(X,Arg,Val,Y,Ndim,Eps,Ier)
+   IMPLICIT NONE
+
+   REAL Arg,delt1,delt2,Eps,h,h1,h2,Val,X,Y
+   INTEGER i,iend,Ier,j,k,l,m,Ndim
+
+!
+!
+   DIMENSION Arg(*),Val(*)
+   Ier = 2
+   h2 = X - Arg(1)
+   IF ( Ndim<1 ) THEN
+   ELSEIF ( Ndim==1 ) THEN
+      Y = Val(1) + Val(2)*h2
+   ELSE
+!
+!     VECTOR ARG HAS MORE THAN 1 ELEMENT.
+!     THE FIRST STEP PREPARES VECTOR VAL SUCH THAT AITKEN SCHEME CAN BE
+!     USED.
+      i = 1
+      DO j = 2,Ndim
+         h1 = h2
+         h2 = X - Arg(j)
+         Y = Val(i)
+         Val(i) = Y + Val(i+1)*h1
+         h = h1 - h2
+         IF ( h==0 ) THEN
+            CALL spag_block_4
+            RETURN
+         ENDIF
+         Val(i+1) = Y + (Val(i+2)-Y)*h1/h
+         i = i + 2
+      ENDDO
+      Val(i) = Val(i) + Val(i+1)*h2
+!     END OF FIRST STEP
+!
+!     PREPARE AITKEN SCHEME
+      delt2 = 0.
+      iend = i - 1
+!
+!     START AITKEN-LOOP
+      DO i = 1,iend
+         delt1 = delt2
+         Y = Val(1)
+         m = (i+3)/2
+         h1 = Arg(m)
+         DO j = 1,i
+            k = i + 1 - j
+            l = (k+1)/2
+            h = Arg(l) - h1
+            IF ( h==0 ) THEN
+               CALL spag_block_5
+               RETURN
+            ENDIF
+            Val(k) = (Val(k)*(X-h1)-Val(k+1)*(X-Arg(l)))/h
+         ENDDO
+         delt2 = abs(Y-Val(1))
+         IF ( delt2<=Eps ) THEN
+            CALL spag_block_2
+            RETURN
+         ENDIF
+         IF ( i>=5 ) THEN
+            IF ( delt2>=delt1 ) THEN
+               CALL spag_block_3
+               RETURN
+            ENDIF
+         ENDIF
+      ENDDO
+      CALL spag_block_1
+      RETURN
+   ENDIF
+CONTAINS
+   SUBROUTINE spag_block_1
+!     END OF AITKEN-LOOP
+!
+      Y = Val(1)
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+!
+!     THERE IS SUFFICIENT ACCURACY WITHIN 2*NDIM-2 ITERATION STEPS
+      Ier = 0
+      CALL spag_block_1
+   END SUBROUTINE spag_block_2
+   SUBROUTINE spag_block_3
+!
+!     TEST VALUE DELT2 STARTS OSCILLATING
+      Ier = 1
+   END SUBROUTINE spag_block_3
+   SUBROUTINE spag_block_4
+!
+!     THERE ARE TWO IDENTICAL ARGUMENT VALUES IN VECTOR ARG
+      Y = Val(1)
+      CALL spag_block_5
+   END SUBROUTINE spag_block_4
+   SUBROUTINE spag_block_5
+      Ier = 3
+   END SUBROUTINE spag_block_5
+END SUBROUTINE ahi

@@ -1,0 +1,58 @@
+!*==dqh8.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQH8
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(EXP(-X*X)*FCT(X), SUMMED OVER X FROM
+!                               -INFINITY TO +INFINITY).
+!
+!        USAGE
+!           CALL DQH8 (FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           FCT    - THE NAME OF AN EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           Y      - THE RESULTING DOUBLE PRECISION INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 8-POINT GAUSSIAN-HERMITE
+!           QUADRATURE FORMULA, WHICH INTEGRATES EXACTLY WHENEVER
+!           FCT(X) IS A POLYNOMIAL UP TO DEGREE 15.
+!           FOR REFERENCE, SEE
+!           SHAO/CHEN/FRANK, TABLES OF ZEROS AND GAUSSIAN WEIGHTS OF
+!           CERTAIN ASSOCIATED LAGUERRE POLYNOMIALS AND THE RELATED
+!           GENERALIZED HERMITE POLYNOMIALS, IBM TECHNICAL REPORT
+!           TR00.1100 (MARCH 1964), PP.213-214.
+!
+!     ..................................................................
+!
+SUBROUTINE dqh8(fct,Y)
+   IMPLICIT NONE
+!
+!
+   DOUBLE PRECISION x,Y,z,fct
+!
+   x = .29306374202572440D1
+   z = -x
+   Y = .19960407221136762D-3*(fct(x)+fct(z))
+   x = .19816567566958429D1
+   z = -x
+   Y = Y + .17077983007413475D-1*(fct(x)+fct(z))
+   x = .11571937124467802D1
+   z = -x
+   Y = Y + .20780232581489188D0*(fct(x)+fct(z))
+   x = .38118699020732212D0
+   z = -x
+   Y = Y + .66114701255824129D0*(fct(x)+fct(z))
+END SUBROUTINE dqh8

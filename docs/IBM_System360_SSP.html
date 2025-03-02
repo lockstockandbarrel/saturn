@@ -1,0 +1,98 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html lang=en>
+<!-- URL of this document: http://www.ebyte.it/library/codesnippets/IBM_System360_SSP.html -->
+<head>
+  <title>System/360 Scientific Subroutine Package</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+  <meta name=description content="Programmer's Manual of the IBM System/360 Scientific Subroutine Package of 1968">
+  <meta name=author content="Stanislav Sykora">
+  <meta name=copyright content="2008 Stanislav Sykora">
+  <meta name=date content="10 Dec 2008">
+  <meta name=keywords content="Manual,IBM,System 360,Scientific Subroutine Package,SSP,Software history,Software,Algorithm,Subroutine,Scientific programming,Fortran,1968,Programmer's manual,Stans Library,Stan Sykora,Sykora,Codesnippets">
+ <link href="../../StansStyles.css" rel=stylesheet type="text/css" media="all">
+</head>
+<body class="desk"><div align="center"><table class="page" cellspacing=10><tr><td>
+<a name="doctop"></a>
+
+<div class="titleyp">System/360 Scientific Subroutine Package
+<br>Programmer's Manual, Version III
+</div>
+
+<div class="noteauthor">
+<p>by <strong>International Business Machines Corporation</strong> (<strong>IBM</strong>)</p>
+<p>Edited in electronic form by <a href="mailto:sykora@ebyte.it">Stanislav S&yacute;kora</a>, in <a href="../Library.html">Stan's Library</a>, Ed.S.Sykora, Vol.II.
+<br>Released December 10, 2008, as a free online document with a historic value.</p>
+<p><span class="nserif">Permalink via DOI: <a href="http://dx.doi.org/10.3247/sl2soft08.001">10.3247/SL2Soft08.001</a></span></p>
+</div>
+
+<table class="topmenu" bgcolor="#f0f0f0"> 
+ <tr><td class="lbuttons">
+  <a href="../Library.html#programming">Other programming articles</a> in
+  <a target="_blank" href="../Library.html">Stan's Library</a>&nbsp;|
+  <a target="_blank" href="../refs/Refs_Math_Books.html">Math books</a>&nbsp;|
+  <a target="_blank" href="../refs/Refs_Software_Books.html">Software books</a>
+ </td><td class="rbuttons">
+  <a target="_blank" target="_blank" href="../StansLinks.html">SCIENCE&nbsp;Links</a>&nbsp;|
+  <a href="../../index.html">Stan's&nbsp;HUB</a>
+</td></tr></table>
+
+<div class="bline1gray">
+</div>
+
+<table class="educard" cellpadding=5>
+<tr><td class="taj">
+
+<p>The document available here for a <a target="_blank" href="../downloads/IBM_System360_SSP.pdf">free download</a> (<strong>PDF</strong>, <b>35 MB !</b>) has been last published in 1968 as an <em>IBM Application Program</em> under the same title as the one used for this web page. Despite its age, it is quite interesting and occasionally even useful (there are many mentions of it on the Internet). Moreover, it has today a historic value as one of the very first sofware libraries, and there may be but a few copies left. The document is <a target="_blank" href="http://portal.acm.org/citation.cfm?id=1102076&CFID=11032770&CFTOKEN=26963107&backfrombind=1">cited</a> on the <a target="_blank" href="http://portal.acm.org">ACM Portal</a> but the actual text does not appear to be available neither there, nor on the IBM web site, nor elsewhere in the cyberspace. Consequently, I have decided to make it available online as a scanned PDF file.
+</p>
+
+<p>I hope not to violate any <a target="_blank" href="http://www.ibm.com">IBM</a> (<strong>Iternational Business Machines Corporation</strong>) copyright, because (i) the document is 40 years old, (ii) the now mythical <a target="_blank" href="http://www-03.ibm.com/ibm/history/exhibits/mainframe/mainframe_PP2044.html">System 360</a> is out of production since 1972, (iii) the document used to be distributed as a free handout at computer centers employing System 360, (iv) I make it available <em>as is</em> on a totally non-commercial basis, and (v) I give full credit to where credit belongs. I have actually tried to obtain a formal prmission but could not get through the IBM corporate skin (no reply).
+</p>
+
+<p>I own a printed copy of the original document (obtained in 1972) which I have scanned and converted to the PDF format. The quality of the printed copy is rather low, but the scanning made it possible to boost it up a bit so that the result is readable. The file is quite large (35 MBytes) but, in order to protect its integrity I have decided not to break it down to smaller pieces. It contains over 250 routines coded in an early FORTRAN. An average programmer should find it quite easy to trans-codify these into any other high-level language. What is more important than the code, however, are the compact but fully sufficient descriptions of the algorithms which precede each code listing. It is particularly interesting to compare these with modern day versions of similar tasks and thus notice the progress (or the lack of it) in the respective algorithms over the last 40 years.
+</p>
+
+<p><strong>Citations:</strong>
+</p><p>The proper way to cite the original IBM document is:
+</p><p>&nbsp;&nbsp;&nbsp;<em>IBM/360 Scientific Subroutine Package (360A-CM-03X) Version III</em>,
+<br>&nbsp;&nbsp;&nbsp;Scientific Application Program H20-0205-3, IBM Technical Publications Department, White Plains, NY, 1968.
+</p><p>The best way to cite this HTML document and the scanned PDF file is using its DOI or the following form:
+</p><p>&nbsp;&nbsp;&nbsp;<em>System/360 Scientific Subroutine Package Programmer's Manual, Version III</em>, DOI: 10.3247/SL2Soft08.001
+</p>
+
+</td></tr></table>
+
+
+<a name="docend"></a>
+<table class="btmmenu">
+ <tr><td class="lbuttons">
+  <a href="#doctop">TOP</a>&nbsp;|
+  <a href="../Library.html#programming">Other programming articles</a> in
+  <a target="_blank" href="../Library.html">Stan's Library</a>&nbsp;|
+  <a target="_blank" href="../refs/Refs_Math_Books.html">Math books</a>&nbsp;|
+  <a target="_blank" href="../refs/Refs_Software_Books.html">Software books</a>
+ </td><td class="rbuttons">
+  <a target="_blank" href="../StansLinks.html">SCIENCE&nbsp;Links</a>&nbsp;|
+  <a href="../../index.html">Stan's&nbsp;HUB</a>&nbsp;|
+  <a href="#doctop">TOP</a>&nbsp;
+ </td></tr>
+</table>
+
+
+<table class="bline2navy"><tr class="n10"><td>&nbsp;</td><td class="adsh" nowrap>
+<script type="text/javascript"><!--
+  amazon_ad_tag = "stanshub-20";  amazon_ad_width = "728";  amazon_ad_height = "90";  amazon_color_border = "666666";  amazon_color_background = "F0F0F0";  amazon_color_link = "0033CC";  amazon_color_logo = "FF9900";  amazon_ad_logo = "hide";  amazon_ad_link_target = "new";  amazon_ad_price = "retail";//--></script>
+<script type="text/javascript" src="http://www.assoc-amazon.com/s/ads.js"></script>
+</td><td>&nbsp;</td></tr></table>
+
+<table class="footing"><tr>
+ <td class="tal" nowrap>Copyright &copy;2008 Stanislav S&yacute;kora &nbsp;&nbsp;&nbsp;DOI: 10.3247/SL2Soft08.001</td>
+ <td class="tar" nowrap>
+Designed by <a href="mailto:webmaster@ebyte.it">Stan S&yacute;kora</a>
+<script language="JavaScript" type="text/javascript">
+  document.write("( last update "+document.lastModified+")")    
+</script>
+</td></tr></table>
+
+</td></tr></table></div></body>
+</html>
+

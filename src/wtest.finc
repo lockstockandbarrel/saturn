@@ -1,0 +1,123 @@
+!*==wtest.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE WTEST
+!
+!        PURPOSE
+!           TEST DEGREE OF ASSOCIATION AMONG A NUMBER OF VARIABLES BY
+!           THE KENDALL COEFFICIENT OF CONCORDANCE
+!
+!        USAGE
+!           CALL WTEST(A,R,N,M,WA,W,CS,NDF,NR)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A   - INPUT MATRIX, N BY M, OF ORIGINAL DATA
+!           R   - OUTPUT MATRIX, N BY M, OF RANKED DATA.SMALLEST VALUE
+!                 IS RANKED 1, LARGEST IS RANKED N. TIES ARE ASSIGNED
+!                 AVERAGE OF TIED RANKS
+!           N   - NUMBER OF VARIABLES
+!           M   - NUMBER OF CASES
+!           WA  - WORK AREA VECTOR OF LENGTH 2*M
+!           W   - KENDALL COEFFICIENT OF CONCORDANCE(OUTPUT)
+!           CS  - CHI-SQUARE (OUTPUT)
+!           NDF - NUMBER OF DEGREES OF FREEDOM (OUTPUT)
+!           NR  - CODE, 0 FOR UNRANKED DATA IN A, 1 FOR RANKED DATA
+!                 IN A (INPUT)
+!
+!        REMARKS
+!           CHI-SQUARE IS SET TO ZERO IF M IS 7 OR SMALLER
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           RANK
+!           TIE
+!
+!        METHOD
+!           DESCRIBED IN S. SIEGEL, 'NONPARAMETRIC STATISTICS FOR THE
+!           BEHAVIORAL SCIENCES', MCGRAW-HILL, NEW YORK, 1956,
+!           CHAPTER 9
+!     ..................................................................
+!
+!
+SUBROUTINE wtest(A,R,N,M,Wa,W,Cs,Ndf,Nr)
+   IMPLICIT NONE
+
+   REAL A,Cs,fm,fn,R,s,sm,t,ti,W,Wa
+   INTEGER i,ij,ik,ir,iw,j,k,kt,M,N,Ndf,Nr
+
+   DIMENSION A(*),R(*),Wa(*)
+!
+   fm = M
+   fn = N
+!
+!        DETERMINE WHETHER DATA IS RANKED
+!        RANK DATA FOR ALL VARIABLES ASSIGNING TIED OBSERVATIONS AVERAGE
+!        OF TIED RANKS AND COMPUTE CORRECTION FOR TIED SCORES
+!
+   t = 0.0
+   kt = 1
+   DO i = 1,N
+      ij = i - N
+      ik = ij
+      IF ( Nr/=1 ) THEN
+         DO j = 1,M
+            ij = ij + N
+            Wa(j) = A(ij)
+         ENDDO
+         CALL rank(Wa,Wa(M+1),M)
+      ELSE
+         DO j = 1,M
+            ij = ij + N
+            k = M + j
+            Wa(k) = A(ij)
+         ENDDO
+      ENDIF
+      CALL tie(Wa(M+1),M,kt,ti)
+      t = t + ti
+      DO j = 1,M
+         ik = ik + N
+         iw = M + j
+         R(ik) = Wa(iw)
+      ENDDO
+   ENDDO
+!
+!        CALCULATE VECTOR OF SUMS OF RANKS
+!
+   ir = 0
+   DO j = 1,M
+      Wa(j) = 0.0
+      DO i = 1,N
+         ir = ir + 1
+         Wa(j) = Wa(j) + R(ir)
+      ENDDO
+   ENDDO
+!
+!        COMPUTE MEAN OF SUMS OF RANKS
+!
+   sm = 0.0
+   DO j = 1,M
+      sm = sm + Wa(j)
+   ENDDO
+   sm = sm/fm
+!
+!        COMPUTE SUM OF SQUARES OF DEVIATIONS
+!
+   s = 0.0
+   DO j = 1,M
+      s = s + (Wa(j)-sm)*(Wa(j)-sm)
+   ENDDO
+!
+!        COMPUTE W
+!
+   W = s/(((fn*fn)*(fm*fm*fm-fm)/12.0)-fn*t)
+!
+!        COMPUTE DEGREES OF FREEDOM AND CHI-SQUARE IF M IS OVER 7
+!
+   Cs = 0.0
+   Ndf = 0
+   IF ( M>7 ) THEN
+      Cs = fn*(fm-1.0)*W
+      Ndf = M - 1
+   ENDIF
+END SUBROUTINE wtest

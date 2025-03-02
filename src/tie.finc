@@ -1,0 +1,88 @@
+!*==tie.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE TIE
+!
+!        PURPOSE
+!           CALCULATE CORRECTION FACTOR DUE TO TIES
+!
+!        USAGE
+!           CALL TIE(R,N,KT,T)
+!
+!        DESCRIPTION OF PARAMETERS
+!           R  - INPUT VECTOR OF RANKS OF LENGTH N CONTAINING VALUES
+!                1 TO N
+!           N  - NUMBER OF RANKED VALUES
+!           KT - INPUT CODE FOR CALCULATION OF CORRECTION FACTOR
+!                      1   SOLVE EQUATION 1
+!                      2   SOLVE EQUATION 2
+!           T  - CORRECTION FACTOR (OUTPUT)
+!                    EQUATION 1   T=SUM(CT**3-CT)/12
+!                    EQUATION 2   T=SUM(CT*(CT-1)/2)
+!                  WHERE CT IS THE NUMBER OF OBSERVATIONS TIED FOR A
+!                        GIVEN RANK
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           VECTOR IS SEARCHED FOR SUCCESSIVELY LARGER RANKS. TIES ARE
+!           COUNTED AND CORRECTION FACTOR 1 OR 2 SUMMED.
+!
+!     ..................................................................
+!
+SUBROUTINE tie(R,N,Kt,T)
+   IMPLICIT NONE
+
+   REAL ct,R,T,x,y
+   INTEGER i,ind,Kt,N
+
+   DIMENSION R(*)
+!
+!        INITIALIZATION
+!
+   T = 0.0
+   y = 0.0
+   SPAG_Loop_1_1: DO
+      x = 1.0E38
+      ind = 0
+!
+!        FIND NEXT LARGEST RANK
+!
+      DO i = 1,N
+         IF ( R(i)>y ) THEN
+            IF ( R(i)<x ) THEN
+               x = R(i)
+               ind = ind + 1
+            ENDIF
+         ENDIF
+      ENDDO
+!
+!        IF ALL RANKS HAVE BEEN TESTED, RETURN
+!
+      IF ( ind<=0 ) EXIT SPAG_Loop_1_1
+      y = x
+      ct = 0.0
+!
+!        COUNT TIES
+!
+      DO i = 1,N
+         IF ( R(i)==x ) ct = ct + 1.0
+      ENDDO
+!
+!        CALCULATE CORRECTION FACTOR
+!
+      IF ( ct/=0 ) THEN
+         IF ( Kt/=1 ) THEN
+            T = T + ct*(ct-1.)/2.0
+         ELSE
+            T = T + (ct*ct*ct-ct)/12.0
+         ENDIF
+      ENDIF
+   ENDDO SPAG_Loop_1_1
+END SUBROUTINE tie

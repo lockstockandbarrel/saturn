@@ -1,0 +1,318 @@
+!*==mchb.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MCHB
+!
+!        PURPOSE
+!           FOR A GIVEN POSITIVE-DEFINITE M BY M MATRIX A WITH SYMMETRIC
+!           BAND STRUCTURE AND - IF NECESSARY - A GIVEN GENERAL M BY N
+!           MATRIX R, THE FOLLOWING CALCULATIONS (DEPENDENT ON THE
+!           VALUE OF THE DECISION PARAMETER IOP) ARE PERFORMED
+!           (1) MATRIX A IS FACTORIZED (IF IOP IS NOT NEGATIVE), THAT
+!               MEANS BAND MATRIX TU WITH UPPER CODIAGONALS ONLY IS
+!               GENERATED ON THE LOCATIONS OF A SUCH THAT
+!               TRANSPOSE(TU)*TU=A.
+!           (2) MATRIX R IS MULTIPLIED ON THE LEFT BY INVERSE(TU)
+!               AND/OR INVERSE(TRANSPOSE(TU)) AND THE RESULT IS STORED
+!               IN THE LOCATIONS OF R.
+!           THIS SUBROUTINE ESPECIALLY CAN BE USED TO SOLVE THE SYSTEM
+!           OF SIMULTANEOUS LINEAR EQUATIONS A*X=R WITH POSITIVE-
+!           DEFINITE COEFFICIENT MATRIX A OF SYMMETRIC BAND STRUCTURE.
+!
+!        USAGE
+!           CALL MCHB (R,A,M,N,MUD,IOP,EPS,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           R      - INPUT IN CASES IOP=-3,-2,-1,1,2,3  M BY N RIGHT
+!                          HAND SIDE MATRIX,
+!                          IN CASE IOP=0  IRRELEVANT.
+!                    OUTPUT IN CASES IOP=1,-1  INVERSE(A)*R,
+!                           IN CASES IOP=2,-2  INVERSE(TU)*R,
+!                           IN CASES IOP=3,-3  INVERSE(TRANSPOSE(TU))*R,
+!                           IN CASE  IOP=0     UNCHANGED.
+!           A      - INPUT IN CASES IOP=0,1,2,3 M BY M POSITIVE-DEFINITE
+!                          COEFFICIENT MATRIX OF SYMMETRIC BAND STRUC-
+!                          TURE STORED IN COMPRESSED FORM (SEE REMARKS),
+!                          IN CASES IOP=-1,-2,-3  M BY M BAND MATRIX TU
+!                          WITH UPPER CODIAGONALS ONLY, STORED IN
+!                          COMPRESSED FORM (SEE REMARKS).
+!                    OUTPUT IN ALL CASES  BAND MATRIX TU WITH UPPER
+!                           CODIAGONALS ONLY, STORED IN COMPRESSED FORM
+!                           (THAT MEANS UNCHANGED IF IOP=-1,-2,-3).
+!           M      - INPUT VALUE SPECIFYING THE NUMBER OF ROWS AND
+!                    COLUMNS OF A AND THE NUMBER OF ROWS OF R.
+!           N      - INPUT VALUE SPECIFYING THE NUMBER OF COLUMNS OF R
+!                    (IRRELEVANT IN CASE IOP=0).
+!           MUD    - INPUT VALUE SPECIFYING THE NUMBER OF UPPER
+!                    CODIAGONALS OF A.
+!           IOP    - ONE OF THE VALUES -3,-2,-1,0,1,2,3 GIVEN AS INPUT
+!                    AND USED AS DECISION PARAMETER.
+!           EPS    - INPUT VALUE USED AS RELATIVE TOLERANCE FOR TEST ON
+!                    LOSS OF SIGNIFICANT DIGITS.
+!           IER    - RESULTING ERROR PARAMETER CODED AS FOLLOWS
+!                     IER=0  - NO ERROR,
+!                     IER=-1 - NO RESULT BECAUSE OF WRONG INPUT
+!                              PARAMETERS M,MUD,IOP (SEE REMARKS),
+!                              OR BECAUSE OF A NONPOSITIVE RADICAND AT
+!                              SOME FACTORIZATION STEP,
+!                              OR BECAUSE OF A ZERO DIAGONAL ELEMENT
+!                              AT SOME DIVISION STEP.
+!                     IER=K  - WARNING DUE TO POSSIBLE LOSS OF SIGNIFI-
+!                              CANCE INDICATED AT FACTORIZATION STEP K+1
+!                              WHERE RADICAND WAS NO LONGER GREATER
+!                              THAN EPS*A(K+1,K+1).
+!
+!        REMARKS
+!           UPPER PART OF SYMMETRIC BAND MATRIX A CONSISTING OF MAIN
+!           DIAGONAL AND MUD UPPER CODIAGONALS (RESP. BAND MATRIX TU
+!           CONSISTING OF MAIN DIAGONAL AND MUD UPPER CODIAGONALS)
+!           IS ASSUMED TO BE STORED IN COMPRESSED FORM, I.E. ROWWISE
+!           IN TOTALLY NEEDED M+MUD*(2M-MUD-1)/2 SUCCESSIVE STORAGE
+!           LOCATIONS. ON RETURN UPPER BAND FACTOR TU (ON THE LOCATIONS
+!           OF A) IS STORED IN THE SAME WAY.
+!           RIGHT HAND SIDE MATRIX R IS ASSUMED TO BE STORED COLUMNWISE
+!           IN N*M SUCCESSIVE STORAGE LOCATIONS. ON RETURN RESULT MATRIX
+!           INVERSE(A)*R OR INVERSE(TU)*R OR INVERSE(TRANSPOSE(TU))*R
+!           IS STORED COLUMNWISE TOO ON THE LOCATIONS OF R.
+!           INPUT PARAMETERS M, MUD, IOP SHOULD SATISFY THE FOLLOWING
+!           RESTRICTIONS     MUD NOT LESS THAN ZERO,
+!                            1+MUD NOT GREATER THAN M,
+!                            ABS(IOP) NOT GREATER THAN 3.
+!           NO ACTION BESIDES ERROR MESSAGE IER=-1 TAKES PLACE IF THESE
+!           RESTRICTIONS ARE NOT SATISFIED.
+!           THE PROCEDURE GIVES RESULTS IF THE RESTRICTIONS ON INPUT
+!           PARAMETERS ARE SATISFIED, IF RADICANDS AT ALL FACTORIZATION
+!           STEPS ARE POSITIVE AND/OR IF ALL DIAGONAL ELEMENTS OF
+!           UPPER BAND FACTOR TU ARE NONZERO.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           FACTORIZATION IS DONE USING CHOLESKY-S SQUARE-ROOT METHOD,
+!           WHICH GENERATES THE UPPER BAND MATRIX TU SUCH THAT
+!           TRANSPOSE(TU)*TU=A. TU IS RETURNED AS RESULT ON THE
+!           LOCATIONS OF A. FURTHER, DEPENDENT ON THE ACTUAL VALUE OF
+!           IOP, DIVISION OF R BY TRANSPOSE(TU) AND/OR TU IS PERFORMED
+!           AND THE RESULT IS RETURNED ON THE LOCATIONS OF R.
+!           FOR REFERENCE, SEE H. RUTISHAUSER, ALGORITHMUS 1 - LINEARES
+!           GLEICHUNGSSYSTEM MIT SYMMETRISCHER POSITIV-DEFINITER
+!           BANDMATRIX NACH CHOLESKY -,COMPUTING (ARCHIVES FOR
+!           ELECTRONIC COMPUTING), VOL.1, ISS.1 (1966), PP.77-78.
+!
+!     ..................................................................
+!
+SUBROUTINE mchb(R,A,M,N,Mud,Iop,Eps,Ier)
+   IMPLICIT NONE
+
+   REAL A,Eps,R
+   INTEGER i,id,iend,Ier,Iop,ist,j,k,l,ll,lld,lldst,lll,lmax,M,mc,mr,Mud,N
+
+!
+!
+   DIMENSION R(*),A(*)
+   DOUBLE PRECISION tol,sum,piv
+!
+!        TEST ON WRONG INPUT PARAMETERS
+   IF ( iabs(Iop)<=3 ) THEN
+      IF ( Mud>=0 ) THEN
+         mc = Mud + 1
+         IF ( M>=mc ) THEN
+            mr = M - Mud
+            Ier = 0
+!
+!        MC IS THE MAXIMUM NUMBER OF ELEMENTS IN THE ROWS OF ARRAY A
+!        MR IS THE INDEX OF THE LAST ROW IN ARRAY A WITH MC ELEMENTS
+!
+!     ******************************************************************
+!
+!        START FACTORIZATION OF MATRIX A
+            IF ( Iop>=0 ) THEN
+               iend = 0
+               lldst = Mud
+               DO k = 1,M
+                  ist = iend + 1
+                  iend = ist + Mud
+                  j = k - mr
+                  IF ( j>0 ) iend = iend - j
+                  IF ( j>1 ) lldst = lldst - 1
+                  lmax = Mud
+                  j = mc - k
+                  IF ( j>0 ) lmax = lmax - j
+                  id = 0
+                  tol = A(ist)*Eps
+!
+!        START FACTORIZATION-LOOP OVER K-TH ROW
+                  DO i = ist,iend
+                     sum = 0.D0
+                     IF ( lmax>0 ) THEN
+!
+!        PREPARE INNER LOOP
+                        ll = ist
+                        lld = lldst
+!
+!        START INNER LOOP
+                        DO l = 1,lmax
+                           ll = ll - lld
+                           lll = ll + id
+                           sum = sum + A(ll)*A(lll)
+                           IF ( lld<Mud ) lld = lld + 1
+                        ENDDO
+                     ENDIF
+!        END OF INNER LOOP
+!
+!        TRANSFORM ELEMENT A(I)
+                     sum = dble(A(i)) - sum
+                     IF ( i<=ist ) THEN
+!
+!        A(I) IS DIAGONAL ELEMENT. ERROR TEST.
+                        IF ( sum<=0 ) THEN
+                           CALL spag_block_1
+                           RETURN
+                        ENDIF
+!
+!        TEST ON LOSS OF SIGNIFICANT DIGITS AND WARNING
+                        IF ( sum<=tol ) THEN
+                           IF ( Ier<=0 ) Ier = k - 1
+                        ENDIF
+!
+!        COMPUTATION OF PIVOT ELEMENT
+                        piv = dsqrt(sum)
+                        A(i) = piv
+                        piv = 1.D0/piv
+                     ELSE
+!
+!        A(I) IS NOT DIAGONAL ELEMENT
+                        A(i) = sum*piv
+                     ENDIF
+!
+!        UPDATE ID AND LMAX
+                     id = id + 1
+                     IF ( id>j ) lmax = lmax - 1
+                  ENDDO
+               ENDDO
+!
+!        END OF FACTORIZATION-LOOP OVER K-TH ROW
+!        END OF FACTORIZATION OF MATRIX A
+!
+!     ******************************************************************
+!
+!        PREPARE MATRIX DIVISIONS
+               IF ( Iop==0 ) RETURN
+            ENDIF
+            id = N*M
+            iend = iabs(Iop) - 2
+            IF ( iend/=0 ) THEN
+!
+!     ******************************************************************
+!
+!        START DIVISION BY TRANSPOSE OF MATRIX TU (TU IS STORED IN
+!        LOCATIONS OF A)
+               ist = 1
+               lmax = 0
+               j = -mr
+               lldst = Mud
+               DO k = 1,M
+                  piv = A(ist)
+                  IF ( piv==0 ) THEN
+                     CALL spag_block_1
+                     RETURN
+                  ENDIF
+                  piv = 1.D0/piv
+!
+!        START BACKSUBSTITUTION-LOOP FOR K-TH ROW OF MATRIX R
+                  DO i = k,id,M
+                     sum = 0.D0
+                     IF ( lmax>0 ) THEN
+!
+!        PREPARE INNER LOOP
+                        ll = ist
+                        lll = i
+                        lld = lldst
+!
+!        START INNER LOOP
+                        DO l = 1,lmax
+                           ll = ll - lld
+                           lll = lll - 1
+                           sum = sum + A(ll)*R(lll)
+                           IF ( lld<Mud ) lld = lld + 1
+                        ENDDO
+                     ENDIF
+!        END OF INNER LOOP
+!
+!        TRANSFORM ELEMENT R(I)
+                     R(i) = piv*(dble(R(i))-sum)
+                  ENDDO
+!        END OF BACKSUBSTITUTION-LOOP FOR K-TH ROW OF MATRIX R
+!
+!        UPDATE PARAMETERS LMAX, IST AND LLDST
+                  IF ( mc>k ) lmax = k
+                  ist = ist + mc
+                  j = j + 1
+                  IF ( j>0 ) THEN
+                     ist = ist - j
+                     lldst = lldst - 1
+                  ENDIF
+               ENDDO
+!
+!        END OF DIVISION BY TRANSPOSE OF MATRIX TU
+!
+!     ******************************************************************
+!
+!        START DIVISION BY MATRIX TU (TU IS STORED ON LOCATIONS OF A)
+               IF ( iend>0 ) RETURN
+            ENDIF
+            ist = M + (Mud*(M+M-mc))/2 + 1
+            lmax = 0
+            k = M
+            SPAG_Loop_1_1: DO
+               iend = ist - 1
+               ist = iend - lmax
+               piv = A(ist)
+               IF ( piv==0 ) EXIT SPAG_Loop_1_1
+               piv = 1.D0/piv
+               l = ist + 1
+!
+!        START BACKSUBSTITUTION-LOOP FOR K-TH ROW OF MATRIX R
+               DO i = k,id,M
+                  sum = 0.D0
+                  IF ( lmax>0 ) THEN
+                     lll = i
+!
+!        START INNER LOOP
+                     DO ll = l,iend
+                        lll = lll + 1
+                        sum = sum + A(ll)*R(lll)
+                     ENDDO
+                  ENDIF
+!        END OF INNER LOOP
+!
+!        TRANSFORM ELEMENT R(I)
+                  R(i) = piv*(dble(R(i))-sum)
+               ENDDO
+!        END OF BACKSUBSTITUTION-LOOP FOR K-TH ROW OF MATRIX R
+!
+!
+!        UPDATE PARAMETERS LMAX AND K
+               IF ( k>mr ) lmax = lmax + 1
+               k = k - 1
+               IF ( k<=0 ) RETURN
+            ENDDO SPAG_Loop_1_1
+         ENDIF
+      ENDIF
+   ENDIF
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+!
+!        END OF DIVISION BY MATRIX TU
+!
+!     ******************************************************************
+!
+!        ERROR EXIT IN CASE OF WRONG INPUT PARAMETERS OR PIVOT ELEMENT
+!        LESS THAN OR EQUAL TO ZERO
+      Ier = -1
+   END SUBROUTINE spag_block_1
+END SUBROUTINE mchb

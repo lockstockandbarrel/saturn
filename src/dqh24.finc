@@ -1,0 +1,82 @@
+!*==dqh24.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQH24
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(EXP(-X*X)*FCT(X), SUMMED OVER X FROM
+!                               -INFINITY TO +INFINITY).
+!
+!        USAGE
+!           CALL DQH24 (FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           FCT    - THE NAME OF AN EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           Y      - THE RESULTING DOUBLE PRECISION INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 24-POINT GAUSSIAN-HERMITE
+!           QUADRATURE FORMULA, WHICH INTEGRATES EXACTLY WHENEVER
+!           FCT(X) IS A POLYNOMIAL UP TO DEGREE 47.
+!           FOR REFERENCE, SEE
+!           SHAO/CHEN/FRANK, TABLES OF ZEROS AND GAUSSIAN WEIGHTS OF
+!           CERTAIN ASSOCIATED LAGUERRE POLYNOMIALS AND THE RELATED
+!           GENERALIZED HERMITE POLYNOMIALS, IBM TECHNICAL REPORT
+!           TR00.1100 (MARCH 1964), PP.213-214.
+!
+!     ..................................................................
+!
+SUBROUTINE dqh24(fct,Y)
+   IMPLICIT NONE
+!
+!
+   DOUBLE PRECISION x,Y,z,fct
+!
+   x = .60159255614257397D1
+   z = -x
+   Y = .16643684964891089D-15*(fct(x)+fct(z))
+   x = .52593829276680444D1
+   z = -x
+   Y = Y + .65846202430781701D-12*(fct(x)+fct(z))
+   x = .46256627564237873D1
+   z = -x
+   Y = Y + .30462542699875639D-9*(fct(x)+fct(z))
+   x = .40536644024481495D1
+   z = -x
+   Y = Y + .40189711749414297D-7*(fct(x)+fct(z))
+   x = .35200068130345247D1
+   z = -x
+   Y = Y + .21582457049023336D-5*(fct(x)+fct(z))
+   x = .30125461375655648D1
+   z = -x
+   Y = Y + .56886916364043798D-4*(fct(x)+fct(z))
+   x = .25238810170114270D1
+   z = -x
+   Y = Y + .8236924826884175D-3*(fct(x)+fct(z))
+   x = .20490035736616989D1
+   z = -x
+   Y = Y + .70483558100726710D-2*(fct(x)+fct(z))
+   x = .15842500109616941D1
+   z = -x
+   Y = Y + .37445470503230746D-1*(fct(x)+fct(z))
+   x = .11267608176112451D1
+   z = -x
+   Y = Y + .12773962178455916D0*(fct(x)+fct(z))
+   x = .67417110703721224D0
+   z = -x
+   Y = Y + .28617953534644302D0*(fct(x)+fct(z))
+   x = .22441454747251559D0
+   z = -x
+   Y = Y + .42693116386869925D0*(fct(x)+fct(z))
+END SUBROUTINE dqh24

@@ -1,0 +1,124 @@
+!*==jelf.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE JELF
+!
+!        PURPOSE
+!           COMPUTES THE THREE JACOBIAN ELLIPTIC FUNCTIONS SN, CN, DN.
+!
+!        USAGE
+!           CALL JELF(SN,CN,DN,X,SCK)
+!
+!        DESCRIPTION OF PARAMETERS
+!           SN    - RESULT VALUE SN(X)
+!           CN    - RESULT VALUE CN(X)
+!           DN    - RESULT VALUE DN(X)
+!           X     - ARGUMENT OF JACOBIAN ELLIPTIC FUNCTIONS
+!           SCK   - SQUARE OF COMPLEMENTARY MODULUS
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DEFINITION
+!           X=INTEGRAL(1/SQRT((1-T*T)*(1-(K*T)**2)), SUMMED OVER
+!           T FROM 0 TO SN), WHERE K=SQRT(1-SCK).
+!           SN*SN + CN*CN = 1
+!           (K*SN)**2 + DN**2 = 1.
+!           EVALUATION
+!           CALCULATION IS DONE USING THE PROCESS OF THE ARITHMETIC
+!           GEOMETRIC MEAN TOGETHER WITH GAUSS DESCENDING TRANSFORMATION
+!           BEFORE INVERSION OF THE INTEGRAL TAKES PLACE.
+!           REFERENCE
+!           R. BULIRSCH, NUMERICAL CALCULATION OF ELLIPTIC INTEGRALS AND
+!                  ELLIPTIC FUNCTIOMS.
+!                  HANDBOOK SERIES OF SPECIAL FUNCTIONS
+!                  NUMERISCHE MATHEMATIK VOL. 7, 1965, PP. 78-90.
+!
+!     ..................................................................
+!
+SUBROUTINE jelf(Sn,Cn,Dn,X,Sck)
+   IMPLICIT NONE
+
+   REAL a,ari,b,c,cm,Cn,d,Dn,geo,Sck,Sn,X,y
+   INTEGER i,k,l
+
+!
+!
+   DIMENSION ari(12),geo(12)
+!     TEST MODULUS
+   cm = Sck
+   y = X
+   IF ( Sck<0 ) THEN
+!        JACOBIS MODULUS TRANSFORMATION
+      d = 1. - Sck
+      cm = -Sck/d
+      d = sqrt(d)
+      y = d*X
+   ELSEIF ( Sck==0 ) THEN
+      d = exp(X)
+      a = 1./d
+      b = a + d
+      Cn = 2./b
+      Dn = Cn
+      Sn = tanh(X)
+      CALL spag_block_1
+      RETURN
+   ENDIF
+   a = 1.
+   Dn = 1.
+   SPAG_Loop_1_1: DO i = 1,12
+      l = i
+      ari(i) = a
+      cm = sqrt(cm)
+      geo(i) = cm
+      c = (a+cm)*.5
+      IF ( abs(a-cm)<=1.E-4*a ) EXIT SPAG_Loop_1_1
+      cm = a*cm
+      a = c
+   ENDDO SPAG_Loop_1_1
+!
+!     START BACKWARD RECURSION
+   y = c*y
+   Sn = sin(y)
+   Cn = cos(y)
+   IF ( Sn/=0 ) THEN
+      a = Cn/Sn
+      c = a*c
+      DO i = 1,l
+         k = l - i + 1
+         b = ari(k)
+         a = c*a
+         c = Dn*c
+         Dn = (geo(k)+a)/(b+a)
+         a = c/b
+      ENDDO
+      a = 1./sqrt(c*c+1.)
+      IF ( Sn<0 ) THEN
+         Sn = -a
+      ELSE
+         Sn = a
+      ENDIF
+      Cn = c*Sn
+   ENDIF
+   IF ( Sck<0 ) THEN
+      a = Dn
+      Dn = Cn
+      Cn = a
+      Sn = Sn/d
+      RETURN
+   ENDIF
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+!        DEGENERATE CASE SCK=0 GIVES RESULTS
+!           CN X = DN X = 1/COSH X
+!           SN X = TANH X
+      RETURN
+   END SUBROUTINE spag_block_1
+END SUBROUTINE jelf

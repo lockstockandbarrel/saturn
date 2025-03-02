@@ -1,0 +1,70 @@
+!*==sici.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE SICI
+!
+!        PURPOSE
+!           COMPUTES THE SINE AND COSINE INTEGRAL
+!
+!        USAGE
+!           CALL SICI(SI,CI,X)
+!
+!        DESCRIPTION OF PARAMETERS
+!           SI    - THE RESULTANT VALUE SI(X)
+!           CI    - THE RESULTANT VALUE CI(X)
+!           X     - THE ARGUMENT OF SI(X) AND CI(X)
+!
+!        REMARKS
+!           THE ARGUMENT VALUE REMAINS UNCHANGED
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DEFINITION
+!           SI(X)=INTEGRAL(SIN(T)/T)
+!           CI(X)=INTEGRAL(COS(T)/T)
+!           EVALUATION
+!           REDUCTION OF RANGE USING SYMMETRY.
+!           DIFFERENT APPROXIMATIONS ARE USED FOR ABS(X) GREATER
+!           THAN 4 AND FOR ABS(X) LESS THAN 4.
+!           REFERENCE
+!           LUKE AND WIMP, 'POLYNOMIAL APPROXIMATIONS TO INTEGRAL
+!           TRANSFORMS',  MATHEMATICAL TABLES AND OTHER AIDS TO
+!           COMPUTATION, VOL. 15, 1961, ISSUE 74, PP. 174-178.
+!
+!     ..................................................................
+!
+SUBROUTINE sici(Si,Ci,X)
+   IMPLICIT NONE
+
+   REAL Ci,Si,u,v,X,y,z
+
+   z = abs(X)
+   IF ( z<=4. ) THEN
+      y = (4.-z)*(4.+z)
+      Si = -1.570797E0
+      IF ( z/=0 ) THEN
+         Si = X*(((((1.753141E-9*y+1.568988E-7)*y+1.374168E-5)*y+6.939889E-4)*y+1.964882E-2)*y+4.395509E-1+Si/X)
+         Ci = ((5.772156E-1+alog(z))/z-z*(((((1.386985E-10*y+1.584996E-8)*y+1.725752E-6)*y+1.185999E-4)*y+4.990920E-3)              &
+            & *y+1.315308E-1))*z
+         RETURN
+      ELSE
+         Ci = -huge(0.0)
+         RETURN
+      ENDIF
+   ELSE
+      Si = sin(z)
+      y = cos(z)
+      z = 4./z
+      u = ((((((((4.048069E-3*z-2.279143E-2)*z+5.515070E-2)*z-7.261642E-2)*z+4.987716E-2)*z-3.332519E-3)*z-2.314617E-2)             &
+        & *z-1.134958E-5)*z+6.250011E-2)*z + 2.583989E-10
+      v = (((((((((-5.108699E-3*z+2.819179E-2)*z-6.537283E-2)*z+7.902034E-2)*z-4.400416E-2)*z-7.945556E-3)*z+2.601293E-2)           &
+        & *z-3.764000E-4)*z-3.122418E-2)*z-6.646441E-7)*z + 2.500000E-1
+      Ci = z*(Si*v-y*u)
+      Si = -z*(Si*u+y*v)
+      IF ( X<0 ) Si = 3.141593E0 - Si
+   ENDIF
+END SUBROUTINE sici

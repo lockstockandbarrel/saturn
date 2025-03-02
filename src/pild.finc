@@ -1,0 +1,50 @@
+!*==pild.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PILD
+!
+!        PURPOSE
+!           EVALUATE POLYNOMIAL AND ITS FIRST DERIVATIVE FOR A GIVEN
+!           ARGUMENT
+!
+!        USAGE
+!           CALL PILD(POLY,DVAL,ARGUM,X,IDIMX)
+!
+!        DESCRIPTION OF PARAMETERS
+!           POLY  - VALUE OF POLYNOMIAL
+!           DVAL  - DERIVATIVE
+!           ARGUM - ARGUMENT
+!           X     - VECTOR OF COEFFICIENTS FOR POLYNOMIAL, ORDERED
+!                   FROM SMALLEST TO LARGEST POWER
+!           IDIMX - DIMENSION OF X
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           PQSD
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF SUBROUTINE PQSD (QUADRATIC
+!           SYNTHETIC DIVISION)
+!
+!     ..................................................................
+!
+SUBROUTINE pild(Poly,Dval,Argum,X,Idimx)
+   IMPLICIT NONE
+
+   REAL Argum,Dval,p,Poly,q,X
+   INTEGER Idimx
+
+   DIMENSION X(*)
+!
+   p = Argum + Argum
+   q = -Argum*Argum
+!
+   CALL pqsd(Dval,Poly,p,q,X,Idimx)
+!
+   Poly = Argum*Dval + Poly
+!
+END SUBROUTINE pild

@@ -1,0 +1,149 @@
+!*==mprc.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MPRC
+!
+!        PURPOSE
+!           TO PERMUTE THE ROWS OR COLUMNS OF A GIVEN MATRIX ACCORDING
+!           TO A GIVEN TRANSPOSITION VECTOR OR ITS INVERSE.  (SEE THE
+!           DISCUSSION ON PERMUTATIONS FOR DEFINITIONS AND NOTATION.)
+!
+!        USAGE
+!           CALL MPRC(A,M,N,ITRA,INV,IROCO,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - GIVEN M BY N MATRIX AND RESULTING PERMUTED MATRIX
+!           M     - NUMBER OF ROWS OF A
+!           N     - NUMBER OF COLUMNS OF A
+!           ITRA  - GIVEN TRANSPOSITION VECTOR (DIMENSION M IF ROWS ARE
+!                   PERMUTED, N IF COLUMNS ARE PERMUTED)
+!           INV   - INPUT PARAMETER
+!                   INV NON-ZERO  -  PERMUTE ACCORDING TO ITRA
+!                   INV    =   0  -  PERMUTE ACCORDING TO ITRA INVERSE
+!           IROCO - INPUT PARAMETER
+!                   IROCO NON-ZERO  -  PERMUTE THE COLUMNS OF A
+!                   IROCO    =   0  -  PERMUTE THE ROWS OF A
+!           IER   - RESULTING ERROR PARAMETER
+!                   IER = -1  -  M AND N ARE NOT BOTH POSITIVE
+!                   IER =  0  -  NO ERROR
+!                   IER =  1  -  ITRA IS NOT A TRANSPOSITION VECTOR ON
+!                                1,...,M IF ROWS ARE PERMUTED, 1,...,N
+!                                IF COLUMNS ARE PERMUTED
+!
+!        REMARKS
+!           (1)  IF IER=-1 THERE IS NO COMPUTATION.
+!           (2)  IF IER= 1, THEN COMPUTATION HAS BEEN UNSUCCESSFUL DUE
+!                TO ERROR, BUT THE MATRIX A WILL REFLECT THE ROW OR
+!                COLUMN INTERCHANGES PERFORMED BEFORE THE ERROR WAS
+!                DETECTED.
+!           (3)  THE MATRIX A IS ASSUMED TO BE STORED COLUMNWISE.
+!
+!        SUBROUTINES AND SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE ROWS OR COLUMNS ARE PERMUTED ELEMENTWISE, INTERCHANGING
+!           ROW OR COLUMN 1 AND ITRA(1),...,ROW OR COLUMN K AND ITRA(K)
+!           IN THAT ORDER IF INV=0, AND OTHERWISE INTERCHANGING ROW OR
+!           COLUMN K AND ITRA(K),...,ROW OR COLUMN 1 AND ITRA(1), WHERE
+!           K IS M OR N DEPENDING ON WHETHER WE PERMUTE ROWS OR COLUMNS.
+!
+!     ..................................................................
+!
+SUBROUTINE mprc(A,M,N,Itra,Inv,Iroco,Ier)
+   IMPLICIT NONE
+
+   REAL A,save
+   INTEGER i,ia,id,Ier,il,Inv,Iroco,Itra,j,k,l,ll,M,mm,mmm,N
+
+!
+!
+   DIMENSION A(*),Itra(*)
+   INTEGER :: spag_nextblock_1
+!
+!        TEST OF DIMENSIONS
+   IF ( M<=0 ) THEN
+!
+!        ERROR RETURN IN CASE OF ILLEGAL DIMENSIONS
+      Ier = -1
+   ELSE
+      IF ( N<=0 ) THEN
+         Ier = -1
+         RETURN
+      ELSE
+!
+!        DETERMINE WHICH ARE TO BE PERMUTED-THE ROWS OR THE COLUMNS
+         IF ( Iroco/=0 ) THEN
+!
+!        INITIALIZE FOR COLUMN INTERCHANGES
+            mm = M
+            mmm = -1
+            l = M
+            ll = N
+         ELSE
+!
+!        INITIALIZE FOR ROW INTERCHANGES
+            mm = 1
+            mmm = M
+            l = N
+            ll = M
+         ENDIF
+!
+!        INITIALIZE LOOP OVER ALL ROWS OR COLUMNS
+         ia = 1
+         id = 1
+!
+!        TEST FOR INVERSE OPERATION
+         IF ( Inv/=0 ) THEN
+            ia = ll
+            id = -1
+         ENDIF
+         DO i = 1,ll
+            spag_nextblock_1 = 1
+            SPAG_DispatchLoop_1: DO
+               SELECT CASE (spag_nextblock_1)
+               CASE (1)
+                  k = Itra(ia)
+                  IF ( k<ia ) THEN
+                     IF ( k<=0 ) GOTO 50
+                  ELSEIF ( k==ia ) THEN
+                     spag_nextblock_1 = 2
+                     CYCLE SPAG_DispatchLoop_1
+                  ELSEIF ( ll<k ) THEN
+                     GOTO 50
+                  ENDIF
+!
+!        INITIALIZE ROW OR COLUMN INTERCHANGE
+                  il = ia*mm
+                  k = k*mm
+!
+!        PERFORM ROW OR COLUMN INTERCHANGE
+                  DO j = 1,l
+                     save = A(il)
+                     A(il) = A(k)
+                     A(k) = save
+                     k = k + mmm
+                     il = il + mmm
+                  ENDDO
+                  spag_nextblock_1 = 2
+               CASE (2)
+!
+!        ADDRESS NEXT INTERCHANGE STEP
+                  ia = ia + id
+                  EXIT SPAG_DispatchLoop_1
+               END SELECT
+            ENDDO SPAG_DispatchLoop_1
+         ENDDO
+!
+!        NORMAL EXIT
+         Ier = 0
+         RETURN
+      ENDIF
+!
+!        ERROR RETURN IN CASE ITRA IS NOT A TRANSPOSITION VECTOR
+ 50   Ier = 1
+      RETURN
+   ENDIF
+END SUBROUTINE mprc

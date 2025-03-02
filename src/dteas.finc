@@ -1,0 +1,306 @@
+!*==dteas.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DTEAS
+!
+!        PURPOSE
+!           CALCULATE THE LIMIT OF A GIVEN SEQUENCE BY MEANS OF THE
+!           EPSILON-ALGORITHM.
+!
+!        USAGE
+!           CALL DTEAS(X,N,FIN,EPS,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X      - DOUBLE PRECISION VECTOR WHOSE COMPONENTS ARE TERMS
+!                    OF THE GIVEN SEQUENCE. ON RETURN THE COMPONENTS OF
+!                    VECTOR X ARE DESTROYED.
+!           N      - DIMENSION OF INPUT VECTOR X.
+!           FIN    - RESULTANT SCALAR IN DOUBLE PRECISION CONTAINING ON
+!                    RETURN THE LIMIT OF THE GIVEN SEQUENCE.
+!           EPS    - SINGLE PRECISION INPUT VALUE, WHICH SPECIFIES THE
+!                    UPPER BOUND OF THE RELATIVE (ABSOLUTE) ERROR IF THE
+!                    COMPONENTS OF X ARE ABSOLUTELY GREATER (LESS) THAN
+!                    ONE.
+!                    CALCULATION IS TERMINATED AS SOON AS THREE TIMES IN
+!                    SUCCESSION THE RELATIVE (ABSOLUTE) DIFFERENCE
+!                    BETWEEN NEIGHBOURING TERMS IS NOT GREATER THAN EPS.
+!           IER    - RESULTANT ERROR PARAMETER CODED IN THE FOLLOWING
+!                    FORM
+!                     IER=0  - NO ERROR
+!                     IER=1  - REQUIRED ACCURACY NOT REACHED WITH
+!                              MAXIMAL NUMBER OF ITERATIONS
+!                     IER=-1 - INTEGER N IS LESS THAN TEN.
+!
+!        REMARKS
+!           NO ACTION BESIDES ERROR MESSAGE IN CASE N LESS THAN TEN.
+!           THE CHARACTER OF THE GIVEN INFINITE SEQUENCE MUST BE
+!           RECOGNIZABLE BY THOSE N COMPONENTS OF THE INPUT VECTOR X.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE CONVERGENCE OF THE GIVEN SEQUENCE IS ACCELERATED BY
+!           MEANS OF THE E(2)-TRANSFORMATION, USED IN AN ITERATIVE WAY.
+!           FOR REFERENCE, SEE
+!           ALGORITHM 215,SHANKS, CACM 1963, NO. 11, PP. 662. AND
+!           P. WYNN, SINGULAR RULES FOR CERTAIN NON-LINEAR ALGORITHMS
+!           BIT VOL. 3, 1963, PP. 175-195.
+!
+!     ..................................................................
+!
+SUBROUTINE dteas(X,N,Fin,Eps,Ier)
+   IMPLICIT NONE
+
+   REAL Eps,he1,he2
+   INTEGER i,iaus,iend,Ier,imin,isw1,isw2,N,new
+
+!
+   DIMENSION X(*)
+   DOUBLE PRECISION X,Fin,w1,w2,w3,w4,w5,w6,w7,t
+   INTEGER :: spag_nextblock_1
+   INTEGER :: spag_nextblock_2
+   INTEGER :: spag_nextblock_3
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        TEST ON WRONG INPUT PARAMETER N
+!
+         new = N
+         IF ( new<10 ) THEN
+            Ier = -1
+            RETURN
+         ENDIF
+         spag_nextblock_1 = 2
+      CASE (2)
+!
+!        CALCULATE INITIAL VALUES FOR THE EPSILON ARRAY
+!
+         isw1 = 0
+         isw2 = 0
+         w1 = 1.D38
+         w7 = X(4) - X(3)
+         IF ( w7/=0 ) w1 = 1.D0/w7
+!
+         w5 = 1.D38
+         w7 = X(2) - X(1)
+         IF ( w7/=0 ) w5 = 1.D0/w7
+!
+         w4 = X(3) - X(2)
+         IF ( w4/=0 ) THEN
+!
+            w4 = 1.D0/w4
+!
+            t = 1.D38
+            w7 = w4 - w5
+            IF ( w7/=0 ) t = X(2) + 1.D0/w7
+!
+            w2 = w1 - w4
+            IF ( w2/=0 ) THEN
+!
+               w2 = X(3) + 1.D0/w2
+               w7 = w2 - t
+               IF ( w7/=0 ) THEN
+                  w3 = w4 + 1.D0/w7
+               ELSE
+                  w3 = 1.D38
+               ENDIF
+            ELSE
+               w2 = 1.D38
+               IF ( t<1.D38 ) isw2 = 1
+               w3 = w4
+            ENDIF
+         ELSE
+            w4 = 1.D38
+            t = X(2)
+            w2 = X(3)
+            w3 = 1.D38
+         ENDIF
+!
+         isw1 = isw2
+         isw2 = 0
+         imin = 4
+!
+!        CALCULATE DIAGONALS OF THE EPSILON ARRAY IN A DO-LOOP
+!
+         DO i = 5,new
+            spag_nextblock_2 = 1
+            SPAG_DispatchLoop_2: DO
+               SELECT CASE (spag_nextblock_2)
+               CASE (1)
+                  iaus = i - imin
+                  w4 = 1.D38
+                  w5 = X(i-1)
+                  w7 = X(i) - X(i-1)
+                  IF ( w7/=0 ) THEN
+                     w4 = 1.D0/w7
+!
+                     IF ( w1<1.D38 ) THEN
+                        w6 = w4 - w1
+!
+!        TEST FOR NECESSITY OF A SINGULAR RULE
+!
+                        IF ( dabs(w6)<=dabs(w4)*1.D-12 ) THEN
+                           isw2 = 1
+                           IF ( w6==0 ) THEN
+                              w5 = 1.D38
+                              w6 = w1
+                              IF ( w2>=1.D38 ) THEN
+                                 spag_nextblock_2 = 2
+                                 CYCLE SPAG_DispatchLoop_2
+                              ENDIF
+                              spag_nextblock_2 = 3
+                              CYCLE SPAG_DispatchLoop_2
+                           ENDIF
+                        ENDIF
+                        w5 = X(i-1) + 1.D0/w6
+!
+!        FIRST TEST FOR LOSS OF SIGNIFICANCE
+!
+                        IF ( dabs(w5)<dabs(X(i-1))*1.D-10 ) THEN
+                           IF ( w5/=0 ) THEN
+                              spag_nextblock_2 = 4
+                              CYCLE SPAG_DispatchLoop_2
+                           ENDIF
+                        ENDIF
+                     ELSE
+                        w6 = 1.D38
+                        spag_nextblock_2 = 2
+                        CYCLE SPAG_DispatchLoop_2
+                     ENDIF
+                  ENDIF
+!
+                  w7 = w5 - w2
+                  IF ( w7/=0 ) THEN
+                     w6 = w1 + 1.D0/w7
+                     spag_nextblock_2 = 3
+                     CYCLE SPAG_DispatchLoop_2
+                  ELSE
+                     w6 = 1.D38
+                  ENDIF
+                  spag_nextblock_2 = 2
+               CASE (2)
+                  isw2 = 0
+                  X(iaus) = w2
+                  spag_nextblock_2 = 5
+                  CYCLE SPAG_DispatchLoop_2
+               CASE (3)
+                  IF ( isw1<1 ) THEN
+!
+                     w7 = w6 - w3
+                     IF ( w7==0 ) THEN
+                        spag_nextblock_2 = 6
+                        CYCLE SPAG_DispatchLoop_2
+                     ENDIF
+                     X(iaus) = w2 + 1.D0/w7
+!
+!        SECOND TEST FOR LOSS OF SIGNIFICANCE
+!
+                     IF ( dabs(X(iaus))>=dabs(w2)*1.D-10 ) THEN
+                        spag_nextblock_2 = 5
+                        CYCLE SPAG_DispatchLoop_2
+                     ENDIF
+                     IF ( X(iaus)==0 ) THEN
+                        spag_nextblock_2 = 5
+                        CYCLE SPAG_DispatchLoop_2
+                     ENDIF
+!
+!        CALCULATE X(IAUS) WITH HELP OF SINGULAR RULE
+!
+                  ELSEIF ( w2<1.D38 ) THEN
+                     w7 = w5/(w2-w5) + t/(w2-t) + X(i-2)/(X(i-2)-w2)
+                     IF ( 1.D0+w7==0 ) THEN
+                        spag_nextblock_2 = 6
+                        CYCLE SPAG_DispatchLoop_2
+                     ENDIF
+                     X(iaus) = w7*w2/(1.D0+w7)
+                     spag_nextblock_2 = 7
+                     CYCLE SPAG_DispatchLoop_2
+                  ELSE
+!
+                     X(iaus) = w5 + t - X(i-2)
+                     spag_nextblock_2 = 7
+                     CYCLE SPAG_DispatchLoop_2
+                  ENDIF
+                  spag_nextblock_2 = 4
+               CASE (4)
+!
+                  new = iaus - 1
+                  isw2 = 0
+                  spag_nextblock_1 = 3
+                  CYCLE SPAG_DispatchLoop_1
+               CASE (5)
+!
+                  IF ( w2<1.D38 ) THEN
+                     spag_nextblock_2 = 7
+                     CYCLE SPAG_DispatchLoop_2
+                  ENDIF
+                  spag_nextblock_2 = 6
+               CASE (6)
+                  X(iaus) = 1.D38
+                  imin = i
+                  spag_nextblock_2 = 7
+               CASE (7)
+!
+                  w1 = w4
+                  t = w2
+                  w2 = w5
+                  w3 = w6
+                  isw1 = isw2
+                  isw2 = 0
+                  EXIT SPAG_DispatchLoop_2
+               END SELECT
+            ENDDO SPAG_DispatchLoop_2
+         ENDDO
+!
+         new = new - imin
+         spag_nextblock_1 = 3
+      CASE (3)
+!
+!        TEST FOR ACCURACY
+!
+         iend = new - 1
+         DO i = 1,iend
+            spag_nextblock_3 = 1
+            SPAG_DispatchLoop_3: DO
+               SELECT CASE (spag_nextblock_3)
+               CASE (1)
+                  he1 = dabs(X(i)-X(i+1))
+                  he2 = dabs(X(i+1))
+                  IF ( he1>Eps ) THEN
+                     IF ( he2<=1. ) THEN
+                        spag_nextblock_3 = 2
+                        CYCLE SPAG_DispatchLoop_3
+                     ENDIF
+                     IF ( he1>Eps*he2 ) THEN
+                        spag_nextblock_3 = 2
+                        CYCLE SPAG_DispatchLoop_3
+                     ENDIF
+                  ENDIF
+                  isw2 = isw2 + 1
+                  IF ( 3>isw2 ) CYCLE
+                  Fin = X(i)
+                  Ier = 0
+                  RETURN
+               CASE (2)
+!
+                  isw2 = 0
+                  EXIT SPAG_DispatchLoop_3
+               END SELECT
+            ENDDO SPAG_DispatchLoop_3
+         ENDDO
+!
+         IF ( new>=6 ) THEN
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         Fin = X(new)
+         Ier = 1
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE dteas

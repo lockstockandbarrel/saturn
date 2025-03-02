@@ -1,0 +1,786 @@
+!*==dlbvp.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DLBVP
+!
+!        PURPOSE
+!           TO SOLVE A LINEAR BOUNDARY VALUE PROBLEM, WHICH CONSISTS OF
+!           A SYSTEM OF NDIM LINEAR FIRST ORDER DIFFERENTIAL EQUATIONS
+!                  DY/DX=A(X)*Y(X)+F(X)
+!           AND NDIM LINEAR BOUNDARY CONDITIONS
+!                  B*Y(XL)+C*Y(XU)=R.
+!
+!        USAGE
+!           CALL DLBVP (PRMT,B,C,R,Y,DERY,NDIM,IHLF,AFCT,FCT,DFCT,OUTP,
+!                      AUX,A)
+!           PARAMETERS AFCT,FCT,DFCT,OUTP REQUIRE AN EXTERNAL STATEMENT.
+!
+!        DESCRIPTION OF PARAMETERS
+!           PRMT   - DOUBLE PRECISION INPUT AND OUTPUT VECTOR WITH
+!                    DIMENSION GREATER THAN OR EQUAL TO 5, WHICH
+!                    SPECIFIES THE PARAMETERS OF THE INTERVAL AND OF
+!                    ACCURACY AND WHICH SERVES FOR COMMUNICATION BETWEEN
+!                    OUTPUT SUBROUTINE (FURNISHED BY THE USER) AND
+!                    SUBROUTINE DLBVP. EXCEPT PRMT(5) THE COMPONENTS
+!                    ARE NOT DESTROYED BY SUBROUTINE DLBVP AND THEY ARE
+!           PRMT(1)- LOWER BOUND XL OF THE INTERVAL (INPUT),
+!           PRMT(1)- UPPER BOUND XU OF THE INTERVAL (INPUT),
+!           PRMT(3)- INITIAL INCREMENT OF THE INDEPENDENT VARIABLE
+!                    (INPUT),
+!           PRMT(4)- UPPER ERROR BOUND (INPUT). IF RELATIVE ERROR IS
+!                    GREATER THAN PRMT(4), INCREMENT GETS HALVED.
+!                    IF INCREMENT IS LESS THAN PRMT(3) AND RELATIVE
+!                    ERROR LESS THAN PRMT(4)/50, INCREMENT GETS DOUBLED.
+!                    THE USER MAY CHANGE PRMT(4) BY MEANS OF HIS
+!                    OUTPUT SUBROUTINE.
+!           PRMT(5)- NO INPUT PARAMETER. SUBROUTINE DLBVP INITIALIZES
+!                    PRMT(5)=0. IF THE USER WANTS TO TERMINATE
+!                    SUBROUTINE DLBVP AT ANY OUTPUT POINT, HE HAS TO
+!                    CHANGE PRMT(5) TO NON-ZERO BY MEANS OF SUBROUTINE
+!                    OUTP. FURTHER COMPONENTS OF VECTOR PRMT ARE
+!                    FEASIBLE IF ITS DIMENSION IS DEFINED GREATER
+!                    THAN 5. HOWEVER SUBROUTINE DLBVP DOES NOT REQUIRE
+!                    AND CHANGE THEM. NEVERTHELESS THEY MAY BE USEFUL
+!                    FOR HANDING RESULT VALUES TO THE MAIN PROGRAM
+!                    (CALLING DLBVP) WHICH ARE OBTAINED BY SPECIAL
+!                    MANIPULATIONS WITH OUTPUT DATA IN SUBROUTINE OUTP.
+!           B      - DOUBLE PRECISION NDIM BY NDIM INPUT MATRIX
+!                    (DESTROYED). IT IS THE COEFFICIENT MATRIX OF Y(XL)
+!                    IN THE BOUNDARY CONDITIONS.
+!           C      - DOUBLE PRECISION NDIM BY NDIM INPUT MATRIX
+!                    (POSSIBLY DESTROYED). IT IS THE COEFFICIENT MATRIX
+!                    OF Y(XU) IN THE BOUNDARY CONDITIONS.
+!           R      - DOUBLE PRECISION INPUT VECTOR WITH DIMENSION NDIM
+!                    (DESTROYED). IT SPECIFIES THE RIGHT HAND SIDE OF
+!                    THE BOUNDARY CONDITIONS.
+!           Y      - DOUBLE PRECISION AUXILIARY VECTOR WITH
+!                    DIMENSION NDIM. IT IS USED AS STORAGE LOCATION
+!                    FOR THE RESULTING VALUES OF DEPENDENT VARIABLES
+!                    COMPUTED AT INTERMEDIATE POINTS X.
+!           DERY   - DOUBLE PRECISION INPUT VECTOR OF ERROR WEIGHTS
+!                    (DESTROYED). ITS MAXIMAL COMPONENT SHOULD BE
+!                    EQUAL TO 1. LATERON DERY IS THE VECTOR OF
+!                    DERIVATIVES, WHICH BELONG TO FUNCTION VALUES Y AT
+!                    INTERMEDIATE POINTS X.
+!           NDIM   - AN INPUT VALUE, WHICH SPECIFIES THE NUMBER OF
+!                    DIFFERENTIAL EQUATIONS IN THE SYSTEM.
+!           IHLF   - AN OUTPUT VALUE, WHICH SPECIFIES THE NUMBER OF
+!                    BISECTIONS OF THE INITIAL INCREMENT. IF IHLF GETS
+!                    GREATER THAN 10, SUBROUTINE DLBVP RETURNS WITH
+!                    ERROR MESSAGE IHLF=11 INTO MAIN PROGRAM.
+!                    ERROR MESSAGE IHLF=12 OR IHLF=13 APPEARS IN CASE
+!                    PRMT(3)=0 OR IN CASE SIGN(PRMT(3)).NE.SIGN(PRMT(2)-
+!                    PRMT(1)) RESPECTIVELY. FINALLY ERROR MESSAGE
+!                    IHLF=14 INDICATES, THAT THERE IS NO SOLUTION OR
+!                    THAT THERE ARE MORE THAN ONE SOLUTION OF THE
+!                    PROBLEM.
+!                    A NEGATIVE VALUE OF IHLF HANDED TO SUBROUTINE OUTP
+!                    TOGETHER WITH INITIAL VALUES OF FINALLY GENERATED
+!                    INITIAL VALUE PROBLEM INDICATES, THAT THERE WAS
+!                    POSSIBLE LOSS OF SIGNIFICANCE IN THE SOLUTION OF
+!                    THE SYSTEM OF SIMULTANEOUS LINEAR EQUATIONS FOR
+!                    THESE INITIAL VALUES. THE ABSOLUTE VALUE OF IHLF
+!                    SHOWS, AFTER WHICH ELIMINATION STEP OF GAUSS
+!                    ALGORITHM POSSIBLE LOSS OF SIGNIFICANCE WAS
+!                    DETECTED.
+!           AFCT   - THE NAME OF AN EXTERNAL SUBROUTINE USED. IT
+!                    COMPUTES THE COEFFICIENT MATRIX A OF VECTOR Y ON
+!                    THE RIGHT HAND SIDE OF THE SYSTEM OF DIFFERENTIAL
+!                    EQUATIONS FOR A GIVEN X-VALUE. ITS PARAMETER LIST
+!                    MUST BE X,A. SUBROUTINE AFCT SHOULD NOT DESTROY X.
+!           FCT    - THE NAME OF AN EXTERNAL SUBROUTINE USED. IT
+!                    COMPUTES VECTOR F (INHOMOGENEOUS PART OF THE
+!                    RIGHT HAND SIDE OF THE SYSTEM OF DIFFERENTIAL
+!                    EQUATIONS) FOR A GIVEN X-VALUE. ITS PARAMETER LIST
+!                    MUST BE X,F. SUBROUTINE FCT SHOULD NOT DESTROY X.
+!           DFCT   - THE NAME OF AN EXTERNAL SUBROUTINE USED. IT
+!                    COMPUTES VECTOR DF (DERIVATIVE OF THE INHOMOGENEOUS
+!                    PART ON THE RIGHT HAND SIDE OF THE SYSTEM OF
+!                    DIFFERENTIAL EQUATIONS) FOR A GIVEN X-VALUE. ITS
+!                    PARAMETER LIST MUST BE X,DF. SUBROUTINE DFCT
+!                    SHOULD NOT DESTROY X.
+!           OUTP   - THE NAME OF AN EXTERNAL OUTPUT SUBROUTINE USED.
+!                    ITS PARAMETER LIST MUST BE X,Y,DERY,IHLF,NDIM,PRMT.
+!                    NONE OF THESE PARAMETERS (EXCEPT, IF NECESSARY,
+!                    PRMT(4),PRMT(5),...) SHOULD BE CHANGED BY
+!                    SUBROUTINE OUTP. IF PRMT(5) IS CHANGED TO NON-ZERO,
+!                    SUBROUTINE DLBVP IS TERMINATED.
+!           AUX    - DOUBLE PRECISION AUXILIARY STORAGE ARRAY WITH 20
+!                    ROWS AND NDIM COLUMNS.
+!           A      - DOUBLE PRECISION NDIM BY NDIM MATRIX, WHICH IS USED
+!                    AS AUXILIARY STORAGE ARRAY.
+!
+!        REMARKS
+!           THE PROCEDURE TERMINATES AND RETURNS TO CALLING PROGRAM, IF
+!           (1) MORE THAN 10 BISECTIONS OF THE INITIAL INCREMENT ARE
+!               NECESSARY TO GET SATISFACTORY ACCURACY (ERROR MESSAGE
+!               IHLF=11),
+!           (2) INITIAL INCREMENT IS EQUAL TO 0 OR IF IT HAS WRONG SIGN
+!               (ERROR MESSAGES IHLF=12 OR IHLF=13),
+!           (3) THERE IS NO OR MORE THAN ONE SOLUTION OF THE PROBLEM
+!               (ERROR MESSAGE IHLF=14),
+!           (4) THE WHOLE INTEGRATION INTERVAL IS WORKED THROUGH,
+!           (5) SUBROUTINE OUTP HAS CHANGED PRMT(5) TO NON-ZERO.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           SUBROUTINE DGELG     SYSTEM OF LINEAR EQUATIONS.
+!           THE EXTERNAL SUBROUTINES AFCT(X,A), FCT(X,F), DFCT(X,DF),
+!           AND OUTP(X,Y,DERY,IHLF,NDIM,PRMT) MUST BE FURNISHED
+!           BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE USING THE METHOD OF ADJOINT EQUATIONS.
+!           HAMMINGS FOURTH ORDER MODIFIED PREDICTOR-CORRECTOR METHOD
+!           IS USED TO SOLVE THE ADJOINT INITIAL VALUE PROBLEMS AND FI-
+!           NALLY TO SOLVE THE GENERATED INITIAL VALUE PROBLEM FOR Y(X).
+!           THE INITIAL INCREMENT PRMT(3) IS AUTOMATICALLY ADJUSTED.
+!           FOR COMPUTATION OF INTEGRAL SUM, A FOURTH ORDER HERMITEAN
+!           INTEGRATION FORMULA IS USED.
+!           FOR REFERENCE, SEE
+!           (1) LANCE, NUMERICAL METHODS FOR HIGH SPEED COMPUTERS,
+!               ILIFFE, LONDON, 1960, PP.64-67.
+!           (2) RALSTON/WILF, MATHEMATICAL METHODS FOR DIGITAL
+!               COMPUTERS, WILEY, NEW YORK/LONDON, 1960, PP.95-109.
+!           (3) RALSTON, RUNGE-KUTTA METHODS WITH MINIMUM ERROR BOUNDS,
+!               MTAC, VOL.16, ISS.80 (1962), PP.431-437.
+!           (4) ZURMUEHL, PRAKTISCHE MATHEMATIK FUER INGENIEURE UND
+!               PHYSIKER, SPRINGER, BERLIN/GOETTINGEN/HEIDELBERG, 1963,
+!               PP.227-232.
+!
+!     ..................................................................
+!
+SUBROUTINE dlbvp(Prmt,B,C,R,Y,Dery,Ndim,Ihlf,afct,fct,dfct,outp,Aux,A)
+   IMPLICIT NONE
+
+   REAL eps
+   INTEGER i,ib,ic,Ihlf,ii,imod,istep,isw,isw1,isw2,isw3,j,k,kk,l,ll,m,n,Ndim
+
+!
+!
+   DIMENSION Prmt(*),B(*),C(*),R(*),Y(*),Dery(*),Aux(20,1),A(*)
+   DOUBLE PRECISION Prmt,B,C,R,Y,Dery,Aux,A,h,x,z,gl,hs,gu,sum,dgl,dgu,xst,xend,delt
+   INTEGER :: spag_nextblock_1
+   INTEGER :: spag_nextblock_2
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!     ERROR TEST
+         IF ( Prmt(3)*(Prmt(2)-Prmt(1))<0 ) THEN
+            Ihlf = 13
+            RETURN
+         ELSEIF ( Prmt(3)*(Prmt(2)-Prmt(1))==0 ) THEN
+            Ihlf = 12
+            RETURN
+         ELSE
+!
+!     SEARCH FOR ZERO-COLUMNS IN MATRICES B AND C
+            kk = -Ndim
+            ib = 0
+            ic = 0
+            SPAG_Loop_1_1: DO k = 1,Ndim
+               spag_nextblock_2 = 1
+               SPAG_DispatchLoop_2: DO
+                  SELECT CASE (spag_nextblock_2)
+                  CASE (1)
+                     Aux(15,k) = Dery(k)
+                     Aux(1,k) = 1.D0
+                     Aux(17,k) = 1.D0
+                     kk = kk + Ndim
+                     DO i = 1,Ndim
+                        ii = kk + i
+                        IF ( B(ii)/=0 ) THEN
+                           spag_nextblock_2 = 2
+                           CYCLE SPAG_DispatchLoop_2
+                        ENDIF
+                     ENDDO
+                     ib = ib + 1
+                     Aux(1,k) = 0.D0
+                     spag_nextblock_2 = 2
+                  CASE (2)
+                     DO i = 1,Ndim
+                        ii = kk + i
+                        IF ( C(ii)/=0 ) CYCLE SPAG_Loop_1_1
+                     ENDDO
+                     ic = ic + 1
+                     Aux(17,k) = 0.D0
+                     EXIT SPAG_DispatchLoop_2
+                  END SELECT
+               ENDDO SPAG_DispatchLoop_2
+            ENDDO SPAG_Loop_1_1
+!
+!     DETERMINATION OF LOWER AND UPPER BOUND
+            IF ( ic<ib ) THEN
+               h = Prmt(2)
+               Prmt(2) = Prmt(1)
+               Prmt(1) = h
+               Prmt(3) = -Prmt(3)
+               DO i = 1,Ndim
+                  Aux(17,i) = Aux(1,i)
+               ENDDO
+               ii = Ndim*Ndim
+               DO i = 1,ii
+                  h = B(i)
+                  B(i) = C(i)
+                  C(i) = h
+               ENDDO
+            ENDIF
+!
+!     PREPARATIONS FOR CONSTRUCTION OF ADJOINT INITIAL VALUE PROBLEMS
+            x = Prmt(2)
+            CALL fct(x,Y)
+            CALL dfct(x,Dery)
+            DO i = 1,Ndim
+               Aux(18,i) = Y(i)
+               Aux(19,i) = Dery(i)
+            ENDDO
+!
+!     POSSIBLE BREAK-POINT FOR LINKAGE
+!
+!     THE FOLLOWING PART OF SUBROUTINE DLBVP UNTIL NEXT BREAK-POINT FOR
+!     LINKAGE HAS TO REMAIN IN CORE DURING THE WHOLE REST OF THE
+!     COMPUTATIONS
+!
+!     START LOOP FOR GENERATING ADJOINT INITIAL VALUE PROBLEMS
+            k = 0
+            kk = 0
+         ENDIF
+         spag_nextblock_1 = 2
+      CASE (2)
+         k = k + 1
+         IF ( Aux(17,k)<=0 ) THEN
+            kk = kk + Ndim
+            spag_nextblock_1 = 4
+            CYCLE SPAG_DispatchLoop_1
+         ELSE
+!
+!     INITIALIZATION OF ADJOINT INITIAL VALUE PROBLEM
+            x = Prmt(2)
+            CALL afct(x,A)
+            sum = 0.D0
+            gl = Aux(18,k)
+            dgl = Aux(19,k)
+            ii = k
+            DO i = 1,Ndim
+               h = -A(ii)
+               Dery(i) = h
+               Aux(20,i) = R(i)
+               Y(i) = 0.D0
+               IF ( i==k ) Y(i) = 1.D0
+               dgl = dgl + h*Aux(18,i)
+               ii = ii + Ndim
+            ENDDO
+            xend = Prmt(1)
+            h = .0625D0*(xend-x)
+            isw = 0
+            spag_nextblock_1 = 10
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+      CASE (3)
+!     THIS IS BRANCH TO ADJOINT LINEAR INITIAL VALUE PROBLEM
+!
+!     THIS IS RETURN FROM ADJOINT LINEAR INITIAL VALUE PROBLEM
+         IF ( Ihlf>10 ) THEN
+            spag_nextblock_1 = 5
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!     UPDATING OF COEFFICIENT MATRIX B AND VECTOR R
+         DO i = 1,Ndim
+            kk = kk + 1
+            h = C(kk)
+            R(i) = Aux(20,i) + h*sum
+            ii = i
+            DO j = 1,Ndim
+               B(ii) = B(ii) + h*Y(j)
+               ii = ii + Ndim
+            ENDDO
+         ENDDO
+         spag_nextblock_1 = 4
+      CASE (4)
+         IF ( k<Ndim ) THEN
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!
+!     GENERATION OF LAST INITIAL VALUE PROBLEM
+         eps = Prmt(4)
+         CALL dgelg(R,B,Ndim,1,eps,i)
+         IF ( i<0 ) THEN
+            Ihlf = 14
+            RETURN
+         ELSE
+!
+            Prmt(5) = 0.D0
+            Ihlf = -i
+            x = Prmt(1)
+            xend = Prmt(2)
+            h = Prmt(3)
+            DO i = 1,Ndim
+               Y(i) = R(i)
+            ENDDO
+            isw = 1
+            isw2 = 12
+            spag_nextblock_1 = 6
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+      CASE (5)
+!     THIS WAS BRANCH INTO INITIAL VALUE PROBLEM
+!
+!     THIS IS RETURN FROM INITIAL VALUE PROBLEM
+         RETURN
+      CASE (6)
+!
+!     THIS PART OF LINEAR BOUNDARY VALUE PROBLEM COMPUTES THE RIGHT
+!     HAND SIDE DERY OF THE SYSTEM OF ADJOINT LINEAR DIFFERENTIAL
+!     EQUATIONS (IN CASE ISW=0) OR OF THE GIVEN SYSTEM (IN CASE ISW=1).
+         CALL afct(x,A)
+         IF ( isw>0 ) THEN
+            spag_nextblock_1 = 8
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!     ADJOINT SYSTEM
+         ll = 0
+         DO m = 1,Ndim
+            hs = 0.D0
+            DO l = 1,Ndim
+               ll = ll + 1
+               hs = hs - A(ll)*Y(l)
+            ENDDO
+            Dery(m) = hs
+         ENDDO
+         spag_nextblock_1 = 7
+      CASE (7)
+         IF ( isw2==1 ) THEN
+            DO i = 1,Ndim
+               x = h*Dery(i)
+               Aux(6,i) = x
+               Y(i) = Aux(n,i) + .29697760924775360D0*Aux(5,i) + .15875964497103583D0*x
+            ENDDO
+!
+            x = z + .45573725421878943D0*h
+            isw2 = 2
+         ELSEIF ( isw2==2 ) THEN
+            DO i = 1,Ndim
+               x = h*Dery(i)
+               Aux(7,i) = x
+               Y(i) = Aux(n,i) + .21810038822592047D0*Aux(5,i) - 3.0509651486929308D0*Aux(6,i) + 3.8328647604670103D0*x
+            ENDDO
+!
+            x = z + h
+            isw2 = 3
+         ELSEIF ( isw2==3 ) THEN
+            DO i = 1,Ndim
+               Y(i) = Aux(n,i) + .17476028226269037D0*Aux(5,i) - .55148066287873294D0*Aux(6,i) + 1.2055355993965235D0*Aux(7,i)      &
+                    & + .17118478121951903D0*h*Dery(i)
+            ENDDO
+            x = z
+            IF ( isw1==1 ) THEN
+!
+               x = x + h
+               DO i = 1,Ndim
+                  Aux(2,i) = Y(i)
+               ENDDO
+               spag_nextblock_1 = 11
+               CYCLE SPAG_DispatchLoop_1
+            ELSEIF ( isw1==2 ) THEN
+!
+               x = x + h
+               isw2 = 4
+            ELSEIF ( isw1==3 ) THEN
+!
+!     TEST ON SATISFACTORY ACCURACY
+               DO i = 1,Ndim
+                  z = dabs(Y(i))
+                  IF ( z<1.D0 ) z = 1.D0
+                  delt = .066666666666666667D0*dabs(Y(i)-Aux(4,i))
+                  IF ( isw>0 ) delt = Aux(15,i)*delt
+                  IF ( delt>z*Prmt(4) ) THEN
+                     spag_nextblock_1 = 13
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+               ENDDO
+!
+!     SATISFACTORY ACCURACY AFTER LESS THAN 11 BISECTIONS
+               x = x + h
+               isw2 = 5
+            ELSEIF ( isw1==4 ) THEN
+!
+               n = 1
+               x = x + h
+               isw2 = 6
+            ELSE
+!
+!     POSSIBLE BREAK-POINT FOR LINKAGE
+!
+!     STARTING VALUES ARE COMPUTED.
+!     NOW START HAMMINGS MODIFIED PREDICTOR-CORRECTOR METHOD.
+               istep = 3
+               spag_nextblock_1 = 15
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ELSEIF ( isw2==4 ) THEN
+            n = 2
+            DO i = 1,Ndim
+               Aux(2,i) = Y(i)
+               Aux(9,i) = Dery(i)
+            ENDDO
+            isw1 = 3
+            spag_nextblock_1 = 14
+            CYCLE SPAG_DispatchLoop_1
+         ELSEIF ( isw2==5 ) THEN
+            DO i = 1,Ndim
+               Aux(3,i) = Y(i)
+               Aux(10,i) = Dery(i)
+            ENDDO
+            n = 3
+            isw1 = 4
+            spag_nextblock_1 = 14
+            CYCLE SPAG_DispatchLoop_1
+         ELSEIF ( isw2==6 ) THEN
+            x = xst
+            DO i = 1,Ndim
+               Aux(11,i) = Dery(i)
+               Y(i) = Aux(1,i) + h*(.375D0*Aux(8,i)+.7916666666666667D0*Aux(9,i)-.20833333333333333D0*Aux(10,i)                     &
+                    & +.041666666666666667D0*Dery(i))
+            ENDDO
+            spag_nextblock_1 = 12
+            CYCLE SPAG_DispatchLoop_1
+         ELSEIF ( isw2==7 ) THEN
+!     DERIVATIVE OF MODIFIED PREDICTOR IS GENERATED IN DERY.
+!
+            DO i = 1,Ndim
+               delt = .125D0*(9.D0*Aux(n-1,i)-Aux(n-3,i)+3.D0*h*(Dery(i)+Aux(n+6,i)+Aux(n+6,i)-Aux(n+5,i)))
+               Aux(16,i) = Aux(16,i) - delt
+               Y(i) = delt + .07438016528925620D0*Aux(16,i)
+            ENDDO
+!
+!     TEST WHETHER H MUST BE HALVED OR DOUBLED
+            delt = 0.D0
+            DO i = 1,Ndim
+               z = dabs(Y(i))
+               IF ( z<1.D0 ) z = 1.D0
+               z = dabs(Aux(16,i))/z
+               IF ( isw>0 ) z = Aux(15,i)*z
+               IF ( z>Prmt(4) ) THEN
+                  spag_nextblock_1 = 18
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+               IF ( delt<z ) delt = z
+            ENDDO
+!
+!     H MUST NOT BE HALVED. THAT MEANS Y(I) ARE GOOD.
+            isw2 = 8
+         ELSEIF ( isw2==8 ) THEN
+            isw3 = 1
+            spag_nextblock_1 = 9
+            CYCLE SPAG_DispatchLoop_1
+         ELSEIF ( isw2==9 ) THEN
+            DO i = 1,Ndim
+               Aux(n-2,i) = Y(i)
+               Aux(n+5,i) = Dery(i)
+               Y(i) = Aux(n-4,i)
+            ENDDO
+            x = x - (h+h)
+            isw2 = 10
+         ELSEIF ( isw2==10 ) THEN
+            x = delt
+            DO i = 1,Ndim
+               delt = Aux(n+5,i) + Aux(n+4,i)
+               delt = delt + delt + delt
+               Aux(16,i) = 8.962962962962963D0*(Aux(n-1,i)-Y(i)) - 3.3611111111111111D0*h*(Aux(n+6,i)+delt+Dery(i))
+               Aux(n+3,i) = Dery(i)
+            ENDDO
+            spag_nextblock_1 = 16
+            CYCLE SPAG_DispatchLoop_1
+         ELSEIF ( isw2==11 ) THEN
+            isw3 = 0
+            spag_nextblock_1 = 9
+            CYCLE SPAG_DispatchLoop_1
+         ELSEIF ( isw2==12 ) THEN
+            isw3 = -1
+            spag_nextblock_1 = 9
+            CYCLE SPAG_DispatchLoop_1
+         ELSE
+            spag_nextblock_1 = 8
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         spag_nextblock_1 = 6
+         CYCLE SPAG_DispatchLoop_1
+      CASE (8)
+!
+!     GIVEN SYSTEM
+         CALL fct(x,Dery)
+         DO m = 1,Ndim
+            ll = m - Ndim
+            hs = 0.D0
+            DO l = 1,Ndim
+               ll = ll + Ndim
+               hs = hs + A(ll)*Y(l)
+            ENDDO
+            Dery(m) = hs + Dery(m)
+         ENDDO
+         spag_nextblock_1 = 7
+         CYCLE SPAG_DispatchLoop_1
+      CASE (9)
+!
+!     THIS PART OF LINEAR BOUNDARY VALUE PROBLEM COMPUTES THE VALUE OF
+!     INTEGRAL SUM, WHICH IS A PART OF THE OUTPUT OF ADJOINT INITIAL
+!     VALUE PROBLEM (IN CASE ISW=0) OR RECORDS RESULT VALUES OF THE
+!     FINAL INITIAL VALUE PROBLEM (IN CASE ISW=1).
+         IF ( isw<=0 ) THEN
+!
+!     ADJOINT PROBLEM
+            CALL fct(x,R)
+            gu = 0.D0
+            dgu = 0.D0
+            DO l = 1,Ndim
+               gu = gu + Y(l)*R(l)
+               dgu = dgu + Dery(l)*R(l)
+            ENDDO
+            CALL dfct(x,R)
+            DO l = 1,Ndim
+               dgu = dgu + Y(l)*R(l)
+            ENDDO
+            sum = sum + .5D0*h*((gl+gu)+.16666666666666667D0*h*(dgl-dgu))
+            gl = gu
+            dgl = dgu
+         ELSE
+!
+!     GIVEN PROBLEM
+            CALL outp(x,Y,Dery,Ihlf,Ndim,Prmt)
+            IF ( Prmt(5)/=0 ) THEN
+               spag_nextblock_1 = 5
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ENDIF
+         IF ( isw3<0 ) THEN
+            IF ( Ihlf>0 ) THEN
+               spag_nextblock_1 = 5
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ELSEIF ( isw3==0 ) THEN
+            IF ( n<4 ) THEN
+               DO i = 1,Ndim
+                  Aux(n,i) = Y(i)
+                  Aux(n+7,i) = Dery(i)
+               ENDDO
+               IF ( n<3 ) THEN
+!
+                  DO i = 1,Ndim
+                     delt = Aux(9,i) + Aux(9,i)
+                     delt = delt + delt
+                     Y(i) = Aux(1,i) + .33333333333333333D0*h*(Aux(8,i)+delt+Aux(10,i))
+                  ENDDO
+               ELSEIF ( n==3 ) THEN
+!
+                  DO i = 1,Ndim
+                     delt = Aux(9,i) + Aux(10,i)
+                     delt = delt + delt + delt
+                     Y(i) = Aux(1,i) + .375D0*h*(Aux(8,i)+delt+Aux(11,i))
+                  ENDDO
+               ELSE
+                  istep = 3
+                  spag_nextblock_1 = 15
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+               spag_nextblock_1 = 12
+               CYCLE SPAG_DispatchLoop_1
+            ELSE
+               istep = 3
+               spag_nextblock_1 = 15
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ELSE
+            IF ( h*(x-xend)>=0 ) THEN
+               spag_nextblock_1 = 17
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            IF ( dabs(x-xend)<.1D0*dabs(h) ) THEN
+               spag_nextblock_1 = 17
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            IF ( delt<=.02D0*Prmt(4) ) THEN
+!
+!     H COULD BE DOUBLED IF ALL NECESSARY PRECEEDING VALUES ARE
+!     AVAILABLE.
+               IF ( Ihlf>0 ) THEN
+                  IF ( n>=7 ) THEN
+                     IF ( istep>=4 ) THEN
+                        imod = istep/2
+                        IF ( istep-imod==imod ) THEN
+                           h = h + h
+                           Ihlf = Ihlf - 1
+                           istep = 0
+                           DO i = 1,Ndim
+                              Aux(n-1,i) = Aux(n-2,i)
+                              Aux(n-2,i) = Aux(n-4,i)
+                              Aux(n-3,i) = Aux(n-6,i)
+                              Aux(n+6,i) = Aux(n+5,i)
+                              Aux(n+5,i) = Aux(n+3,i)
+                              Aux(n+4,i) = Aux(n+1,i)
+                              delt = Aux(n+6,i) + Aux(n+5,i)
+                              delt = delt + delt + delt
+                              Aux(16,i) = 8.962962962962963D0*(Y(i)-Aux(n-3,i)) - 3.3611111111111111D0*h*(Dery(i)+delt+Aux(n+4,i))
+                           ENDDO
+                        ENDIF
+                     ENDIF
+                  ENDIF
+               ENDIF
+            ENDIF
+            spag_nextblock_1 = 15
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         spag_nextblock_1 = 10
+      CASE (10)
+!
+!     POSSIBLE BREAK-POINT FOR LINKAGE
+!
+!     THE FOLLOWING PART OF SUBROUTINE DLBVP SOLVES IN CASE ISW=0 THE
+!     ADJOINT INITIAL VALUE PROBLEM. IT COMPUTES INTEGRAL SUM AND
+!     THE VECTOR Y OF DEPENDENT VARIABLES AT THE LOWER BOUND PRMT(1).
+!     IN CASE ISW=1 IT SOLVES FINALLY GENERATED INITIAL VALUE PROBLEM.
+         n = 1
+         xst = x
+         Ihlf = 0
+         DO i = 1,Ndim
+            Aux(16,i) = 0.D0
+            Aux(1,i) = Y(i)
+            Aux(8,i) = Dery(i)
+         ENDDO
+         isw1 = 1
+         spag_nextblock_1 = 14
+         CYCLE SPAG_DispatchLoop_1
+      CASE (11)
+!
+!     INCREMENT H IS TESTED BY MEANS OF BISECTION
+         Ihlf = Ihlf + 1
+         x = x - h
+         DO i = 1,Ndim
+            Aux(4,i) = Aux(2,i)
+         ENDDO
+         h = .5D0*h
+         n = 1
+         isw1 = 2
+         spag_nextblock_1 = 14
+         CYCLE SPAG_DispatchLoop_1
+      CASE (12)
+         x = x + h
+         n = n + 1
+         isw2 = 11
+         spag_nextblock_1 = 6
+         CYCLE SPAG_DispatchLoop_1
+      CASE (13)
+!
+!     NO SATISFACTORY ACCURACY. H MUST BE HALVED.
+         IF ( Ihlf<10 ) THEN
+            spag_nextblock_1 = 11
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!     NO SATISFACTORY ACCURACY AFTER 10 BISECTIONS. ERROR MESSAGE.
+         Ihlf = 11
+         x = x + h
+         IF ( isw<=0 ) THEN
+            spag_nextblock_1 = 3
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         isw2 = 12
+         spag_nextblock_1 = 6
+         CYCLE SPAG_DispatchLoop_1
+      CASE (14)
+!
+!     THIS PART OF LINEAR INITIAL VALUE PROBLEM COMPUTES
+!     STARTING VALUES BY MEANS OF RUNGE-KUTTA METHOD.
+         z = x
+         DO i = 1,Ndim
+            x = h*Aux(n+7,i)
+            Aux(5,i) = x
+            Y(i) = Aux(n,i) + .4D0*x
+         ENDDO
+!
+         x = z + .4D0*h
+         isw2 = 1
+         spag_nextblock_1 = 6
+         CYCLE SPAG_DispatchLoop_1
+      CASE (15)
+         IF ( n==8 ) THEN
+!
+!     N=8 CAUSES THE ROWS OF AUX TO CHANGE THEIR STORAGE LOCATIONS
+            DO n = 2,7
+               DO i = 1,Ndim
+                  Aux(n-1,i) = Aux(n,i)
+                  Aux(n+6,i) = Aux(n+7,i)
+               ENDDO
+            ENDDO
+            n = 7
+         ENDIF
+!
+!     N LESS THAN 8 CAUSES N+1 TO GET N
+         n = n + 1
+!
+!     COMPUTATION OF NEXT VECTOR Y
+         DO i = 1,Ndim
+            Aux(n-1,i) = Y(i)
+            Aux(n+6,i) = Dery(i)
+         ENDDO
+         x = x + h
+         spag_nextblock_1 = 16
+      CASE (16)
+         istep = istep + 1
+         DO i = 1,Ndim
+            delt = Aux(n-4,i) + 1.3333333333333333D0*h*(Aux(n+6,i)+Aux(n+6,i)-Aux(n+5,i)+Aux(n+4,i)+Aux(n+4,i))
+            Y(i) = delt - .9256198347107438D0*Aux(16,i)
+            Aux(16,i) = delt
+         ENDDO
+!     PREDICTOR IS NOW GENERATED IN ROW 16 OF AUX, MODIFIED PREDICTOR
+!     IS GENERATED IN Y. DELT MEANS AN AUXILIARY STORAGE.
+!
+         isw2 = 7
+         spag_nextblock_1 = 6
+         CYCLE SPAG_DispatchLoop_1
+      CASE (17)
+         IF ( isw>0 ) THEN
+            spag_nextblock_1 = 5
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         spag_nextblock_1 = 3
+         CYCLE SPAG_DispatchLoop_1
+      CASE (18)
+!
+!     H MUST BE HALVED
+         Ihlf = Ihlf + 1
+         IF ( Ihlf<=10 ) THEN
+            h = .5D0*h
+            istep = 0
+            DO i = 1,Ndim
+               Y(i) = .390625D-2*(8.D1*Aux(n-1,i)+135.D0*Aux(n-2,i)+4.D1*Aux(n-3,i)+Aux(n-4,i))                                     &
+                    & - .1171875D0*(Aux(n+6,i)-6.D0*Aux(n+5,i)-Aux(n+4,i))*h
+               Aux(n-4,i) = .390625D-2*(12.D0*Aux(n-1,i)+135.D0*Aux(n-2,i)+108.D0*Aux(n-3,i)+Aux(n-4,i))                            &
+                          & - .0234375D0*(Aux(n+6,i)+18.D0*Aux(n+5,i)-9.D0*Aux(n+4,i))*h
+               Aux(n-3,i) = Aux(n-2,i)
+               Aux(n+4,i) = Aux(n+5,i)
+            ENDDO
+            delt = x - h
+            x = delt - (h+h)
+            isw2 = 9
+            spag_nextblock_1 = 6
+            CYCLE SPAG_DispatchLoop_1
+         ELSE
+            IF ( isw<=0 ) THEN
+               spag_nextblock_1 = 3
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            isw2 = 12
+            spag_nextblock_1 = 6
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+!     END OF INITIAL VALUE PROBLEM
+END SUBROUTINE dlbvp

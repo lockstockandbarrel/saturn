@@ -1,0 +1,82 @@
+!*==load.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE LOAD
+!
+!        PURPOSE
+!           COMPUTE A FACTOR MATRIX (LOADING) FROM EIGENVALUES AND
+!           ASSOCIATED EIGENVECTORS.  THIS SUBROUTINE NORMALLY OCCURS
+!           IN A SEQUENCE OF CALLS TO SUBROUTINES CORRE, EIGEN, TRACE,
+!           LOAD, AND VARMX IN THE PERFORMANCE OF A FACTOR ANALYSIS.
+!
+!        USAGE
+!           CALL LOAD (M,K,R,V)
+!
+!        DESCRIPTION OF PARAMETERS
+!           M     - NUMBER OF VARIABLES.
+!           K     - NUMBER OF FACTORS. K MUST BE GREATER THAN OR EQUAL
+!                   TO 1 AND LESS THAN OR EQUAL TO M.
+!           R     - A MATRIX (SYMMETRIC AND STORED IN COMPRESSED FORM
+!                   WITH ONLY UPPER TRIANGLE BY COLUMN IN CORE) CON-
+!                   TAINING EIGENVALUES IN DIAGONAL.  EIGENVALUES ARE
+!                   ARRANGED IN DESCENDING ORDER, AND FIRST K
+!                   EIGENVALUES ARE USED BY THIS SUBROUTINE.  THE ORDER
+!                   OF MATRIX R IS M BY M.  ONLY M*(M+1)/2 ELEMENTS ARE
+!                   IN STORAGE.  (STORAGE MODE OF 1)
+!           V     - WHEN THIS SUBROUTINE IS CALLED, MATRIX V (M X M)
+!                   CONTAINS EIGENVECTORS COLUMNWISE.  UPON RETURNING TO
+!                   THE CALLING PROGRAM, MATRIX V CONTAINS A FACTOR
+!                   MATRIX (M X K).
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           NORMALIZED EIGENVECTORS ARE CONVERTED TO THE FACTOR PATTERN
+!           BY MULTIPLYING THE ELEMENTS OF EACH VECTOR BY THE SQUARE
+!           ROOT OF THE CORRESPONDING EIGENVALUE.
+!
+!     ..................................................................
+!
+SUBROUTINE load(M,K,R,V)
+   IMPLICIT NONE
+
+   INTEGER i,j,jj,K,l,M
+   REAL R,sq,V
+
+   DIMENSION R(*),V(*)
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION R,V,SQ
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!        CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  SQRT IN STATEMENT
+!        150 MUST BE CHANGED TO DSQRT.
+!
+!        ...............................................................
+!
+   l = 0
+   jj = 0
+   DO j = 1,K
+      jj = jj + j
+      sq = sqrt(R(jj))
+      DO i = 1,M
+         l = l + 1
+         V(l) = sq*V(l)
+      ENDDO
+   ENDDO
+END SUBROUTINE load

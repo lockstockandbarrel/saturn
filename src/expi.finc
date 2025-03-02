@@ -1,0 +1,66 @@
+!*==expi.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE EXPI
+!
+!        PURPOSE
+!           COMPUTES THE EXPONENTIAL INTEGRAL -EI(-X)
+!
+!        USAGE
+!           CALL EXPI(X,RES)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X     - ARGUMENT OF EXPONENTIAL INTEGRAL
+!           RES   - RESULT VALUE
+!           AUX   - RESULTANT AUXILIARY VALUE
+!
+!        REMARKS
+!           X GT 170 (X LT -174) MAY CAUSE UNDERFLOW (OVERFLOW)
+!           WITH THE EXPONENTIAL FUNCTION
+!           FOR X = 0 THE RESULT VALUE IS SET TO -HUGE(0.0)
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DEFINITION
+!           RES=INTEGRAL(EXP(-T)/T, SUMMED OVER T FROM X TO INFINITY).
+!           EVALUATION
+!           THREE DIFFERENT RATIONAL APPROXIMATIONS ARE USED IN THE
+!           RANGES 1 LE X, X LE -9 AND -9 LT X LE -3 RESPECTIVELY,
+!           A POLYNOMIAL APPROXIMATION IS USED IN -3 LT X LT 1.
+!
+!     ..................................................................
+!
+SUBROUTINE expi(X,Res,Aux)
+   IMPLICIT NONE
+
+   REAL Aux,Res,X,y
+
+   IF ( X>=1. ) THEN
+      y = 1./X
+      Aux = 1. - y*(((y+3.377358E0)*y+2.052156E0)*y+2.709479E-1)/((((y*1.072553E0+5.716943E0)*y+6.945239E0)*y+2.593888E0)           &
+          & *y+2.709496E-1)
+      Res = Aux*y*exp(-X)
+      RETURN
+   ELSEIF ( X+3.<=0 ) THEN
+      IF ( X+9.<=0 ) THEN
+         y = 9./X
+         Aux = 1. - y*(((y+7.659824E-1)*y-7.271015E-1)*y-1.080693E0)/((((y*2.518750E0+1.122927E1)*y+5.921405E0)*y-8.666702E0)       &
+             & *y-9.724216E0)
+      ELSE
+         Aux = 1. - ((((5.176245E-2*X+3.061037E0)*X+3.243665E1)*X+2.244234E2)*X+2.486697E2)                                         &
+             & /((((X+3.995161E0)*X+3.893944E1)*X+2.263818E1)*X+1.807837E2)
+      ENDIF
+      Res = Aux*exp(-X)/X
+      RETURN
+   ELSE
+      Aux = (((((((7.122452E-7*X-1.766345E-6)*X+2.928433E-5)*X-2.335379E-4)*X+1.664156E-3)*X-1.041576E-2)*X+5.555682E-2)            &
+          & *X-2.500001E-1)*X + 9.999999E-1
+      Res = -huge(0.0)
+      IF ( X/=0 ) Res = X*Aux - alog(abs(X)) - 5.772157E-1
+   ENDIF
+   RETURN
+END SUBROUTINE expi

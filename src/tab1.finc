@@ -1,0 +1,154 @@
+!*==tab1.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE TAB1
+!
+!        PURPOSE
+!           TABULATE FOR ONE VARIABLE IN AN OBSERVATION MATRIX (OR A
+!           MATRIX SUBSET), THE FREQUENCY AND PERCENT FREQUENCY OVER
+!           GIVEN CLASS INTERVALS. IN ADDITION, CALCULATE FOR THE SAME
+!           VARIABLE THE TOTAL, AVERAGE, STANDARD DEVIATION, MINIMUM,
+!           AND MAXIMUM.
+!
+!        USAGE
+!           CALL TAB1(A,S,NOVAR,UBO,FREQ,PCT,STATS,NO,NV)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - OBSERVATION MATRIX, NO BY NV
+!           S     - INPUT VECTOR GIVING SUBSET OF A. ONLY THOSE
+!                   OBSERVATIONS WITH A CORRESPONDING NON-ZERO S(J) ARE
+!                   CONSIDERED. VECTOR LENGTH IS NO.
+!           NOVAR - THE VARIABLE TO BE TABULATED. NOVAR MUST BE GREATER
+!                   THAN OR EQUAL TO 1 AND LESS THAN OR EQUAL TO NV.
+!                   AND UPPER LIMIT OF VARIABLE TO BE TABULATED
+!                   IN UBO(1), UBO(2) AND UBO(3) RESPECTIVELY. IF
+!                   LOWER LIMIT IS EQUAL TO UPPER LIMIT, THE PROGRAM
+!                   USES THE MINIMUM AND MAXIMUM VALUES OF THE VARIABLE.
+!                   NUMBER OF INTERVALS, UBO(2), MUST INCLUDE TWO CELLS
+!                   FOR VALUES UNDER AND ABOVE LIMITS. VECTOR LENGTH
+!                   IS 3.
+!           FREQ  - OUTPUT VECTOR OF FREQUENCIES. VECTOR LENGTH IS
+!                   UBO(2).
+!           PCT   - OUTPUT VECTOR OF RELATIVE FREQUENCIES. VECTOR
+!                   LENGTH IS UBO(2).
+!           STATS - OUTPUT VECTOR OF SUMMARY STATISTICS, I.E., TOTAL,
+!                   AVERAGE, STANDARD DEVIATION, MINIMUM AND MAXIMUM.
+!                   VECTOR LENGTH IS 5. IF S IS NULL, THEN TOTAL,AVERAGE
+!                   AND STANDARD DEVIATION = 0, MIN=HUGE(0.0) AND MAX=-HUGE(0.0)
+!           NO    - NUMBER OF OBSERVATIONS. NO MUST BE > OR = TO 1
+!           NV    - NUMBER OF VARIABLES FOR EACH OBSERVATION. NV MUST
+!                   BE GREATER THAN OR EQUAL TO 1.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE INTERVAL SIZE IS CALCULATED FROM THE GIVEN INFORMATION
+!           OR OPTIONALLY FROM THE MINIMUM AND MAXIMUM VALUES FOR
+!           VARIABLE NOVAR. THE FREQUENCIES AND PERCENT FREQUENCIES ARE
+!           THEN CALCULATED ALONG WITH SUMMARY STATISTICS.
+!           THE DIVISOR FOR STANDARD DEVIATION IS ONE LESS THAN THE
+!           NUMBER OF OBSERVATIONS USED.
+!
+!     ..................................................................
+!
+SUBROUTINE tab1(A,S,Novar,Ubo,Freq,Pct,Stats,No,Nv)
+   IMPLICIT NONE
+
+   REAL A,Freq,Pct,S,scnt,sint,Stats,temp,Ubo,vmax,vmin,wbo
+   INTEGER i,ij,inn,intx,j,No,Novar,Nv
+
+   DIMENSION A(*),S(*),Ubo(*),Freq(*),Pct(*),Stats(*)
+   DIMENSION wbo(3)
+   DO i = 1,3
+      wbo(i) = Ubo(i)
+   ENDDO
+!
+!        CALCULATE MIN AND MAX
+!
+   vmin = huge(0.0)
+   vmax = -huge(0.0)
+   ij = No*(Novar-1)
+   DO j = 1,No
+      ij = ij + 1
+      IF ( S(j)/=0 ) THEN
+         IF ( A(ij)<vmin ) vmin = A(ij)
+         IF ( A(ij)>vmax ) vmax = A(ij)
+      ENDIF
+   ENDDO
+   Stats(4) = vmin
+   Stats(5) = vmax
+!
+!        DETERMINE LIMITS
+!
+   IF ( Ubo(1)==Ubo(3) ) THEN
+      Ubo(1) = vmin
+      Ubo(3) = vmax
+   ENDIF
+   inn = Ubo(2)
+!
+!        CLEAR OUTPUT AREAS
+!
+   DO i = 1,inn
+      Freq(i) = 0.0
+      Pct(i) = 0.0
+   ENDDO
+   DO i = 1,3
+      Stats(i) = 0.0
+   ENDDO
+!
+!        CALCULATE INTERVAL SIZE
+!
+   sint = abs((Ubo(3)-Ubo(1))/(Ubo(2)-2.0))
+!
+!        TEST SUBSET VECTOR
+!
+   scnt = 0.0
+   ij = No*(Novar-1)
+   DO j = 1,No
+      ij = ij + 1
+      IF ( S(j)/=0 ) THEN
+         scnt = scnt + 1.0
+!
+!        DEVELOP TOTAL AND FREQUENCIES
+!
+         Stats(1) = Stats(1) + A(ij)
+         Stats(3) = Stats(3) + A(ij)*A(ij)
+         temp = Ubo(1) - sint
+         intx = inn - 1
+         DO i = 1,intx
+            temp = temp + sint
+            IF ( A(ij)<temp ) GOTO 20
+         ENDDO
+         IF ( A(ij)>=temp ) Freq(inn) = Freq(inn) + 1.0
+         CYCLE
+ 20      Freq(i) = Freq(i) + 1.0
+      ENDIF
+   ENDDO
+   IF ( scnt/=0 ) THEN
+!
+!        CALCULATE RELATIVE FREQUENCIES
+!
+      DO i = 1,inn
+         Pct(i) = Freq(i)*100.0/scnt
+      ENDDO
+!
+!        CALCULATE MEAN AND STANDARD DEVIATION
+!
+      IF ( scnt<=1.0 ) THEN
+         Stats(2) = Stats(1)
+         Stats(3) = 0.0
+      ELSE
+         Stats(2) = Stats(1)/scnt
+         Stats(3) = sqrt(abs((Stats(3)-Stats(1)*Stats(1)/scnt)/(scnt-1.0)))
+      ENDIF
+      DO i = 1,3
+         Ubo(i) = wbo(i)
+      ENDDO
+   ENDIF
+END SUBROUTINE tab1

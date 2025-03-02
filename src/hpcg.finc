@@ -1,0 +1,442 @@
+!*==hpcg.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!
+!     ..................................................................
+!
+!        SUBROUTINE HPCG
+!
+!        PURPOSE
+!           TO SOLVE A SYSTEM OF FIRST ORDER ORDINARY GENERAL
+!           DIFFERENTIAL EQUATIONS WITH GIVEN INITIAL VALUES.
+!
+!        USAGE
+!           CALL HPCG (PRMT,Y,DERY,NDIM,IHLF,FCT,OUTP,AUX)
+!           PARAMETERS FCT AND OUTP REQUIRE AN EXTERNAL STATEMENT.
+!
+!        DESCRIPTION OF PARAMETERS
+!           PRMT   - AN INPUT AND OUTPUT VECTOR WITH DIMENSION GREATER
+!                    OR EQUAL TO 5, WHICH SPECIFIES THE PARAMETERS OF
+!                    THE INTERVAL AND OF ACCURACY AND WHICH SERVES FOR
+!                    COMMUNICATION BETWEEN OUTPUT SUBROUTINE (FURNISHED
+!                    BY THE USER) AND SUBROUTINE HPCG. EXCEPT PRMT(5)
+!                    THE COMPONENTS ARE NOT DESTROYED BY SUBROUTINE
+!                    HPCG AND THEY ARE
+!           PRMT(1)- LOWER BOUND OF THE INTERVAL (INPUT),
+!           PRMT(2)- UPPER BOUND OF THE INTERVAL (INPUT),
+!           PRMT(3)- INITIAL INCREMENT OF THE INDEPENDENT VARIABLE
+!                    (INPUT),
+!           PRMT(4)- UPPER ERROR BOUND (INPUT). IF ABSOLUTE ERROR IS
+!                    GREATER THAN PRMT(4), INCREMENT GETS HALVED.
+!                    IF INCREMENT IS LESS THAN PRMT(3) AND ABSOLUTE
+!                    ERROR LESS THAN PRMT(4)/50, INCREMENT GETS DOUBLED.
+!                    THE USER MAY CHANGE PRMT(4) BY MEANS OF HIS
+!                    OUTPUT SUBROUTINE.
+!           PRMT(5)- NO INPUT PARAMETER. SUBROUTINE HPCG INITIALIZES
+!                    PRMT(5)=0. IF THE USER WANTS TO TERMINATE
+!                    SUBROUTINE HPCG AT ANY OUTPUT POINT, HE HAS TO
+!                    CHANGE PRMT(5) TO NON-ZERO BY MEANS OF SUBROUTINE
+!                    OUTP. FURTHER COMPONENTS OF VECTOR PRMT ARE
+!                    FEASIBLE IF ITS DIMENSION IS DEFINED GREATER
+!                    THAN 5. HOWEVER SUBROUTINE HPCG DOES NOT REQUIRE
+!                    AND CHANGE THEM. NEVERTHELESS THEY MAY BE USEFUL
+!                    FOR HANDING RESULT VALUES TO THE MAIN PROGRAM
+!                    (CALLING HPCG) WHICH ARE OBTAINED BY SPECIAL
+!                    MANIPULATIONS WITH OUTPUT DATA IN SUBROUTINE OUTP.
+!           Y      - INPUT VECTOR OF INITIAL VALUES.  (DESTROYED)
+!                    LATERON Y IS THE RESULTING VECTOR OF DEPENDENT
+!                    VARIABLES COMPUTED AT INTERMEDIATE POINTS X.
+!           DERY   - INPUT VECTOR OF ERROR WEIGHTS.  (DESTROYED)
+!                    THE SUM OF ITS COMPONENTS MUST BE EQUAL TO 1.
+!                    LATERON DERY IS THE VECTOR OF DERIVATIVES, WHICH
+!                    BELONG TO FUNCTION VALUES Y AT A POINT X.
+!           NDIM   - AN INPUT VALUE, WHICH SPECIFIES THE NUMBER OF
+!                    EQUATIONS IN THE SYSTEM.
+!           IHLF   - AN OUTPUT VALUE, WHICH SPECIFIES THE NUMBER OF
+!                    BISECTIONS OF THE INITIAL INCREMENT. IF IHLF GETS
+!                    GREATER THAN 10, SUBROUTINE HPCG RETURNS WITH
+!                    ERROR MESSAGE IHLF=11 INTO MAIN PROGRAM.
+!                    ERROR MESSAGE IHLF=12 OR IHLF=13 APPEARS IN CASE
+!                    PRMT(3)=0 OR IN CASE SIGN(PRMT(3)).NE.SIGN(PRMT(2)-
+!                    PRMT(1)) RESPECTIVELY.
+!           FCT    - THE NAME OF AN EXTERNAL SUBROUTINE USED. IT
+!                    COMPUTES THE RIGHT HAND SIDES DERY OF THE SYSTEM
+!                    TO GIVEN VALUES OF X AND Y. ITS PARAMETER LIST
+!                    MUST BE X,Y,DERY. THE SUBROUTINE SHOULD NOT
+!                    DESTROY X AND Y.
+!           OUTP   - THE NAME OF AN EXTERNAL OUTPUT SUBROUTINE USED.
+!                    ITS PARAMETER LIST MUST BE X,Y,DERY,IHLF,NDIM,PRMT.
+!                    NONE OF THESE PARAMETERS (EXCEPT, IF NECESSARY,
+!                    PRMT(4),PRMT(5),...) SHOULD BE CHANGED BY
+!                    SUBROUTINE OUTP. IF PRMT(5) IS CHANGED TO NON-ZERO,
+!                    SUBROUTINE HPCG IS TERMINATED.
+!           AUX    - AN AUXILIARY STORAGE ARRAY WITH 16 ROWS AND NDIM
+!                    COLUMNS.
+!
+!        REMARKS
+!           THE PROCEDURE TERMINATES AND RETURNS TO CALLING PROGRAM, IF
+!           (1) MORE THAN 10 BISECTIONS OF THE INITIAL INCREMENT ARE
+!               NECESSARY TO GET SATISFACTORY ACCURACY (ERROR MESSAGE
+!               IHLF=11),
+!           (2) INITIAL INCREMENT IS EQUAL TO 0 OR HAS WRONG SIGN
+!               (ERROR MESSAGES IHLF=12 OR IHLF=13),
+!           (3) THE WHOLE INTEGRATION INTERVAL IS WORKED THROUGH,
+!           (4) SUBROUTINE OUTP HAS CHANGED PRMT(5) TO NON-ZERO.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL SUBROUTINES FCT(X,Y,DERY) AND
+!           OUTP(X,Y,DERY,IHLF,NDIM,PRMT) MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF HAMMINGS MODIFIED PREDICTOR-
+!           CORRECTOR METHOD. IT IS A FOURTH ORDER METHOD, USING 4
+!           PRECEEDING POINTS FOR COMPUTATION OF A NEW VECTOR Y OF THE
+!           DEPENDENT VARIABLES.
+!           FOURTH ORDER RUNGE-KUTTA METHOD SUGGESTED BY RALSTON IS
+!           USED FOR ADJUSTMENT OF THE INITIAL INCREMENT AND FOR
+!           COMPUTATION OF STARTING VALUES.
+!           SUBROUTINE HPCG AUTOMATICALLY ADJUSTS THE INCREMENT DURING
+!           THE WHOLE COMPUTATION BY HALVING OR DOUBLING.
+!           TO GET FULL FLEXIBILITY IN OUTPUT, AN OUTPUT SUBROUTINE
+!           MUST BE CODED BY THE USER.
+!           FOR REFERENCE, SEE
+!           (1)  RALSTON/WILF, MATHEMATICAL METHODS FOR DIGITAL
+!                COMPUTERS, WILEY, NEW YORK/LONDON, 1960, PP.95-109.
+!           (2)  RALSTON, RUNGE-KUTTA METHODS WITH MINIMUM ERROR BOUNDS,
+!                MTAC, VOL.16, ISS.80 (1962), PP.431-437.
+!
+!     ..................................................................
+!
+SUBROUTINE hpcg(Prmt,Y,Dery,Ndim,Ihlf,fct,outp,Aux)
+   IMPLICIT NONE
+
+   REAL Aux,delt,Dery,h,Prmt,x,Y,z
+   INTEGER i,Ihlf,imod,istep,isw,n,Ndim
+
+!
+!
+   DIMENSION Prmt(*),Y(*),Dery(*),Aux(16,1)
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+         n = 1
+         Ihlf = 0
+         x = Prmt(1)
+         h = Prmt(3)
+         Prmt(5) = 0.
+         DO i = 1,Ndim
+            Aux(16,i) = 0.
+            Aux(15,i) = Dery(i)
+            Aux(1,i) = Y(i)
+         ENDDO
+         IF ( h*(Prmt(2)-x)<0 ) THEN
+            Ihlf = 13
+         ELSEIF ( h*(Prmt(2)-x)==0 ) THEN
+!
+!     ERROR RETURNS
+            Ihlf = 12
+         ENDIF
+         spag_nextblock_1 = 2
+      CASE (2)
+!
+!     COMPUTATION OF DERY FOR STARTING VALUES
+         CALL fct(x,Y,Dery)
+!
+!     RECORDING OF STARTING VALUES
+         CALL outp(x,Y,Dery,Ihlf,Ndim,Prmt)
+         IF ( Prmt(5)==0 ) THEN
+            IF ( Ihlf<=0 ) THEN
+               DO i = 1,Ndim
+                  Aux(8,i) = Dery(i)
+               ENDDO
+!
+!     COMPUTATION OF AUX(2,I)
+               isw = 1
+               spag_nextblock_1 = 5
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ENDIF
+         spag_nextblock_1 = 3
+      CASE (3)
+         RETURN
+      CASE (4)
+!
+!     INCREMENT H IS TESTED BY MEANS OF BISECTION
+         Ihlf = Ihlf + 1
+         x = x - h
+         DO i = 1,Ndim
+            Aux(4,i) = Aux(2,i)
+         ENDDO
+         h = .5*h
+         n = 1
+         isw = 2
+         spag_nextblock_1 = 5
+      CASE (5)
+         SPAG_Loop_1_1: DO
+!
+!     THE FOLLOWING PART OF SUBROUTINE HPCG COMPUTES BY MEANS OF
+!     RUNGE-KUTTA METHOD STARTING VALUES FOR THE NOT SELF-STARTING
+!     PREDICTOR-CORRECTOR METHOD.
+            DO i = 1,Ndim
+               z = h*Aux(n+7,i)
+               Aux(5,i) = z
+               Y(i) = Aux(n,i) + .4*z
+            ENDDO
+!     Z IS AN AUXILIARY STORAGE LOCATION
+!
+            z = x + .4*h
+            CALL fct(z,Y,Dery)
+            DO i = 1,Ndim
+               z = h*Dery(i)
+               Aux(6,i) = z
+               Y(i) = Aux(n,i) + .2969776*Aux(5,i) + .1587596*z
+            ENDDO
+!
+            z = x + .4557372*h
+            CALL fct(z,Y,Dery)
+            DO i = 1,Ndim
+               z = h*Dery(i)
+               Aux(7,i) = z
+               Y(i) = Aux(n,i) + .2181004*Aux(5,i) - 3.050965*Aux(6,i) + 3.832865*z
+            ENDDO
+!
+            z = x + h
+            CALL fct(z,Y,Dery)
+            DO i = 1,Ndim
+               Y(i) = Aux(n,i) + .1747603*Aux(5,i) - .5514807*Aux(6,i) + 1.205536*Aux(7,i) + .1711848*h*Dery(i)
+            ENDDO
+            IF ( isw==1 ) THEN
+!
+               x = x + h
+               DO i = 1,Ndim
+                  Aux(2,i) = Y(i)
+               ENDDO
+               spag_nextblock_1 = 4
+               CYCLE SPAG_DispatchLoop_1
+            ELSEIF ( isw==2 ) THEN
+!
+               x = x + h
+               CALL fct(x,Y,Dery)
+               n = 2
+               DO i = 1,Ndim
+                  Aux(2,i) = Y(i)
+                  Aux(9,i) = Dery(i)
+               ENDDO
+               isw = 3
+            ELSEIF ( isw==3 ) THEN
+!
+!     COMPUTATION OF TEST VALUE DELT
+               delt = 0.
+               DO i = 1,Ndim
+                  delt = delt + Aux(15,i)*abs(Y(i)-Aux(4,i))
+               ENDDO
+               delt = .06666667*delt
+               IF ( delt<=Prmt(4) ) THEN
+!
+!     THERE IS SATISFACTORY ACCURACY AFTER LESS THAN 11 BISECTIONS.
+                  x = x + h
+                  CALL fct(x,Y,Dery)
+                  DO i = 1,Ndim
+                     Aux(3,i) = Y(i)
+                     Aux(10,i) = Dery(i)
+                  ENDDO
+                  n = 3
+                  isw = 4
+               ELSE
+                  IF ( Ihlf<10 ) THEN
+                     spag_nextblock_1 = 4
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+!
+!     NO SATISFACTORY ACCURACY AFTER 10 BISECTIONS. ERROR MESSAGE.
+                  Ihlf = 11
+                  x = x + h
+                  spag_nextblock_1 = 2
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+            ELSEIF ( isw==4 ) THEN
+!
+               n = 1
+               x = x + h
+               CALL fct(x,Y,Dery)
+               x = Prmt(1)
+               DO i = 1,Ndim
+                  Aux(11,i) = Dery(i)
+                  Y(i) = Aux(1,i) + h*(.375*Aux(8,i)+.7916667*Aux(9,i)-.2083333*Aux(10,i)+.04166667*Dery(i))
+               ENDDO
+               DO
+                  x = x + h
+                  n = n + 1
+                  CALL fct(x,Y,Dery)
+                  CALL outp(x,Y,Dery,Ihlf,Ndim,Prmt)
+                  IF ( Prmt(5)/=0 ) THEN
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  IF ( n<4 ) THEN
+                     DO i = 1,Ndim
+                        Aux(n,i) = Y(i)
+                        Aux(n+7,i) = Dery(i)
+                     ENDDO
+                     IF ( n<3 ) THEN
+!
+                        DO i = 1,Ndim
+                           delt = Aux(9,i) + Aux(9,i)
+                           delt = delt + delt
+                           Y(i) = Aux(1,i) + .3333333*h*(Aux(8,i)+delt+Aux(10,i))
+                        ENDDO
+                     ELSEIF ( n==3 ) THEN
+!
+                        DO i = 1,Ndim
+                           delt = Aux(9,i) + Aux(10,i)
+                           delt = delt + delt + delt
+                           Y(i) = Aux(1,i) + .375*h*(Aux(8,i)+delt+Aux(11,i))
+                        ENDDO
+                     ELSE
+!
+!     POSSIBLE BREAK-POINT FOR LINKAGE
+!
+!     STARTING VALUES ARE COMPUTED.
+!     NOW START HAMMINGS MODIFIED PREDICTOR-CORRECTOR METHOD.
+                        istep = 3
+                        EXIT SPAG_Loop_1_1
+                     ENDIF
+                  ELSE
+                     istep = 3
+                     EXIT SPAG_Loop_1_1
+                  ENDIF
+               ENDDO
+            ELSE
+               istep = 3
+               EXIT SPAG_Loop_1_1
+            ENDIF
+         ENDDO SPAG_Loop_1_1
+         spag_nextblock_1 = 6
+      CASE (6)
+         IF ( n==8 ) THEN
+!
+!     N=8 CAUSES THE ROWS OF AUX TO CHANGE THEIR STORAGE LOCATIONS
+            DO n = 2,7
+               DO i = 1,Ndim
+                  Aux(n-1,i) = Aux(n,i)
+                  Aux(n+6,i) = Aux(n+7,i)
+               ENDDO
+            ENDDO
+            n = 7
+         ENDIF
+!
+!     N LESS THAN 8 CAUSES N+1 TO GET N
+         n = n + 1
+!
+!     COMPUTATION OF NEXT VECTOR Y
+         DO i = 1,Ndim
+            Aux(n-1,i) = Y(i)
+            Aux(n+6,i) = Dery(i)
+         ENDDO
+         x = x + h
+         SPAG_Loop_1_2: DO
+            istep = istep + 1
+            DO i = 1,Ndim
+               delt = Aux(n-4,i) + 1.333333*h*(Aux(n+6,i)+Aux(n+6,i)-Aux(n+5,i)+Aux(n+4,i)+Aux(n+4,i))
+               Y(i) = delt - .9256198*Aux(16,i)
+               Aux(16,i) = delt
+            ENDDO
+!     PREDICTOR IS NOW GENERATED IN ROW 16 OF AUX, MODIFIED PREDICTOR
+!     IS GENERATED IN Y. DELT MEANS AN AUXILIARY STORAGE.
+!
+            CALL fct(x,Y,Dery)
+!     DERIVATIVE OF MODIFIED PREDICTOR IS GENERATED IN DERY
+!
+            DO i = 1,Ndim
+               delt = .125*(9.*Aux(n-1,i)-Aux(n-3,i)+3.*h*(Dery(i)+Aux(n+6,i)+Aux(n+6,i)-Aux(n+5,i)))
+               Aux(16,i) = Aux(16,i) - delt
+               Y(i) = delt + .07438017*Aux(16,i)
+            ENDDO
+!
+!     TEST WHETHER H MUST BE HALVED OR DOUBLED
+            delt = 0.
+            DO i = 1,Ndim
+               delt = delt + Aux(15,i)*abs(Aux(16,i))
+            ENDDO
+            IF ( delt<Prmt(4) ) EXIT SPAG_Loop_1_2
+!
+!
+!     H MUST BE HALVED
+            Ihlf = Ihlf + 1
+            IF ( Ihlf>10 ) EXIT SPAG_Loop_1_2
+            h = .5*h
+            istep = 0
+            DO i = 1,Ndim
+               Y(i) = .00390625*(80.*Aux(n-1,i)+135.*Aux(n-2,i)+40.*Aux(n-3,i)+Aux(n-4,i))                                          &
+                    & - .1171875*(Aux(n+6,i)-6.*Aux(n+5,i)-Aux(n+4,i))*h
+               Aux(n-4,i) = .00390625*(12.*Aux(n-1,i)+135.*Aux(n-2,i)+108.*Aux(n-3,i)+Aux(n-4,i))                                   &
+                          & - .0234375*(Aux(n+6,i)+18.*Aux(n+5,i)-9.*Aux(n+4,i))*h
+               Aux(n-3,i) = Aux(n-2,i)
+               Aux(n+4,i) = Aux(n+5,i)
+            ENDDO
+            x = x - h
+            delt = x - (h+h)
+            CALL fct(delt,Y,Dery)
+            DO i = 1,Ndim
+               Aux(n-2,i) = Y(i)
+               Aux(n+5,i) = Dery(i)
+               Y(i) = Aux(n-4,i)
+            ENDDO
+            delt = delt - (h+h)
+            CALL fct(delt,Y,Dery)
+            DO i = 1,Ndim
+               delt = Aux(n+5,i) + Aux(n+4,i)
+               delt = delt + delt + delt
+               Aux(16,i) = 8.962963*(Aux(n-1,i)-Y(i)) - 3.361111*h*(Aux(n+6,i)+delt+Dery(i))
+               Aux(n+3,i) = Dery(i)
+            ENDDO
+         ENDDO SPAG_Loop_1_2
+!
+!     H MUST NOT BE HALVED. THAT MEANS Y(I) ARE GOOD.
+         CALL fct(x,Y,Dery)
+         CALL outp(x,Y,Dery,Ihlf,Ndim,Prmt)
+         IF ( Prmt(5)==0 ) THEN
+            IF ( Ihlf<11 ) THEN
+               IF ( h*(x-Prmt(2))<0 ) THEN
+                  IF ( abs(x-Prmt(2))>=.1*abs(h) ) THEN
+                     IF ( delt<=.02*Prmt(4) ) THEN
+!
+!
+!     H COULD BE DOUBLED IF ALL NECESSARY PRECEEDING VALUES ARE
+!     AVAILABLE
+                        IF ( Ihlf>0 ) THEN
+                           IF ( n>=7 ) THEN
+                              IF ( istep>=4 ) THEN
+                                 imod = istep/2
+                                 IF ( istep-imod==imod ) THEN
+                                    h = h + h
+                                    Ihlf = Ihlf - 1
+                                    istep = 0
+                                    DO i = 1,Ndim
+                                       Aux(n-1,i) = Aux(n-2,i)
+                                       Aux(n-2,i) = Aux(n-4,i)
+                                       Aux(n-3,i) = Aux(n-6,i)
+                                       Aux(n+6,i) = Aux(n+5,i)
+                                       Aux(n+5,i) = Aux(n+3,i)
+                                       Aux(n+4,i) = Aux(n+1,i)
+                                       delt = Aux(n+6,i) + Aux(n+5,i)
+                                       delt = delt + delt + delt
+                                       Aux(16,i) = 8.962963*(Y(i)-Aux(n-3,i)) - 3.361111*h*(Dery(i)+delt+Aux(n+4,i))
+                                    ENDDO
+                                 ENDIF
+                              ENDIF
+                           ENDIF
+                        ENDIF
+                     ENDIF
+                     spag_nextblock_1 = 6
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+               ENDIF
+            ENDIF
+         ENDIF
+         RETURN
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE hpcg

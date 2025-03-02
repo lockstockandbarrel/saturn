@@ -1,0 +1,49 @@
+!*==gmtra.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE GMTRA
+!
+!        PURPOSE
+!           TRANSPOSE A GENERAL MATRIX
+!
+!        USAGE
+!           CALL GMTRA(A,R,N,M)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF MATRIX TO BE TRANSPOSED
+!           R - NAME OF RESULTANT MATRIX
+!           N - NUMBER OF ROWS OF A AND COLUMNS OF R
+!           M - NUMBER OF COLUMNS OF A AND ROWS OF R
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRIX A
+!           MATRICES A AND R MUST BE STORED AS GENERAL MATRICES
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           TRANSPOSE N BY M MATRIX A TO FORM M BY N MATRIX R
+!
+!     ..................................................................
+!
+SUBROUTINE gmtra(A,R,N,M)
+   IMPLICIT NONE
+
+   REAL A,R
+   INTEGER i,ij,ir,j,M,N
+
+   DIMENSION A(*),R(*)
+!
+   ir = 0
+   DO i = 1,N
+      ij = i - N
+      DO j = 1,M
+         ij = ij + N
+         ir = ir + 1
+         R(ir) = A(ij)
+      ENDDO
+   ENDDO
+END SUBROUTINE gmtra

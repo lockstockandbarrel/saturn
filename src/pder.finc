@@ -1,0 +1,54 @@
+!*==pder.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PDER
+!
+!        PURPOSE
+!           FIND DERIVATIVE OF A POLYNOMIAL
+!
+!        USAGE
+!           CALL PDER(Y,IDIMY,X,IDIMX)
+!
+!        DESCRIPTION OF PARAMETERS
+!           Y     - VECTOR OF COEFFICIENTS FOR DERIVATIVE, ORDERED FROM
+!                   SMALLEST TO LARGEST POWER
+!           IDIMY - DIMENSION OF Y (EQUAL TO IDIMX-1)
+!           X     - VECTOR OF COEFFICIENTS FOR ORIGINAL POLYNOMIAL,
+!                   ORDERED FROM SMALLEST TO LARGEST POWER
+!           IDIMX - DIMENSION OF X
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DIMENSION OF Y IS SET AT DIMENSION OF X LESS ONE. DERIVATIVE
+!           IS THEN CALCULATED BY MULTIPLYING COEFFICIENTS BY THEIR
+!           RESPECTIVE EXPONENTS.
+!
+!     ..................................................................
+!
+SUBROUTINE pder(Y,Idimy,X,Idimx)
+   IMPLICIT NONE
+
+   REAL expt,X,Y
+   INTEGER i,Idimx,Idimy
+
+   DIMENSION X(*),Y(*)
+!
+!     TEST OF DIMENSION
+   IF ( Idimx<=1 ) THEN
+      Idimy = 0
+   ELSE
+      Idimy = Idimx - 1
+      expt = 0.
+      DO i = 1,Idimy
+         expt = expt + 1.
+         Y(i) = X(i+1)*expt
+      ENDDO
+   ENDIF
+END SUBROUTINE pder

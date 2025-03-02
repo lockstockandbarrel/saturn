@@ -1,0 +1,218 @@
+!*==discr.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DISCR
+!
+!        PURPOSE
+!           COMPUTE A SET OF LINEAR FUNCTIONS WHICH SERVE AS INDICES
+!           FOR CLASSIFYING AN INDIVIDUAL INTO ONE OF SEVERAL GROUPS.
+!           NORMALLY THIS SUBROUTINE IS USED IN THE PERFORMANCE OF
+!           DISCRIMINANT ANALYSIS.
+!
+!        USAGE
+!           CALL DISCR (K,M,N,X,XBAR,D,CMEAN,V,C,P,LG)
+!
+!        DESCRIPTION OF PARAMETERS
+!           K     - NUMBER OF GROUPS. K MUST BE GREATER THAN ONE.
+!           M     - NUMBER OF VARIABLES
+!           N     - INPUT VECTOR OF LENGTH K CONTAINING SAMPLE SIZES OF
+!                   GROUPS.
+!           X     - INPUT VECTOR CONTAINING DATA IN THE MANNER EQUIVA-
+!                   LENT TO A 3-DIMENSIONAL FORTRAN ARRAY, X(1,1,1),
+!                   X(2,1,1), X(3,1,1), ETC.  THE FIRST SUBSCRIPT IS
+!                   CASE NUMBER, THE SECOND SUBSCRIPT IS VARIABLE NUMBER
+!                   AND THE THIRD SUBSCRIPT IS GROUP NUMBER.  THE
+!                   LENGTH OF VECTOR X IS EQUAL TO THE TOTAL NUMBER OF
+!                   DATA POINTS, T*M, WHERE T = N(1)+N(2)+...+N(K).
+!           XBAR  - INPUT MATRIX (M X K) CONTAINING MEANS OF M VARIABLES
+!                   IN K GROUPS
+!           D     - INPUT MATRIX (M X M) CONTAINING THE INVERSE OF
+!                   POOLED DISPERSION MATRIX.
+!           CMEAN - OUTPUT VECTOR OF LENGTH M CONTAINING COMMON MEANS.
+!           V     - OUTPUT VARIABLE CONTAINING GENERALIZED MAHALANOBIS
+!                   D-SQUARE.
+!           C     - OUTPUT MATRIX (M+1 X K) CONTAINING THE COEFFICIENTS
+!                   OF DISCRIMINANT FUNCTIONS.  THE FIRST POSITION OF
+!                   EACH COLUMN (FUNCTION) CONTAINS THE VALUE OF THE
+!                   CONSTANT FOR THAT FUNCTION.
+!           P     - OUTPUT VECTOR CONTAINING THE PROBABILITY ASSOCIATED
+!                   WITH THE LARGEST DISCRIMINANT FUNCTIONS OF ALL CASES
+!                   IN ALL GROUPS.  CALCULATED RESULTS ARE STORED IN THE
+!                   MANNER EQUIVALENT TO A 2-DIMENSIONAL AREA (THE
+!                   FIRST SUBSCRIPT IS CASE NUMBER, AND THE SECOND
+!                   SUBSCRIPT IS GROUP NUMBER).  VECTOR P HAS LENGTH
+!                   EQUAL TO THE TOTAL NUMBER OF CASES, T (T = N(1)+N(2)
+!                   +...+N(K)).
+!           LG    - OUTPUT VECTOR CONTAINING THE SUBSCRIPTS OF THE
+!                   LARGEST DISCRIMINANT FUNCTIONS STORED IN VECTOR P.
+!                   THE LENGTH OF VECTOR LG IS THE SAME AS THE LENGTH
+!                   OF VECTOR P.
+!
+!        REMARKS
+!           THE NUMBER OF VARIABLES MUST BE GREATER THAN OR EQUAL TO
+!           THE NUMBER OF GROUPS.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           REFER TO 'BMD COMPUTER PROGRAMS MANUAL', EDITED BY W. J.
+!           DIXON, UCLA, 1964, AND T. W. ANDERSON, 'INTRODUCTION TO
+!           MULTIVARIATE STATISTICAL ANALYSIS', JOHN WILEY AND SONS,
+!           1958, SECTION 6.6-6.8.
+!
+!     ..................................................................
+!
+SUBROUTINE discr(K,M,N,X,Xbar,D,Cmean,V,C,P,Lg)
+   IMPLICIT NONE
+
+   REAL C,Cmean,D,fnt,P,pl,sum,V,X,Xbar
+   INTEGER i,ij,iq,j,K,ka,kg,l,lbase,Lg,M,N,n1,n2,nn
+
+   DIMENSION N(*),X(*),Xbar(*),D(*),Cmean(*),C(*),P(*),Lg(*)
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION XBAR,D,CMEAN,V,C,SUM,P,PL
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!        CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  EXP IN STATEMENT
+!        250 MUST BE CHANGED TO DEXP.
+!
+!        ...............................................................
+!
+!     CALCULATE COMMON MEANS
+!
+   n1 = N(1)
+   DO i = 2,K
+      n1 = n1 + N(i)
+   ENDDO
+   fnt = n1
+   DO i = 1,K
+      P(i) = N(i)
+   ENDDO
+   DO i = 1,M
+      Cmean(i) = 0
+      n1 = i - M
+      DO j = 1,K
+         n1 = n1 + M
+         Cmean(i) = Cmean(i) + P(j)*Xbar(n1)
+      ENDDO
+      Cmean(i) = Cmean(i)/fnt
+   ENDDO
+!
+!     CALCULATE GENERALIZED MAHALANOBIS D SQUARE
+!
+   l = 0
+   DO i = 1,K
+      DO j = 1,M
+         l = l + 1
+         C(l) = Xbar(l) - Cmean(j)
+      ENDDO
+   ENDDO
+   V = 0.0
+   l = 0
+   DO j = 1,M
+      DO i = 1,M
+         n1 = i - M
+         n2 = j - M
+         sum = 0.0
+         DO ij = 1,K
+            n1 = n1 + M
+            n2 = n2 + M
+            sum = sum + P(ij)*C(n1)*C(n2)
+         ENDDO
+         l = l + 1
+         V = V + D(l)*sum
+      ENDDO
+   ENDDO
+!
+!     CALCULATE THE COEFFICIENTS OF DISCRIMINANT FUNCTIONS
+!
+   n2 = 0
+   DO ka = 1,K
+      DO i = 1,M
+         n2 = n2 + 1
+         P(i) = Xbar(n2)
+      ENDDO
+      iq = (M+1)*(ka-1) + 1
+      sum = 0.0
+      DO j = 1,M
+         n1 = j - M
+         DO l = 1,M
+            n1 = n1 + M
+            sum = sum + D(n1)*P(j)*P(l)
+         ENDDO
+      ENDDO
+      C(iq) = -(sum/2.0)
+      DO i = 1,M
+         n1 = i - M
+         iq = iq + 1
+         C(iq) = 0.0
+         DO j = 1,M
+            n1 = n1 + M
+            C(iq) = C(iq) + D(n1)*P(j)
+         ENDDO
+      ENDDO
+   ENDDO
+!
+!     FOR EACH CASE IN EACH GROUP, CALCULATE..
+!
+!        DISCRIMINANT FUNCTIONS
+!
+   lbase = 0
+   n1 = 0
+   DO kg = 1,K
+      nn = N(kg)
+      DO i = 1,nn
+         l = i - nn + lbase
+         DO j = 1,M
+            l = l + nn
+            D(j) = X(l)
+         ENDDO
+         n2 = 0
+         DO ka = 1,K
+            n2 = n2 + 1
+            sum = C(n2)
+            DO j = 1,M
+               n2 = n2 + 1
+               sum = sum + C(n2)*D(j)
+            ENDDO
+            Xbar(ka) = sum
+         ENDDO
+!
+!        THE LARGEST DISCRIMINANT FUNCTION
+!
+         l = 1
+         sum = Xbar(1)
+         DO j = 2,K
+            IF ( sum<Xbar(j) ) THEN
+               l = j
+               sum = Xbar(j)
+            ENDIF
+         ENDDO
+!
+!        PROBABILITY ASSOCIATED WITH THE LARGEST DISCRIMINANT FUNCTION
+!
+         pl = 0.0
+         DO j = 1,K
+            pl = pl + exp(Xbar(j)-sum)
+         ENDDO
+         n1 = n1 + 1
+         Lg(n1) = l
+         P(n1) = 1.0/pl
+      ENDDO
+      lbase = lbase + nn*M
+   ENDDO
+!
+END SUBROUTINE discr

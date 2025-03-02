@@ -1,0 +1,138 @@
+!*==simq.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE SIMQ
+!
+!        PURPOSE
+!           OBTAIN SOLUTION OF A SET OF SIMULTANEOUS LINEAR EQUATIONS,
+!           AX=B
+!
+!        USAGE
+!           CALL SIMQ(A,B,N,KS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - MATRIX OF COEFFICIENTS STORED COLUMNWISE.  THESE ARE
+!               DESTROYED IN THE COMPUTATION.  THE SIZE OF MATRIX A IS
+!               N BY N.
+!           B - VECTOR OF ORIGINAL CONSTANTS (LENGTH N). THESE ARE
+!               REPLACED BY FINAL SOLUTION VALUES, VECTOR X.
+!           N - NUMBER OF EQUATIONS AND VARIABLES. N MUST BE .GT. ONE.
+!           KS - OUTPUT DIGIT
+!                0 FOR A NORMAL SOLUTION
+!                1 FOR A SINGULAR SET OF EQUATIONS
+!
+!        REMARKS
+!           MATRIX A MUST BE GENERAL.
+!           IF MATRIX IS SINGULAR,SOLUTION VALUES ARE MEANINGLESS.
+!           AN ALTERNATIVE SOLUTION MAY BE OBTAINED BY USING MATRIX
+!           INVERSION (MINV) AND MATRIX PRODUCT (GMPRD).
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           METHOD OF SOLUTION IS BY ELIMINATION USING LARGEST PIVOTAL
+!           DIVISOR. EACH STAGE OF ELIMINATION CONSISTS OF INTERCHANGING
+!           ROWS WHEN NECESSARY TO AVOID DIVISION BY ZERO OR SMALL
+!           ELEMENTS.
+!           THE FORWARD SOLUTION TO OBTAIN VARIABLE N IS DONE IN
+!           N STAGES. THE BACK SOLUTION FOR THE OTHER VARIABLES IS
+!           CALCULATED BY SUCCESSIVE SUBSTITUTIONS. FINAL SOLUTION
+!           VALUES ARE DEVELOPED IN VECTOR B, WITH VARIABLE 1 IN B(1),
+!           VARIABLE 2 IN B(2),........, VARIABLE N IN B(N).
+!           IF NO PIVOT CAN BE FOUND EXCEEDING A TOLERANCE OF 0.0,
+!           THE MATRIX IS CONSIDERED SINGULAR AND KS IS SET TO 1. THIS
+!           TOLERANCE CAN BE MODIFIED BY REPLACING THE FIRST STATEMENT.
+!
+!     ..................................................................
+!
+SUBROUTINE simq(A,B,N,Ks)
+   IMPLICIT NONE
+
+   REAL A,B,biga,save,tol
+   INTEGER i,i1,i2,ia,ib,ic,ij,imax,iqs,it,ix,ixj,ixjx,j,jj,jjx,jx,jy,k,Ks
+   INTEGER N,ny
+
+   DIMENSION A(*),B(*)
+!
+!        FORWARD SOLUTION
+!
+   tol = 0.0
+   Ks = 0
+   jj = -N
+   SPAG_Loop_1_1: DO j = 1,N
+      jy = j + 1
+      jj = jj + N + 1
+      biga = 0
+      it = jj - j
+      DO i = j,N
+!
+!        SEARCH FOR MAXIMUM COEFFICIENT IN COLUMN
+!
+         ij = it + i
+         IF ( abs(biga)<abs(A(ij)) ) THEN
+            biga = A(ij)
+            imax = i
+         ENDIF
+      ENDDO
+!
+!        TEST FOR PIVOT LESS THAN TOLERANCE (SINGULAR MATRIX)
+!
+      IF ( abs(biga)<=tol ) THEN
+         Ks = 1
+         RETURN
+      ELSE
+!
+!        INTERCHANGE ROWS IF NECESSARY
+!
+         i1 = j + N*(j-2)
+         it = imax - j
+         DO k = j,N
+            i1 = i1 + N
+            i2 = i1 + it
+            save = A(i1)
+            A(i1) = A(i2)
+            A(i2) = save
+!
+!        DIVIDE EQUATION BY LEADING COEFFICIENT
+!
+            A(i1) = A(i1)/biga
+         ENDDO
+         save = B(imax)
+         B(imax) = B(j)
+         B(j) = save/biga
+!
+!        ELIMINATE NEXT VARIABLE
+!
+         IF ( j==N ) EXIT SPAG_Loop_1_1
+         iqs = N*(j-1)
+         DO ix = jy,N
+            ixj = iqs + ix
+            it = j - ix
+            DO jx = jy,N
+               ixjx = N*(jx-1) + ix
+               jjx = ixjx + it
+               A(ixjx) = A(ixjx) - (A(ixj)*A(jjx))
+            ENDDO
+            B(ix) = B(ix) - (B(j)*A(ixj))
+         ENDDO
+      ENDIF
+   ENDDO SPAG_Loop_1_1
+!
+!        BACK SOLUTION
+!
+   ny = N - 1
+   it = N*N
+   DO j = 1,ny
+      ia = it - j
+      ib = N - j
+      ic = N
+      DO k = 1,j
+         B(ib) = B(ib) - A(ia)*B(ic)
+         ia = ia - N
+         ic = ic - 1
+      ENDDO
+   ENDDO
+END SUBROUTINE simq

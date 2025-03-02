@@ -1,0 +1,266 @@
+!*==misr.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MISR
+!
+!        PURPOSE
+!           COMPUTE MEANS, STANDARD DEVIATIONS, SKEWNESS AND KURTOSIS,
+!           CORRELATION COEFFICIENTS, REGRESSION COEFFICIENTS, AND
+!           STANDARD ERRORS OF REGRESSION COEFFICIENTS WHEN THERE ARE
+!           MISSING DATA POINTS.  THE USER IDENTIFIES THE MISSING DATA
+!           BY MEANS OF A NUMERIC CODE.  THOSE VALUES HAVING THIS CODE
+!           ARE SKIPPED IN COMPUTING THE STATISTICS.  IN THE CASE OF THE
+!           CORRELATION COEFFICIENTS, ANY PAIR OF VALUES ARE SKIPPED IF
+!           EITHER ONE OF THEM ARE MISSING.
+!
+!        USAGE
+!           CALL MISR (NO,M,X,CODE,XBAR,STD,SKEW,CURT,R,N,A,B,S,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           NO   - NUMBER OF OBSERVATIONS
+!           M    - NUMBER OF VARIABLES
+!           X    - INPUT DATA MATRIX OF SIZE NO X M.
+!           CODE - INPUT VECTOR OF LENGTH M, WHICH CONTAINS A NUMERIC
+!                  MISSING DATA CODE FOR EACH VARIABLE. ANY OBSERVATION
+!                  FOR A GIVEN VARIABLE HAVING A VALUE EQUAL TO THE CODE
+!                  WILL BE DROPPED FOR THE COMPUTATIONS.
+!           XBAR - OUTPUT VECTOR OF LENGTH M CONTAINING MEANS
+!           STD  - OUTPUT VECTOR OF LENGTH M CONTAINING STANDARD DEVI-
+!                  ATIONS
+!           SKEW - OUTPUT VECTOR OF LENGTH M CONTAINING SKEWNESS
+!           CURT - OUTPUT VECTOR OF LENGTH M CONTAINING KURTOSIS
+!           R    - OUTPUT MATRIX OF PRODUCT-MOMENT CORRELATION
+!                  COEFFICIENTS.  THIS WILL BE THE UPPER TRIANGULAR
+!                  MATRIX ONLY, SINCE THE M X M MATRIX OF COEFFICIENTS
+!                  IS SYMMETRIC. (STORAGE MODE 1)
+!           N    - OUTPUT MATRIX OF NUMBER OF PAIRS OF OBSERVATIONS USED
+!                  IN COMPUTING THE CORRELATION COEFFICIENTS.  ONLY THE
+!                  UPPER TRIANGULAR PORTION OF THE MATRIX IS GIVEN.
+!                  (STORAGE MODE 1)
+!           A    - OUTPUT MATRIX (M BY M)  CONTAINING INTERCEPTS OF
+!                  REGRESSION LINES (A) OF THE FORM Y=A+BX.  THE FIRST
+!                  SUBSCRIPT OF THIS MATRIX REFERS TO THE INDEPENDENT
+!                  VARIABLE AND THE SECOND TO THE DEPENDENT VARIABLE.
+!                  FOR EXAMPLE, A(1,3) CONTAINS THE INTERCEPT OF THE
+!                  REGRESSION LINE FOR TWO VARIABLES WHERE VARIABLE 1
+!                  IS INDEPENDENT AND VARIABLE 3 IS DEPENDENT.  NOTE
+!                  THAT MATRIX A IS STORED IN A VECTOR FORM.
+!           B    - OUTPUT MATRIX (M BY M)  CONTAINING REGRESSION
+!                  COEFFICIENTS (B) CORRESPONDING TO THE VALUES OF
+!                  INTERCEPTS CONTAINED IN THE OUTPUT MATRIX A.
+!           S    - OUTPUT MATRIX (M BY M)  CONTAINING STANDARD ERRORS
+!                  OF REGRESSION COEFFICIENTS CORRESPONDING TO THE
+!                  COEFFICIENTS CONTAINED IN THE OUTPUT MATRIX B.
+!           IER  - 0, NO ERROR.
+!                  1, IF NUMBER OF NON-MISSING DATA ELEMENTS FOR J-TH
+!                     VARIABLE IS TWO OR LESS.  IN THIS CASE, STD(J),
+!                     SKEW(J), AND CURT(J) ARE SET TO 10**75.  ALL
+!                     VALUES OF R, A, B, AND S RELATED TO THIS VARIABLE
+!                     ARE ALSO SET TO 10**75.
+!                  2, IF VARIANCE OF J-TH VARIABLE IS LESS THAN
+!                     10**(-20).  IN THIS CASE, STD(J), SKEW(J), AND
+!                     CURT(J) ARE SET TO 10**75.  ALL VALUES OF R, A,
+!                     B, AND S RELATED TO THIS VARIABLE ARE ALSO SET TO
+!                     10**75.
+!
+!        REMARKS
+!           THIS SUBROUTINE CANNOT DISTINGUISH A BLANK AND A ZERO.
+!           THEREFORE, IF A BLANK IS SPECIFIED AS A MISSING DATA CODE IN
+!           INPUT CARDS, IT WILL BE TREATED AS 0 (ZERO).
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           LEAST SQUARES REGRESSION LINES AND PRODUCT-MOMENT CORRE-
+!           LATION COEFFICIENTS ARE COMPUTED.
+!
+!     ..................................................................
+!
+SUBROUTINE misr(No,M,X,Code,Xbar,Std,Skew,Curt,R,N,A,B,S,Ier)
+   IMPLICIT NONE
+
+   REAL A,B,Code,Curt,fn,R,rr,S,Skew,Std,sumx,sumy,ti,tii,tij,tj,tjj,work,X,Xbar
+   REAL xx,yy
+   INTEGER i,Ier,j,k,ki,kj,l,li,lj,ljj,M,N,nij,No
+
+!
+   DIMENSION X(*),Code(*),Xbar(*),Std(*),Skew(*),Curt(*),R(*),N(*)
+   DIMENSION A(*),B(*),S(*)
+   INTEGER :: spag_nextblock_1
+!
+!        COMPUTE MEANS
+!
+   Ier = 0
+   l = 0
+   DO j = 1,M
+      fn = 0.0
+      Xbar(j) = 0.0
+      DO i = 1,No
+         l = l + 1
+         IF ( X(l)/=Code(j) ) THEN
+            fn = fn + 1.0
+            Xbar(j) = Xbar(j) + X(l)
+         ENDIF
+      ENDDO
+      IF ( fn<=0 ) THEN
+         Xbar(j) = 0.0
+      ELSE
+         Xbar(j) = Xbar(j)/fn
+      ENDIF
+   ENDDO
+!
+!        SET-UP WORK AREAS AND TEST WHETHER DATA IS MISSING
+!
+   l = 0
+   DO j = 1,M
+      ljj = No*(j-1)
+      Skew(j) = 0.0
+      Curt(j) = 0.0
+      ki = M*(j-1)
+      kj = j - M
+      SPAG_Loop_2_1: DO i = 1,j
+         spag_nextblock_1 = 1
+         SPAG_DispatchLoop_1: DO
+            SELECT CASE (spag_nextblock_1)
+            CASE (1)
+               ki = ki + 1
+               kj = kj + M
+               sumx = 0.0
+               sumy = 0.0
+               ti = 0.0
+               tj = 0.0
+               tii = 0.0
+               tjj = 0.0
+               tij = 0.0
+               nij = 0
+               li = No*(i-1)
+               lj = ljj
+               l = l + 1
+               DO k = 1,No
+                  li = li + 1
+                  lj = lj + 1
+                  IF ( X(li)/=Code(i) ) THEN
+                     IF ( X(lj)/=Code(j) ) THEN
+!
+!        BOTH DATA ARE PRESENT
+!
+                        xx = X(li) - Xbar(i)
+                        yy = X(lj) - Xbar(j)
+                        ti = ti + xx
+                        tii = tii + xx**2
+                        tj = tj + yy
+                        tjj = tjj + yy**2
+                        tij = tij + xx*yy
+                        nij = nij + 1
+                        sumx = sumx + X(li)
+                        sumy = sumy + X(lj)
+                        IF ( i>=j ) THEN
+                           Skew(j) = Skew(j) + yy**3
+                           Curt(j) = Curt(j) + yy**4
+                        ENDIF
+                     ENDIF
+                  ENDIF
+               ENDDO
+!
+!        COMPUTE SUM OF CROSS-PRODUCTS OF DEVIATIONS
+!
+               IF ( nij>0 ) THEN
+                  fn = nij
+                  R(l) = tij - ti*tj/fn
+                  N(l) = nij
+                  tii = tii - ti*ti/fn
+                  tjj = tjj - tj*tj/fn
+               ENDIF
+!
+!        COMPUTE STANDARD DEVIATION, SKEWNESS, AND KURTOSIS
+!
+               IF ( i==j ) THEN
+                  IF ( nij<=2 ) THEN
+                     Ier = 1
+                     R(l) = huge(0.0)
+                     A(ki) = huge(0.0)
+                     B(ki) = huge(0.0)
+                     S(ki) = huge(0.0)
+                  ELSE
+!
+                     Std(j) = R(l)
+                     R(l) = 1.0
+                     A(ki) = 0.0
+                     B(ki) = 1.0
+                     S(ki) = 0.0
+!
+                     IF ( Std(j)<=(1.0E-20) ) THEN
+                        Ier = 2
+                     ELSE
+!
+                        work = Std(j)/fn
+                        Skew(j) = (Skew(j)/fn)/(work*sqrt(work))
+                        Curt(j) = ((Curt(j)/fn)/work**2) - 3.0
+                        Std(j) = sqrt(Std(j)/(fn-1.0))
+                        EXIT SPAG_Loop_2_1
+                     ENDIF
+                  ENDIF
+                  Std(j) = huge(0.0)
+                  Skew(j) = huge(0.0)
+                  Curt(j) = huge(0.0)
+                  EXIT SPAG_Loop_2_1
+!
+!        COMPUTE REGRESSION COEFFICIENTS
+!
+               ELSEIF ( nij<=2 ) THEN
+                  Ier = 1
+               ELSE
+!
+                  IF ( tii<=(1.0E-20) ) THEN
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  IF ( tjj<=(1.0E-20) ) THEN
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+!
+                  sumx = sumx/fn
+                  sumy = sumy/fn
+                  B(ki) = R(l)/tii
+                  A(ki) = sumy - B(ki)*sumx
+                  B(kj) = R(l)/tjj
+                  A(kj) = sumx - B(kj)*sumy
+!
+!        COMPUTE CORRELATION COEFFICIENTS
+!
+                  R(l) = R(l)/(sqrt(tii)*sqrt(tjj))
+!
+!        COMPUTE STANDARD ERRORS OF REGRESSION COEFFICIENTS
+!
+                  rr = R(l)**2
+                  sumx = (tjj-tjj*rr)/(fn-2)
+                  S(ki) = sqrt(sumx/tii)
+                  sumy = (tii-tii*rr)/(fn-2)
+                  S(kj) = sqrt(sumy/tjj)
+                  CYCLE
+               ENDIF
+               spag_nextblock_1 = 2
+            CASE (2)
+               R(l) = huge(0.0)
+               A(ki) = huge(0.0)
+               B(ki) = huge(0.0)
+               S(ki) = huge(0.0)
+               A(kj) = huge(0.0)
+               B(kj) = huge(0.0)
+               S(kj) = huge(0.0)
+               CYCLE
+            CASE (3)
+               Ier = 2
+               spag_nextblock_1 = 2
+               CYCLE SPAG_DispatchLoop_1
+            END SELECT
+         ENDDO SPAG_DispatchLoop_1
+!
+      ENDDO SPAG_Loop_2_1
+   ENDDO
+!
+END SUBROUTINE misr

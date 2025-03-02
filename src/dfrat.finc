@@ -1,0 +1,111 @@
+!*==dfrat.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DFRAT
+!
+!        PURPOSE
+!           DFRAT IS USED FOR HANDLING OF DATA AND FUNDAMENTAL FUNCTIONS
+!           WITH RATIONAL APPROXIMATION. IT IS A SUBSTANTIAL PART OF
+!           RATIONAL APPROXIMATION AND HAS NO MEANING INDEPENDENTLY
+!
+!        USAGE
+!           CALL DFRAT(I,N,M,P,DATI,WGT,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           I     - SUBSCRIPT OF CURRENT DATA POINT
+!           N     - NUMBER OF ALL DATA POINTS
+!           M     - NUMBER OF FUNDAMENTAL FUNCTIONS USED
+!           P     - ARRAY OF DIMENSION M+1 AT LEAST, WHICH CONTAINS
+!                   ON RETURN THE VALUES OF THE M FUNDAMENTAL
+!                   FUNCTIONS, FOLLOWED BY CURRENT FUNCTION VALUE
+!                   P MUST BE OF DOUBLE PRECISION
+!           DATI  - ARRAY CONTAINING GIVEN N ARGUMENTS, FOLLOWED
+!                   BY N FUNCTION VALUES AND FINALLY BY 1 RESPECTIVELY
+!                   N WEIGHT VALUES
+!                   DATI MUST BE OF DOUBLE PRECISION
+!           WGT   - RESULTANT WEIGHT FACTOR USED FOR I-TH TERM
+!                   WGT MUST BE OF DOUBLE PRECISION
+!           IER   - RESULTANT ERROR PARAMETER, COMBINED WITH INPUT
+!                   VALUES FOR CONTROL
+!                   IER(2) MEANS DIMENSION OF NUMERATOR
+!                   IER(3) MEANS DIMENSION OF DENOMINATOR
+!                   IER(1) IS USED AS RESULTANT ERROR PARAMETER,
+!                   IER(1) = 0 IN CASE OF NO ERRORS
+!                   IER(1) = 1 OTHERWISE (ZERO DENOMINATOR)
+!
+!        REMARKS
+!           VECTOR IER IS USED FOR COMMUNICATION BETWEEN DARAT AND DFRAT
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           DCNP
+!
+!        METHOD
+!           CF. MATHEMATICAL DESCRIPTION OF SUBROUTINE ARAT
+!
+!     ..................................................................
+!
+SUBROUTINE dfrat(I,N,M,P,Dati,Wgt,Ier)
+   IMPLICIT NONE
+
+   INTEGER I,Ier,ii,ip,ipq,iq,iqm1,j,M,N
+
+!
+!
+!        DIMENSIONED DUMMY VARIABLES
+   DIMENSION P(*),Dati(*),Ier(*)
+   DOUBLE PRECISION P,Dati,Wgt,t,f,fnum,fden
+!
+!        INITIALIZATION
+   ip = Ier(2)
+   iq = Ier(3)
+   iqm1 = iq - 1
+   ipq = ip + iq
+!
+!        LOOK UP ARGUMENT, FUNCTION VALUE AND WEIGHT
+!        LOOK UP NUMERATOR AND DENOMINATOR
+   t = Dati(I)
+   j = I + N
+   f = Dati(j)
+   fnum = P(j)
+   j = j + N
+   Wgt = 1.D0
+   IF ( Dati(2*N+1)>0 ) Wgt = Dati(j)
+   fden = P(j)
+!
+!        CALCULATE FUNCTION VALUE USED
+   f = f*fden - fnum
+!
+!        CHECK FOR ZERO DENOMINATOR
+   IF ( fden/=0 ) THEN
+!
+!        CALCULATE WEIGHT FACTORS USED
+      Wgt = Wgt/(fden*fden)
+      fnum = -fnum/fden
+!
+!        CALCULATE FUNDAMENTAL FUNCTIONS
+      j = iqm1
+      IF ( ip>iq ) j = ip - 1
+      CALL dcnp(P(iq),t,j)
+!
+!        STORE VALUES OF DENOMINATOR FUNDAMENTAL FUNCTIONS
+      IF ( iqm1>0 ) THEN
+         DO ii = 1,iqm1
+            j = ii + iq
+            P(ii) = P(j)*fnum
+         ENDDO
+      ENDIF
+!
+!        STORE FUNCTION VALUE
+      P(ipq) = f
+!
+!        NORMAL RETURN
+      Ier(1) = 0
+   ELSE
+!
+!        ERROR RETURN IN CASE OF ZERO DENOMINATOR
+      Ier(1) = 1
+      RETURN
+   ENDIF
+END SUBROUTINE dfrat

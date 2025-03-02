@@ -1,0 +1,161 @@
+!*==atsm.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE ATSM
+!
+!        PURPOSE
+!           NDIM POINTS OF A GIVEN TABLE WITH MONOTONIC ARGUMENTS ARE
+!           SELECTED AND ORDERED SUCH THAT
+!           ABS(ARG(I)-X).GE.ABS(ARG(J)-X) IF I.GT.J.
+!
+!        USAGE
+!           CALL ATSM (X,Z,F,IROW,ICOL,ARG,VAL,NDIM)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X      - THE SEARCH ARGUMENT.
+!           Z      - THE VECTOR OF ARGUMENT VALUES (DIMENSION IROW).
+!                    THE ARGUMENT VALUES MUST BE STORED IN INCREASING
+!                    OR DECREASING SEQUENCE.
+!           F      - IN CASE ICOL=1, F IS THE VECTOR OF FUNCTION VALUES
+!                    (DIMENSION IROW).
+!                    IN CASE ICOL=2, F IS AN IROW BY 2 MATRIX. THE FIRST
+!                    COLUMN SPECIFIES THE VECTOR OF FUNCTION VALUES AND
+!                    THE SECOND THE VECTOR OF DERIVATIVES.
+!           IROW   - THE DIMENSION OF VECTOR Z AND OF EACH COLUMN
+!                    IN MATRIX F.
+!           ICOL   - THE NUMBER OF COLUMNS IN F (I.E. 1 OR 2).
+!           ARG    - THE RESULTING VECTOR OF SELECTED AND ORDERED
+!                    ARGUMENT VALUES (DIMENSION NDIM).
+!           VAL    - THE RESULTING VECTOR OF SELECTED FUNCTION VALUES
+!                    (DIMENSION NDIM) IN CASE ICOL=1. IN CASE ICOL=2,
+!                    VAL IS THE VECTOR OF FUNCTION AND DERIVATIVE VALUES
+!                    (DIMENSION 2*NDIM) WHICH ARE STORED IN PAIRS (I.E.
+!                    EACH FUNCTION VALUE IS FOLLOWED BY ITS DERIVATIVE
+!                    VALUE).
+!           NDIM   - THE NUMBER OF POINTS WHICH MUST BE SELECTED OUT OF
+!                    THE GIVEN TABLE (Z,F).
+!
+!        REMARKS
+!           NO ACTION IN CASE IROW LESS THAN 1.
+!           IF INPUT VALUE NDIM IS GREATER THAN IROW, THE PROGRAM
+!           SELECTS ONLY A MAXIMUM TABLE OF IROW POINTS.  THEREFORE THE
+!           USER OUGHT TO CHECK CORRESPONDENCE BETWEEN TABLE (ARG,VAL)
+!           AND ITS DIMENSION BY COMPARISON OF NDIM AND IROW, IN ORDER
+!           TO GET CORRECT RESULTS IN FURTHER WORK WITH TABLE (ARG,VAL).
+!           THIS TEST MAY BE DONE BEFORE OR AFTER CALLING
+!           SUBROUTINE ATSM.
+!           SUBROUTINE ATSM ESPECIALLY CAN BE USED FOR GENERATING THE
+!           TABLE (ARG,VAL) NEEDED IN SUBROUTINES ALI, AHI, AND ACFI.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           SELECTION IS DONE BY SEARCHING THE SUBSCRIPT J OF THAT
+!           ARGUMENT, WHICH IS NEXT TO X (BINARY SEARCH).
+!           AFTERWARDS NEIGHBOURING ARGUMENT VALUES ARE TESTED AND
+!           SELECTED IN THE ABOVE SENSE.
+!
+!     ..................................................................
+!
+SUBROUTINE atsm(X,Z,F,Irow,Icol,Arg,Val,Ndim)
+   IMPLICIT NONE
+
+   REAL Arg,F,Val,X,Z
+   INTEGER i,Icol,Irow,j,jjl,jjr,jl,jr,k,kk,n,Ndim
+
+!
+!
+   DIMENSION Z(*),F(*),Arg(*),Val(*)
+   INTEGER :: spag_nextblock_1
+   INTEGER :: spag_nextblock_2
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!     CASE IROW=1 IS CHECKED OUT
+         IF ( Irow<1 ) THEN
+         ELSEIF ( Irow==1 ) THEN
+!
+!     CASE IROW=1
+            Arg(1) = Z(1)
+            Val(1) = F(1)
+            IF ( Icol==2 ) Val(2) = F(2)
+         ELSE
+            n = Ndim
+!
+!     IF N IS GREATER THAN IROW, N IS SET EQUAL TO IROW.
+            IF ( n>Irow ) n = Irow
+!
+!     CASE IROW.GE.2
+!     SEARCHING FOR SUBSCRIPT J SUCH THAT Z(J) IS NEXT TO X.
+            IF ( Z(Irow)<Z(1) ) THEN
+               i = Irow
+               j = 1
+            ELSE
+               j = Irow
+               i = 1
+            ENDIF
+            DO
+               k = (j+i)/2
+               IF ( X<=Z(k) ) THEN
+                  j = k
+               ELSE
+                  i = k
+               ENDIF
+               IF ( iabs(j-i)<=1 ) THEN
+                  IF ( abs(Z(j)-X)>abs(Z(i)-X) ) j = i
+                  spag_nextblock_1 = 2
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+            ENDDO
+         ENDIF
+         RETURN
+      CASE (2)
+!
+!     TABLE SELECTION
+         k = j
+         jl = 0
+         jr = 0
+         DO i = 1,n
+            spag_nextblock_2 = 1
+            SPAG_DispatchLoop_2: DO
+               SELECT CASE (spag_nextblock_2)
+               CASE (1)
+                  Arg(i) = Z(k)
+                  IF ( Icol<=1 ) THEN
+                     Val(i) = F(k)
+                  ELSE
+                     Val(2*i-1) = F(k)
+                     kk = k + Irow
+                     Val(2*i) = F(kk)
+                  ENDIF
+                  jjr = j + jr
+                  IF ( jjr<Irow ) THEN
+                     jjl = j - jl
+                     IF ( jjl<=1 ) THEN
+                        spag_nextblock_2 = 2
+                        CYCLE SPAG_DispatchLoop_2
+                     ENDIF
+                     IF ( abs(Z(jjr+1)-X)<=abs(Z(jjl-1)-X) ) THEN
+                        spag_nextblock_2 = 2
+                        CYCLE SPAG_DispatchLoop_2
+                     ENDIF
+                  ENDIF
+                  jl = jl + 1
+                  k = j - jl
+                  CYCLE
+               CASE (2)
+                  jr = jr + 1
+                  k = j + jr
+                  EXIT SPAG_DispatchLoop_2
+               END SELECT
+            ENDDO SPAG_DispatchLoop_2
+         ENDDO
+         RETURN
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE atsm

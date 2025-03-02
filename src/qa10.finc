@@ -1,0 +1,66 @@
+!*==qa10.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE QA10
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(EXP(-X)*FCT(X)/SQRT(X), SUMMED OVER X
+!                               FROM 0 TO INFINITY).
+!
+!        USAGE
+!           CALL QA10 (FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           FCT    - THE NAME OF AN EXTERNAL FUNCTION SUBPROGRAM USED.
+!           Y      - THE RESULTING INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL FUNCTION SUBPROGRAM FCT(X) MUST BE FURNISHED
+!           BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 10-POINT GENERALIZED GAUSS-
+!           LAGUERRE QUADRATURE FORMULA, WHICH INTEGRATES EXACTLY,
+!           WHENEVER FCT(X) IS A POLYNOMIAL UP TO DEGREE 19.
+!           FOR REFERENCE, SEE
+!           CONCUS/CASSATT/JAEHNIG/MELBY, TABLES FOR THE EVALUATION OF
+!           INTEGRAL(X**BETA*EXP(-X)*F(X), SUMMED OVER X FROM 0 TO
+!           INFINITY) BY GAUSS-LAGUERRE QUADRATURE, MTAC, VOL.17,
+!           ISS.83 (1963), PP.245-256.
+!
+!     ..................................................................
+!
+SUBROUTINE qa10(fct,Y)
+   IMPLICIT NONE
+
+   REAL fct,x,Y
+
+!
+!
+   x = 29.02495
+   Y = .4458787E-12*fct(x)
+   x = 21.19389
+   Y = Y + .8798682E-9*fct(x)
+   x = 15.56116
+   Y = Y + .2172139E-6*fct(x)
+   x = 11.20813
+   Y = Y + .1560511E-4*fct(x)
+   x = 7.777439
+   Y = Y + .0004566773*fct(x)
+   x = 5.084908
+   Y = Y + .006487547*fct(x)
+   x = 3.022513
+   Y = Y + .04962104*fct(x)
+   x = 1.522944
+   Y = Y + .2180344*fct(x)
+   x = .5438675
+   Y = Y + .5733510*fct(x)
+   x = .06019206
+   Y = Y + .9244873*fct(x)
+END SUBROUTINE qa10

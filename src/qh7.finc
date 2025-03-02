@@ -1,0 +1,55 @@
+!*==qh7.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE QH7
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(EXP(-X*X)*FCT(X), SUMMED OVER X FROM
+!                               -INFINITY TO +INFINITY).
+!
+!        USAGE
+!           CALL QH7 (FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           FCT    - THE NAME OF AN EXTERNAL FUNCTION SUBPROGRAM USED.
+!           Y      - THE RESULTING INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL FUNCTION SUBPROGRAM FCT(X) MUST BE FURNISHED
+!           BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 7-POINT GAUSSIAN-HERMITE
+!           QUADRATURE FORMULA, WHICH INTEGRATES EXACTLY WHENEVER
+!           FCT(X) IS A POLYNOMIAL UP TO DEGREE 13.
+!           FOR REFERENCE, SEE
+!           V.I.KRYLOV, APPROXIMATE CALCULATION OF INTEGRALS,
+!           MACMILLAN, NEW YORK/LONDON, 1962, PP.129-130 AND 343-346.
+!
+!     ..................................................................
+!
+SUBROUTINE qh7(fct,Y)
+   IMPLICIT NONE
+
+   REAL fct,x,Y,z
+
+!
+!
+   x = 2.651961
+   z = -x
+   Y = .0009717812*(fct(x)+fct(z))
+   x = 1.673552
+   z = -x
+   Y = Y + .05451558*(fct(x)+fct(z))
+   x = .8162879
+   z = -x
+   Y = Y + .4256073*(fct(x)+fct(z))
+   x = 0.
+   Y = Y + .8102646*fct(x)
+END SUBROUTINE qh7

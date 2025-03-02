@@ -1,0 +1,211 @@
+!*==kolm2.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE KOLM2
+!
+!        PURPOSE
+!
+!           TESTS THE DIFFERENCE BETWEEN TWO SAMPLE DISTRIBUTION
+!           FUNCTIONS USING THE KOLMOGOROV-SMIRNOV TEST
+!
+!        USAGE
+!           CALL KOLM2(X,Y,N,M,Z,PROB)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X    - INPUT VECTOR OF N INDEPENDENT OBSERVATIONS.  ON
+!                  RETURN FROM KOLM2, X HAS BEEN SORTED INTO A
+!                  MONOTONIC NON-DECREASING SEQUENCE.
+!           Y    - INPUT VECTOR OF M INDEPENDENT OBSERVATIONS.  ON
+!                  RETURN FROM KOLM2, Y HAS BEEN SORTED INTO A
+!                  MONOTONIC NON-DECREASING SEQUENCE.
+!           N    - NUMBER OF OBSERVATIONS IN X
+!           M    - NUMBER OF OBSERVATIONS IN Y
+!           Z    - OUTPUT VARIABLE CONTAINING THE GREATEST VALUE WITH
+!                  RESPECT TO THE SPECTRUM OF X AND Y OF
+!                  SQRT((M*N)/(M+N))*ABS(FN(X)-GM(Y)) WHERE
+!                  FN(X) IS THE EMPIRICAL DISTRIBUTION FUNCTION OF THE
+!                  SET (X) AND GM(Y) IS THE EMPIRICAL DISTRIBUTION
+!                  FUNCTION OF THE SET (Y).
+!           PROB - OUTPUT VARIABLE CONTAINING THE PROBABILITY OF
+!                  THE STATISTIC BEING GREATER THAN OR EQUAL TO Z IF
+!                  THE HYPOTHESIS THAT X AND Y ARE FROM THE SAME PDF IS
+!                  TRUE.  E.G., PROB= 0.05 IMPLIES THAT ONE CAN REJECT
+!                  THE NULL HYPOTHESIS THAT THE SETS X AND Y ARE FROM
+!                  THE SAME DENSITY WITH 5 PER CENT PROBABILITY OF BEING
+!                  INCORRECT.  PROB = 1. - SMIRN(Z).
+!
+!        REMARKS
+!           N AND M SHOULD BE GREATER THAN OR EQUAL TO 100.  (SEE THE
+!           MATHEMATICAL DESCRIPTION FOR THIS SUBROUTINE AND FOR THE
+!           SUBROUTINE SMIRN, CONCERNING ASYMPTOTIC FORMULAE).
+!
+!           DOUBLE PRECISION USAGE---IT IS DOUBTFUL THAT THE USER WILL
+!           WISH TO PERFORM THIS TEST USING DOUBLE PRECISION ACCURACY.
+!           IF ONE WISHES TO COMMUNICATE WITH KOLM2 IN A DOUBLE
+!           PRECISION PROGRAM, HE SHOULD CALL THE FORTRAN SUPPLIED
+!           PROGRAM SNGL(X) PRIOR TO CALLING KOLM2, AND CALL THE
+!           FORTRAN SUPPLIED PROGRAM DBLE(X) AFTER EXITING FROM KOLM2.
+!           (NOTE THAT SUBROUTINE SMIRN DOES HAVE DOUBLE PRECISION
+!           CAPABILITY AS SUPPLIED BY THIS PACKAGE.)
+!
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           SMIRN
+!
+!        METHOD
+!           FOR REFERENCE, SEE (1) W. FELLER--ON THE KOLMOGOROV-SMIRNOV
+!           LIMIT THEOREMS FOR EMPIRICAL DISTRIBUTIONS--
+!           ANNALS OF MATH. STAT., 19, 1948.  177-189,
+!           (2) N. SMIRNOV--TABLE FOR ESTIMATING THE GOODNESS OF FIT
+!           OF EMPIRICAL DISTRIBUTIONS--ANNALS OF MATH. STAT., 19,
+!           1948.  279-281.
+!           (3) R. VON MISES--MATHEMATICAL THEORY OF PROBABILITY AND
+!           STATISTICS--ACADEMIC PRESS, NEW YORK, 1964.  490-493,
+!           (4) B.V. GNEDENKO--THE THEORY OF PROBABILITY--CHELSEA
+!           PUBLISHING COMPANY, NEW YORK, 1962.  384-401.
+!
+!     ..................................................................
+!
+SUBROUTINE kolm2(X,Y,N,M,Z,Prob)
+   IMPLICIT NONE
+
+   REAL d,Prob,temp,X,xm,xm1,xn,xn1,Y,Z
+   INTEGER i,im,j,k,l,M,N
+
+   DIMENSION X(*),Y(*)
+   INTEGER :: spag_nextblock_1
+   INTEGER :: spag_nextblock_2
+   INTEGER :: spag_nextblock_3
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        SORT X INTO ASCENDING SEQUENCE
+!
+         DO i = 2,N
+            spag_nextblock_2 = 1
+            SPAG_DispatchLoop_2: DO
+               SELECT CASE (spag_nextblock_2)
+               CASE (1)
+                  IF ( X(i)<X(i-1) ) THEN
+                     temp = X(i)
+                     im = i - 1
+                     DO j = 1,im
+                        l = i - j
+                        IF ( temp>=X(l) ) THEN
+                           spag_nextblock_2 = 2
+                           CYCLE SPAG_DispatchLoop_2
+                        ENDIF
+                        X(l+1) = X(l)
+                     ENDDO
+                     X(1) = temp
+                  ENDIF
+                  CYCLE
+               CASE (2)
+                  X(l+1) = temp
+                  EXIT SPAG_DispatchLoop_2
+               END SELECT
+            ENDDO SPAG_DispatchLoop_2
+         ENDDO
+!
+!        SORT Y INTO ASCENDING SEQUENCE
+!
+         DO i = 2,M
+            spag_nextblock_3 = 1
+            SPAG_DispatchLoop_3: DO
+               SELECT CASE (spag_nextblock_3)
+               CASE (1)
+                  IF ( Y(i)<Y(i-1) ) THEN
+                     temp = Y(i)
+                     im = i - 1
+                     DO j = 1,im
+                        l = i - j
+                        IF ( temp>=Y(l) ) THEN
+                           spag_nextblock_3 = 2
+                           CYCLE SPAG_DispatchLoop_3
+                        ENDIF
+                        Y(l+1) = Y(l)
+                     ENDDO
+                     Y(1) = temp
+                  ENDIF
+                  CYCLE
+               CASE (2)
+                  Y(l+1) = temp
+                  EXIT SPAG_DispatchLoop_3
+               END SELECT
+            ENDDO SPAG_DispatchLoop_3
+         ENDDO
+!
+!        CALCULATE D = ABS(FN-GM) OVER THE SPECTRUM OF X AND Y
+!
+         xn = float(N)
+         xn1 = 1./xn
+         xm = float(M)
+         xm1 = 1./xm
+         d = 0.0
+         i = 0
+         j = 0
+         k = 0
+         l = 0
+         spag_nextblock_1 = 2
+      CASE (2)
+         IF ( X(i+1)<Y(j+1) ) THEN
+            k = 1
+         ELSEIF ( X(i+1)==Y(j+1) ) THEN
+            k = 0
+         ELSE
+            spag_nextblock_1 = 4
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         SPAG_Loop_1_1: DO
+            i = i + 1
+            IF ( i>=N ) THEN
+               l = 1
+               EXIT SPAG_Loop_1_1
+            ELSEIF ( X(i+1)>X(i) ) THEN
+               EXIT SPAG_Loop_1_1
+            ENDIF
+         ENDDO SPAG_Loop_1_1
+         IF ( k==0 ) THEN
+            spag_nextblock_1 = 4
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         spag_nextblock_1 = 3
+      CASE (3)
+!
+!        CHOOSE THE MAXIMUM DIFFERENCE, D
+!
+         d = amax1(d,abs(float(i)*xn1-float(j)*xm1))
+         IF ( l==0 ) THEN
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!        CALCULATE THE STATISTIC Z
+!
+         Z = d*sqrt((xn*xm)/(xn+xm))
+!
+!        CALCULATE THE PROBABILITY ASSOCIATED WITH Z
+!
+         CALL smirn(Z,Prob)
+         Prob = 1.0 - Prob
+         RETURN
+      CASE (4)
+         DO
+            j = j + 1
+            IF ( j>=M ) THEN
+               l = 1
+               spag_nextblock_1 = 3
+               CYCLE SPAG_DispatchLoop_1
+            ELSEIF ( Y(j+1)>Y(j) ) THEN
+               spag_nextblock_1 = 3
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ENDDO
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE kolm2

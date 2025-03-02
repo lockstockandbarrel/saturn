@@ -1,0 +1,87 @@
+!*==deli1.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DELI1
+!
+!        PURPOSE
+!           COMPUTES THE ELLIPTIC INTEGRAL OF FIRST KIND
+!
+!        USAGE
+!           CALL DELI1(RES,X,CK)
+!
+!        DESCRIPTION OF PARAMETERS
+!           RES   - RESULT VALUE IN DOUBLE PRECISION
+!           X     - UPPER INTEGRATION BOUND (ARGUMENT OF ELLIPTIC
+!                   INTEGRAL OF FIRST KIND) IN DOUBLE PRECISION
+!           CK    - COMPLEMENTARY MODULUS IN DOUBLE PRECISION
+!
+!        REMARKS
+!           DOUBLE PRECISION MODULUS K = DSQRT(1.D0-CK*CK).
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DEFINITION
+!           RES=INTEGRAL(1/SQRT((1+T*T)*(1+(CK*T)**2)), SUMMED
+!           OVER T FROM 0 TO X).
+!           EQUIVALENT ARE THE DEFINITIONS
+!           RES=INTEGRAL(1/(COS(T)*SQRT(1+(CK*TAN(T))**2)), SUMMED
+!           OVER T FROM 0 TO ATAN(X)),
+!           RES=INTEGRAL(1/SQRT(1-(K*SIN(T))**2), SUMMED OVER
+!           T FROM 0 TO ATAN(X)).
+!           EVALUATION
+!           LANDENS TRANSFORMATION IS USED FOR CALCULATION.
+!           REFERENCE
+!           R. BULIRSCH, NUMERICAL CALCULATION OF ELLIPTIC INTEGRALS AND
+!                  ELLIPTIC FUNCTIONS.
+!                  HANDBOOK SERIES OF SPECIAL FUNCTIONS
+!                  NUMERISCHE MATHEMATIK VOL. 7, 1965, PP. 78-90.
+!
+!     ..................................................................
+!
+SUBROUTINE deli1(Res,X,Ck)
+   IMPLICIT NONE
+!
+   DOUBLE PRECISION Res,X,Ck,angle,geo,ari,pim,sqgeo,aari,test
+!
+   IF ( X/=0 ) THEN
+!
+      IF ( Ck/=0 ) THEN
+!
+         angle = dabs(1.D0/X)
+         geo = dabs(Ck)
+         ari = 1.D0
+         pim = 0.D0
+         SPAG_Loop_1_1: DO
+            sqgeo = ari*geo
+            aari = ari
+            ari = geo + ari
+            angle = -sqgeo/angle + angle
+            sqgeo = dsqrt(sqgeo)
+!
+!        REPLACE 0 BY SMALL VALUE
+!
+            IF ( angle==0 ) angle = sqgeo*1.D-17
+            test = aari*1.D-9
+            IF ( dabs(aari-geo)<=test ) THEN
+               IF ( angle<0 ) pim = pim + 3.1415926535897932
+               Res = (datan(ari/angle)+pim)/ari
+               EXIT SPAG_Loop_1_1
+            ELSE
+               geo = sqgeo + sqgeo
+               pim = pim + pim
+               IF ( angle<0 ) pim = pim + 3.1415926535897932
+            ENDIF
+         ENDDO SPAG_Loop_1_1
+      ELSE
+         Res = dlog(dabs(X)+dsqrt(1.D0+X*X))
+      ENDIF
+      IF ( X<0 ) Res = -Res
+   ELSE
+      Res = 0.D0
+      RETURN
+   ENDIF
+END SUBROUTINE deli1

@@ -1,0 +1,94 @@
+!*==dqh32.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQH32
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(EXP(-X*X)*FCT(X), SUMMED OVER X FROM
+!                               -INFINITY TO +INFINITY).
+!
+!        USAGE
+!           CALL DQH32 (FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           FCT    - THE NAME OF AN EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           Y      - THE RESULTING DOUBLE PRECISION INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 32-POINT GAUSSIAN-HERMITE
+!           QUADRATURE FORMULA, WHICH INTEGRATES EXACTLY WHENEVER
+!           FCT(X) IS A POLYNOMIAL UP TO DEGREE 63.
+!           FOR REFERENCE, SEE
+!           SHAO/CHEN/FRANK, TABLES OF ZEROS AND GAUSSIAN WEIGHTS OF
+!           CERTAIN ASSOCIATED LAGUERRE POLYNOMIALS AND THE RELATED
+!           GENERALIZED HERMITE POLYNOMIALS, IBM TECHNICAL REPORT
+!           TR00.1100 (MARCH 1964), PP.213-214.
+!
+!     ..................................................................
+!
+SUBROUTINE dqh32(fct,Y)
+   IMPLICIT NONE
+!
+!
+   DOUBLE PRECISION x,Y,z,fct
+!
+   x = .71258139098307276D1
+   z = -x
+   Y = .7310676427384162D-22*(fct(x)+fct(z))
+   x = .64094981492696604D1
+   z = -x
+   Y = Y + .9231736536518292D-18*(fct(x)+fct(z))
+   x = .58122259495159138D1
+   z = -x
+   Y = Y + .11973440170928487D-14*(fct(x)+fct(z))
+   x = .52755509865158801D1
+   z = -x
+   Y = Y + .42150102113264476D-12*(fct(x)+fct(z))
+   x = .47771645035025964D1
+   z = -x
+   Y = Y + .59332914633966386D-10*(fct(x)+fct(z))
+   x = .43055479533511984D1
+   z = -x
+   Y = Y + .40988321647708966D-8*(fct(x)+fct(z))
+   x = .38537554854714446D1
+   z = -x
+   Y = Y + .15741677925455940D-6*(fct(x)+fct(z))
+   x = .34171674928185707D1
+   z = -x
+   Y = Y + .36505851295623761D-5*(fct(x)+fct(z))
+   x = .29924908250023742D1
+   z = -x
+   Y = Y + .54165840618199826D-4*(fct(x)+fct(z))
+   x = .25772495377323175D1
+   z = -x
+   Y = Y + .53626836552797205D-3*(fct(x)+fct(z))
+   x = .21694991836061122D1
+   z = -x
+   Y = Y + .36548903266544281D-2*(fct(x)+fct(z))
+   x = .17676541094632016D1
+   z = -x
+   Y = Y + .17553428831573430D-1*(fct(x)+fct(z))
+   x = .13703764109528718D1
+   z = -x
+   Y = Y + .60458130955912614D-1*(fct(x)+fct(z))
+   x = .9765004635896828D0
+   z = -x
+   Y = Y + .15126973407664248D0*(fct(x)+fct(z))
+   x = .58497876543593245D0
+   z = -x
+   Y = Y + .27745814230252990D0*(fct(x)+fct(z))
+   x = .19484074156939933D0
+   z = -x
+   Y = Y + .37523835259280239D0*(fct(x)+fct(z))
+END SUBROUTINE dqh32

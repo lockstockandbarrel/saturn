@@ -1,0 +1,490 @@
+!*==prqd.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PRQD
+!
+!        PURPOSE
+!           CALCULATE ALL REAL AND COMPLEX ROOTS OF A GIVEN POLYNOMIAL
+!           WITH REAL COEFFICIENTS.
+!
+!        USAGE
+!           CALL PRQD(C,IC,Q,E,POL,IR,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           C     - COEFFICIENT VECTOR OF GIVEN POLYNOMIAL
+!                   COEFFICIENTS ARE ORDERED FROM LOW TO HIGH
+!                   THE GIVEN COEFFICIENT VECTOR GETS DIVIDED BY THE
+!                   LAST NONZERO TERM
+!           IC    - DIMENSION OF VECTOR C
+!           Q     - WORKING STORAGE OF DIMENSION IC
+!                   ON RETURN Q CONTAINS REAL PARTS OF ROOTS
+!           E     - WORKING STORAGE OF DIMENSION IC
+!                   ON RETURN E CONTAINS COMPLEX PARTS OF ROOTS
+!           POL   - WORKING STORAGE OF DIMENSION IC
+!                   ON RETURN POL CONTAINS THE COEFFICIENTS OF THE
+!                   POLYNOMIAL WITH CALCULATED ROOTS
+!                   THIS RESULTING COEFFICIENT VECTOR HAS DIMENSION IR+1
+!                   COEFFICIENTS ARE ORDERED FROM LOW TO HIGH
+!           IR    - NUMBER OF CALCULATED ROOTS
+!                   NORMALLY IR IS EQUAL TO DIMENSION IC MINUS ONE
+!           IER   - RESULTING ERROR PARAMETER. SEE REMARKS
+!
+!        REMARKS
+!           THE REAL PART OF THE ROOTS IS STORED IN Q(1) UP TO Q(IR)
+!           CORRESPONDING COMPLEX PARTS ARE STORED IN E(1) UP TO E(IR).
+!           IER = 0 MEANS NO ERRORS
+!           IER = 1 MEANS NO CONVERGENCE WITH FEASIBLE TOLERANCE
+!           IER = 2 MEANS POLYNOMIAL IS DEGENERATE (CONSTANT OR ZERO)
+!           IER = 3 MEANS SUBROUTINE WAS ABANDONED DUE TO ZERO DIVISOR
+!           IER = 4 MEANS THERE EXISTS NO S-FRACTION
+!           IER =-1 MEANS CALCULATED COEFFICIENT VECTOR REVEALS POOR
+!                   ACCURACY OF THE CALCULATED ROOTS.
+!                   THE CALCULATED COEFFICIENT VECTOR HAS LESS THAN
+!                   3 CORRECT DIGITS.
+!           THE FINAL COMPARISON BETWEEN GIVEN AND CALCULATED
+!           COEFFICIENT VECTOR IS PERFORMED ONLY IF ALL ROOTS HAVE BEEN
+!           CALCULATED.
+!           THE MAXIMAL RELATIVE ERROR OF THE COEFFICIENT VECTOR IS
+!           RECORDED IN Q(IR+1).
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE ROOTS OF THE POLYNOMIAL ARE CALCULATED BY MEANS OF
+!           THE QUOTIENT-DIFFERENCE ALGORITHM WITH DISPLACEMENT.
+!           REFERENCE
+!           H.RUTISHAUSER, DER QUOTIENTEN-DIFFERENZEN-ALGORITHMUS,
+!           BIRKHAEUSER, BASEL/STUTTGART, 1957.
+!
+!     ..................................................................
+!
+SUBROUTINE prqd(C,Ic,Q,E,Pol,Ir,Ier)
+   IMPLICIT NONE
+
+   REAL C,E,eps,esav,expt,o,p,Pol,Q,r,s,t,tdelt,teps,tol,u,v,w
+   INTEGER i,Ic,iend,Ier,Ir,ista,j,jbeg,jend,k,kount,limit,nran,nsav
+
+!
+!      DIMENSIONED DUMMY VARIABLES
+   DIMENSION E(*),Q(*),C(*),Pol(*)
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        NORMALIZATION OF GIVEN POLYNOMIAL
+!           TEST OF DIMENSION
+!        IR CONTAINS INDEX OF HIGHEST COEFFICIENT
+         Ier = 0
+         Ir = Ic
+         eps = 1.E-6
+         tol = 1.E-3
+         limit = 10*Ic
+         kount = 0
+         DO WHILE ( Ir>1 )
+!
+!        DROP TRAILING ZERO COEFFICIENTS
+            IF ( C(Ir)/=0 ) THEN
+!
+!           REARRANGEMENT OF GIVEN POLYNOMIAL
+!        EXTRACTION OF ZERO ROOTS
+               o = 1./C(Ir)
+               iend = Ir - 1
+               ista = 1
+               nsav = Ir + 1
+               jbeg = 1
+!
+!        Q(J)=1.
+!        Q(J+I)=C(IR-I)/C(IR)
+!        Q(IR)=C(J)/C(IR)
+!        WHERE J IS THE INDEX OF THE LOWEST NONZERO COEFFICIENT
+               DO i = 1,Ir
+                  j = nsav - i
+                  IF ( C(i)/=0 ) THEN
+                     jbeg = 2
+                  ELSEIF ( jbeg/=2 ) THEN
+                     nsav = nsav + 1
+                     Q(ista) = 0.
+                     E(ista) = 0.
+                     ista = ista + 1
+                     CYCLE
+                  ENDIF
+                  Q(j) = C(i)*o
+                  C(i) = Q(j)
+               ENDDO
+!
+!           INITIALIZATION
+               esav = 0.
+               Q(ista) = 0.
+               spag_nextblock_1 = 2
+               CYCLE SPAG_DispatchLoop_1
+            ELSE
+               Ir = Ir - 1
+            ENDIF
+         ENDDO
+!
+!        ERROR RETURNS
+!           ERROR RETURN FOR POLYNOMIALS OF DEGREE LESS THAN 1
+         Ier = 2
+         Ir = 0
+         RETURN
+      CASE (2)
+         nsav = Ir
+!
+!        COMPUTATION OF DERIVATIVE
+         expt = Ir - ista
+         E(ista) = expt
+         DO i = ista,iend
+            expt = expt - 1.0
+            Pol(i+1) = eps*abs(Q(i+1)) + eps
+            E(i+1) = Q(i+1)*expt
+         ENDDO
+!
+!        TEST OF REMAINING DIMENSION
+         IF ( ista<iend ) THEN
+            jend = iend - 1
+!
+!        COMPUTATION OF S-FRACTION
+            DO i = ista,jend
+               IF ( i/=ista ) THEN
+                  IF ( abs(E(i))<=Pol(i+1) ) THEN
+!
+!        THE GIVEN POLYNOMIAL HAS MULTIPLE ROOTS, THE COEFFICIENTS OF
+!        THE COMMON FACTOR ARE STORED FROM Q(NSAV) UP TO Q(IR)
+                     nsav = i
+                     DO k = i,jend
+                        IF ( abs(E(k))>Pol(k+1) ) THEN
+                           spag_nextblock_1 = 11
+                           CYCLE SPAG_DispatchLoop_1
+                        ENDIF
+                     ENDDO
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+               ENDIF
+!
+!           EUCLIDEAN ALGORITHM
+               DO k = i,iend
+                  E(k+1) = E(k+1)/E(i)
+                  Q(k+1) = E(k+1) - Q(k+1)
+                  IF ( k/=i ) THEN
+                     Q(k+1) = Q(k+1)/Q(i+1)
+                     Pol(k+1) = Pol(k+1)/abs(Q(i+1))
+                     E(k) = Q(k+1) - E(k)
+!
+!        TEST FOR SMALL DIVISOR
+                  ELSEIF ( abs(Q(i+1))<=Pol(i+1) ) THEN
+                     spag_nextblock_1 = 11
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+               ENDDO
+            ENDDO
+         ELSEIF ( ista/=iend ) THEN
+            spag_nextblock_1 = 10
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         Q(Ir) = -Q(Ir)
+         spag_nextblock_1 = 3
+      CASE (3)
+!
+!           THE DISPLACEMENT EXPT IS SET TO 0 AUTOMATICALLY.
+!           E(ISTA)=0.,Q(ISTA+1),...,E(NSAV-1),Q(NSAV),E(NSAV)=0.,
+!           FORM A DIAGONAL OF THE QD-ARRAY.
+!        INITIALIZATION OF BOUNDARY VALUES
+         E(ista) = 0.
+         nran = nsav - 1
+         spag_nextblock_1 = 4
+      CASE (4)
+         E(nran+1) = 0.
+!
+!           TEST FOR LINEAR OR CONSTANT FACTOR
+!        NRAN-ISTA IS DEGREE-1
+         IF ( nran<ista ) THEN
+         ELSEIF ( nran==ista ) THEN
+!
+!        LINEAR FACTOR
+            Q(ista+1) = Q(ista+1) + expt
+            E(ista+1) = 0.
+         ELSE
+!
+!        START QD-ITERATION
+            jbeg = ista + 1
+            jend = nran - 1
+            teps = eps
+            tdelt = 1.E-2
+            spag_nextblock_1 = 6
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!        TEST FOR UNFACTORED COMMON DIVISOR
+         E(ista) = esav
+         IF ( Ir<=nsav ) THEN
+            spag_nextblock_1 = 10
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!        INITIALIZE QD-ALGORITHM FOR COMMON DIVISOR
+         ista = nsav
+         esav = E(ista)
+         spag_nextblock_1 = 2
+         CYCLE SPAG_DispatchLoop_1
+      CASE (5)
+!
+!        COMPUTATION OF ROOT PAIR
+         p = p + expt
+!
+!           TEST FOR REALITY
+         IF ( o<0 ) THEN
+!
+!           COMPLEX ROOT PAIR
+            Q(nran) = p
+            Q(nran+1) = p
+            E(nran) = t
+            E(nran+1) = -t
+         ELSE
+!
+!           REAL ROOT PAIR
+            Q(nran) = p - t
+            Q(nran+1) = p + t
+            E(nran) = 0.
+         ENDIF
+!
+!           REDUCTION OF DEGREE BY 2 (DEFLATION)
+         nran = nran - 2
+         spag_nextblock_1 = 4
+         CYCLE SPAG_DispatchLoop_1
+      CASE (6)
+         kount = kount + 1
+         p = Q(nran+1)
+         r = abs(E(nran))
+!
+!           TEST FOR CONVERGENCE
+         IF ( r<=teps ) THEN
+!
+!        COMPUTATION OF REAL ROOT
+            Q(nran+1) = expt + p
+!
+!           REDUCTION OF DEGREE BY 1 (DEFLATION)
+            nran = nran - 1
+            spag_nextblock_1 = 4
+            CYCLE SPAG_DispatchLoop_1
+         ELSE
+            s = abs(E(jend))
+!
+!        IS THERE A REAL ROOT NEXT
+            IF ( s<=r ) THEN
+!
+!        CALCULATE DISPLACEMENT FOR DOUBLE ROOTS
+!           QUADRATIC EQUATION FOR DOUBLE ROOTS
+!           X**2-(Q(NRAN)+Q(NRAN+1)+E(NRAN))*X+Q(NRAN)*Q(NRAN+1)=0
+               p = 0.5*(Q(nran)+E(nran)+Q(nran+1))
+               o = p*p - Q(nran)*Q(nran+1)
+               t = sqrt(abs(o))
+!
+!        TEST FOR CONVERGENCE
+               IF ( s<=teps ) THEN
+                  spag_nextblock_1 = 5
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+!
+!        ARE THERE COMPLEX ROOTS
+               IF ( o>=0 ) THEN
+                  IF ( p>=0 ) t = -t
+                  p = p + t
+                  r = s
+!
+!        MODIFICATION FOR COMPLEX ROOTS
+!        IS DISPLACEMENT SMALL ENOUGH
+               ELSEIF ( s<tdelt ) THEN
+!
+!        INITIALIZATION
+                  o = Q(jbeg) + E(jbeg) - p
+!
+!        TEST FOR SMALL DIVISOR
+                  IF ( abs(o)<=Pol(jbeg) ) THEN
+                     spag_nextblock_1 = 12
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+                  t = (t/o)**2
+                  u = E(jbeg)*Q(jbeg+1)/(o*(1.+t))
+                  v = o + u
+                  kount = kount + 2
+!
+!        THREEFOLD LOOP FOR COMPLEX DISPLACEMENT
+                  DO j = jbeg,nran
+                     o = Q(j+1) + E(j+1) - u - p
+!
+!        TEST FOR SMALL DIVISOR
+                     IF ( abs(v)>Pol(j) ) THEN
+!
+!           TEST FOR SMALL DIVISOR
+                        IF ( abs(o)>Pol(j+1) ) THEN
+                           w = u*o/v
+                           t = t*(v/o)**2
+                           Q(j) = v + w - E(j-1)
+                           u = 0.
+                           IF ( j<nran ) u = Q(j+2)*E(j+1)/(o*(1.+t))
+                           v = o + u - w
+!
+!        TEST FOR SMALL DIVISOR
+                           IF ( abs(Q(j))<=Pol(j) ) THEN
+                              spag_nextblock_1 = 12
+                              CYCLE SPAG_DispatchLoop_1
+                           ENDIF
+                           E(j) = w*v*(1.+t)/Q(j)
+                           CYCLE
+                        ENDIF
+                     ENDIF
+                     IF ( j/=nran ) THEN
+                        spag_nextblock_1 = 12
+                        CYCLE SPAG_DispatchLoop_1
+                     ENDIF
+                     expt = expt + p
+                     IF ( abs(E(jend))>tol ) THEN
+                        spag_nextblock_1 = 12
+                        CYCLE SPAG_DispatchLoop_1
+                     ENDIF
+                     p = 0.5*(v+o-E(jend))
+                     o = p*p - (v-u)*(o-u*t-o*w*(1.+t)/Q(jend))
+                     t = sqrt(abs(o))
+                     spag_nextblock_1 = 5
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDDO
+                  Q(nran+1) = v - E(nran)
+                  spag_nextblock_1 = 8
+                  CYCLE SPAG_DispatchLoop_1
+               ELSE
+                  p = 0.
+                  spag_nextblock_1 = 7
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+            ENDIF
+!
+!        IS DISPLACEMENT SMALL ENOUGH
+            IF ( r>=tdelt ) p = 0.
+         ENDIF
+         spag_nextblock_1 = 7
+      CASE (7)
+         o = p
+         DO j = jbeg,nran
+            Q(j) = Q(j) + E(j) - E(j-1) - o
+!
+!           TEST FOR SMALL DIVISOR
+            IF ( abs(Q(j))<=Pol(j) ) THEN
+               spag_nextblock_1 = 12
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            E(j) = Q(j+1)*E(j)/Q(j)
+         ENDDO
+         Q(nran+1) = -E(nran) + Q(nran+1) - o
+         spag_nextblock_1 = 8
+      CASE (8)
+         expt = expt + p
+         teps = teps*1.1
+         tdelt = tdelt*1.1
+         IF ( kount<limit ) THEN
+            spag_nextblock_1 = 6
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!        NO CONVERGENCE WITH FEASIBLE TOLERANCE
+!           ERROR RETURN IN CASE OF UNSATISFACTORY CONVERGENCE
+         Ier = 1
+         spag_nextblock_1 = 9
+      CASE (9)
+!
+!        REARRANGE CALCULATED ROOTS
+         iend = nsav - nran - 1
+         E(ista) = esav
+         IF ( iend>0 ) THEN
+            DO i = 1,iend
+               j = ista + i
+               k = nran + 1 + i
+               E(j) = E(k)
+               Q(j) = Q(k)
+            ENDDO
+         ENDIF
+         Ir = ista + iend
+         spag_nextblock_1 = 10
+      CASE (10)
+!
+!        NORMAL RETURN
+         Ir = Ir - 1
+         IF ( Ir>0 ) THEN
+!
+!        REARRANGE CALCULATED ROOTS
+            DO i = 1,Ir
+               Q(i) = Q(i+1)
+               E(i) = E(i+1)
+            ENDDO
+!
+!        CALCULATE COEFFICIENT VECTOR FROM ROOTS
+            Pol(Ir+1) = 1.
+            iend = Ir - 1
+            jbeg = 1
+            DO j = 1,Ir
+               ista = Ir + 1 - j
+               o = 0.
+               p = Q(ista)
+               t = E(ista)
+               IF ( t==0 ) THEN
+!
+!        MULTIPLY WITH LINEAR FACTOR
+                  DO i = ista,Ir
+                     Pol(i) = o - p*Pol(i+1)
+                     o = Pol(i+1)
+                  ENDDO
+               ELSEIF ( jbeg==2 ) THEN
+!
+!        MULTIPLY WITH QUADRATIC FACTOR
+                  jbeg = 1
+                  u = p*p + t*t
+                  p = p + p
+                  DO i = ista,iend
+                     Pol(i) = o - p*Pol(i+1) + u*Pol(i+2)
+                     o = Pol(i+1)
+                  ENDDO
+                  Pol(Ir) = o - p
+               ELSE
+                  jbeg = 2
+                  Pol(ista) = 0.
+               ENDIF
+            ENDDO
+            IF ( Ier==0 ) THEN
+!
+!        COMPARISON OF COEFFICIENT VECTORS, IE. TEST OF ACCURACY
+               p = 0.
+               DO i = 1,Ir
+                  IF ( C(i)/=0 ) THEN
+                     o = abs((Pol(i)-C(i))/C(i))
+                  ELSE
+                     o = abs(Pol(i))
+                  ENDIF
+                  IF ( p<o ) p = o
+               ENDDO
+               IF ( p>=tol ) Ier = -1
+               Q(Ir+1) = p
+               E(Ir+1) = 0.
+            ENDIF
+         ENDIF
+         RETURN
+      CASE (11)
+!
+!           ERROR RETURN IF THERE EXISTS NO S-FRACTION
+         Ier = 4
+         Ir = ista
+         spag_nextblock_1 = 10
+         CYCLE SPAG_DispatchLoop_1
+      CASE (12)
+!
+!           ERROR RETURN IN CASE OF INSTABLE QD-ALGORITHM
+         Ier = 3
+         spag_nextblock_1 = 9
+         CYCLE SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE prqd

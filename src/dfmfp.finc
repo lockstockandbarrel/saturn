@@ -1,0 +1,408 @@
+!*==dfmfp.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DFMFP
+!
+!        PURPOSE
+!           TO FIND A LOCAL MINIMUM OF A FUNCTION OF SEVERAL VARIABLES
+!           BY THE METHOD OF FLETCHER AND POWELL
+!
+!        USAGE
+!           CALL DFMFP(FUNCT,N,X,F,G,EST,EPS,LIMIT,IER,H)
+!
+!        DESCRIPTION OF PARAMETERS
+!           FUNCT  - USER-WRITTEN SUBROUTINE CONCERNING THE FUNCTION TO
+!                    BE MINIMIZED. IT MUST BE OF THE FORM
+!                    SUBROUTINE FUNCT(N,ARG,VAL,GRAD)
+!                    AND MUST SERVE THE FOLLOWING PURPOSE
+!                    FOR EACH N-DIMENSIONAL ARGUMENT VECTOR  ARG,
+!                    FUNCTION VALUE AND GRADIENT VECTOR MUST BE COMPUTED
+!                    AND, ON RETURN, STORED IN VAL AND GRAD RESPECTIVELY
+!                    ARG,VAL AND GRAD MUST BE OF DOUBLE PRECISION.
+!           N      - NUMBER OF VARIABLES
+!           X      - VECTOR OF DIMENSION N CONTAINING THE INITIAL
+!                    ARGUMENT WHERE THE ITERATION STARTS. ON RETURN,
+!                    X HOLDS THE ARGUMENT CORRESPONDING TO THE
+!                    COMPUTED MINIMUM FUNCTION VALUE
+!                    DOUBLE PRECISION VECTOR.
+!           F      - SINGLE VARIABLE CONTAINING THE MINIMUM FUNCTION
+!                    VALUE ON RETURN, I.E. F=F(X).
+!                    DOUBLE PRECISION VARIABLE.
+!           G      - VECTOR OF DIMENSION N CONTAINING THE GRADIENT
+!                    VECTOR CORRESPONDING TO THE MINIMUM ON RETURN,
+!                    I.E. G=G(X).
+!                    DOUBLE PRECISION VECTOR.
+!           EST    - IS AN ESTIMATE OF THE MINIMUM FUNCTION VALUE.
+!                    SINGLE PRECISION VARIABLE.
+!           EPS    - TESTVALUE REPRESENTING THE EXPECTED ABSOLUTE ERROR.
+!                    A REASONABLE CHOICE IS 10**(-16), I.E.
+!                    SOMEWHAT GREATER THAN 10**(-D), WHERE D IS THE
+!                    NUMBER OF SIGNIFICANT DIGITS IN FLOATING POINT
+!                    REPRESENTATION.
+!                    SINGLE PRECISION VARIABLE.
+!           LIMIT  - MAXIMUM NUMBER OF ITERATIONS.
+!           IER    - ERROR PARAMETER
+!                    IER = 0 MEANS CONVERGENCE WAS OBTAINED
+!                    IER = 1 MEANS NO CONVERGENCE IN LIMIT ITERATIONS
+!                    IER =-1 MEANS ERRORS IN GRADIENT CALCULATION
+!                    IER = 2 MEANS LINEAR SEARCH TECHNIQUE INDICATES
+!                    IT IS LIKELY THAT THERE EXISTS NO MINIMUM.
+!           H      - WORKING STORAGE OF DIMENSION N*(N+7)/2.
+!                    DOUBLE PRECISION ARRAY.
+!
+!        REMARKS
+!            I) THE SUBROUTINE NAME REPLACING THE DUMMY ARGUMENT  FUNCT
+!               MUST BE DECLARED AS EXTERNAL IN THE CALLING PROGRAM.
+!           II) IER IS SET TO 2 IF,STEPPING IN ONE OF THE COMPUTED
+!               DIRECTIONS, THE FUNCTION WILL NEVER INCREASE WITHIN
+!               A TOLERABLE RANGE OF ARGUMENT.
+!               IER = 2 MAY OCCUR ALSO IF THE INTERVAL WHERE F
+!               INCREASES IS SMALL AND THE INITIAL ARGUMENT WAS
+!               RELATIVELY FAR AWAY FROM THE MINIMUM SUCH THAT THE
+!               MINIMUM WAS OVERLEAPED. THIS IS DUE TO THE SEARCH
+!               TECHNIQUE WHICH DOUBLES THE STEPSIZE UNTIL A POINT
+!               IS FOUND WHERE THE FUNCTION INCREASES.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           FUNCT
+!
+!        METHOD
+!           THE METHOD IS DESCRIBED IN THE FOLLOWING ARTICLE
+!           R. FLETCHER AND M.J.D. POWELL, A RAPID DESCENT METHOD FOR
+!           MINIMIZATION,
+!           COMPUTER JOURNAL VOL.6, ISS. 2, 1963, PP.163-168.
+!
+!     ..................................................................
+!
+SUBROUTINE dfmfp(funct,N,X,F,G,Est,Eps,Limit,Ier,H)
+   IMPLICIT NONE
+
+   REAL Eps,Est
+   INTEGER i,Ier,j,k,kl,kount,l,Limit,N,n2,n3,n31,nj
+
+!
+!        DIMENSIONED DUMMY VARIABLES
+   DIMENSION H(*),X(*),G(*)
+   DOUBLE PRECISION X,F,fx,fy,oldf,hnrm,gnrm,H,G,dx,dy,alfa,dalfa,ambda,t,z,w
+   INTEGER :: spag_nextblock_1
+   INTEGER :: spag_nextblock_2
+   INTEGER :: spag_nextblock_3
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        COMPUTE FUNCTION VALUE AND GRADIENT VECTOR FOR INITIAL ARGUMENT
+         CALL funct(N,X,F,G)
+!
+!        RESET ITERATION COUNTER AND GENERATE IDENTITY MATRIX
+         Ier = 0
+         kount = 0
+         n2 = N + N
+         n3 = n2 + N
+         n31 = n3 + 1
+         spag_nextblock_1 = 2
+      CASE (2)
+         k = n31
+         SPAG_Loop_1_1: DO j = 1,N
+            H(k) = 1.D0
+            nj = N - j
+            IF ( nj<=0 ) EXIT SPAG_Loop_1_1
+            DO l = 1,nj
+               kl = k + l
+               H(kl) = 0.D0
+            ENDDO
+            k = kl + 1
+         ENDDO SPAG_Loop_1_1
+         SPAG_Loop_1_2: DO
+            spag_nextblock_2 = 1
+            SPAG_DispatchLoop_2: DO
+               SELECT CASE (spag_nextblock_2)
+               CASE (1)
+!
+!        START ITERATION LOOP
+                  kount = kount + 1
+!
+!        SAVE FUNCTION VALUE, ARGUMENT VECTOR AND GRADIENT VECTOR
+                  oldf = F
+                  DO j = 1,N
+                     k = N + j
+                     H(k) = G(j)
+                     k = k + N
+                     H(k) = X(j)
+!
+!        DETERMINE DIRECTION VECTOR H
+                     k = j + n3
+                     t = 0.D0
+                     DO l = 1,N
+                        t = t - G(l)*H(k)
+                        IF ( l<j ) THEN
+                           k = k + N - l
+                        ELSE
+                           k = k + 1
+                        ENDIF
+                     ENDDO
+                     H(j) = t
+                  ENDDO
+!
+!        CHECK WHETHER FUNCTION WILL DECREASE STEPPING ALONG H.
+                  dy = 0.D0
+                  hnrm = 0.D0
+                  gnrm = 0.D0
+!
+!        CALCULATE DIRECTIONAL DERIVATIVE AND TESTVALUES FOR DIRECTION
+!        VECTOR H AND GRADIENT VECTOR G.
+                  DO j = 1,N
+                     hnrm = hnrm + dabs(H(j))
+                     gnrm = gnrm + dabs(G(j))
+                     dy = dy + H(j)*G(j)
+                  ENDDO
+!
+!        REPEAT SEARCH IN DIRECTION OF STEEPEST DESCENT IF DIRECTIONAL
+!        DERIVATIVE APPEARS TO BE POSITIVE OR ZERO.
+                  IF ( dy>=0 ) EXIT SPAG_Loop_1_2
+!
+!        REPEAT SEARCH IN DIRECTION OF STEEPEST DESCENT IF DIRECTION
+!        VECTOR H IS SMALL COMPARED TO GRADIENT VECTOR G.
+                  IF ( hnrm/gnrm<=Eps ) EXIT SPAG_Loop_1_2
+!
+!        SEARCH MINIMUM ALONG DIRECTION H
+!
+!        SEARCH ALONG H FOR POSITIVE DIRECTIONAL DERIVATIVE
+                  fy = F
+                  alfa = 2.D0*(Est-F)/dy
+                  ambda = 1.D0
+!
+!        USE ESTIMATE FOR STEPSIZE ONLY IF IT IS POSITIVE AND LESS THAN
+!        1. OTHERWISE TAKE 1. AS STEPSIZE
+                  IF ( alfa>0 ) THEN
+                     IF ( alfa<ambda ) ambda = alfa
+                  ENDIF
+                  alfa = 0.D0
+                  SPAG_Loop_2_3: DO
+!
+!        SAVE FUNCTION AND DERIVATIVE VALUES FOR OLD ARGUMENT
+                     fx = fy
+                     dx = dy
+!
+!        STEP ARGUMENT ALONG H
+                     DO i = 1,N
+                        X(i) = X(i) + ambda*H(i)
+                     ENDDO
+!
+!        COMPUTE FUNCTION VALUE AND GRADIENT FOR NEW ARGUMENT
+                     CALL funct(N,X,F,G)
+                     fy = F
+!
+!        COMPUTE DIRECTIONAL DERIVATIVE DY FOR NEW ARGUMENT.  TERMINATE
+!        SEARCH, IF DY IS POSITIVE. IF DY IS ZERO THE MINIMUM IS FOUND
+                     dy = 0.D0
+                     DO i = 1,N
+                        dy = dy + G(i)*H(i)
+                     ENDDO
+                     IF ( dy<0 ) THEN
+!
+!        TERMINATE SEARCH ALSO IF THE FUNCTION VALUE INDICATES THAT
+!        A MINIMUM HAS BEEN PASSED
+                        IF ( fy<fx ) THEN
+!
+!        REPEAT SEARCH AND DOUBLE STEPSIZE FOR FURTHER SEARCHES
+                           ambda = ambda + alfa
+                           alfa = ambda
+!        END OF SEARCH LOOP
+!
+!        TERMINATE IF THE CHANGE IN ARGUMENT GETS VERY LARGE
+                           IF ( hnrm*ambda>1.D10 ) THEN
+!
+!        LINEAR SEARCH TECHNIQUE INDICATES THAT NO MINIMUM EXISTS
+                              Ier = 2
+                              RETURN
+                           ENDIF
+                        ELSE
+!
+!        INTERPOLATE CUBICALLY IN THE INTERVAL DEFINED BY THE SEARCH
+!        ABOVE AND COMPUTE THE ARGUMENT X FOR WHICH THE INTERPOLATION
+!        POLYNOMIAL IS MINIMIZED
+                           t = 0.D0
+                           EXIT SPAG_Loop_2_3
+                        ENDIF
+                     ELSEIF ( dy==0 ) THEN
+                        spag_nextblock_2 = 2
+                        CYCLE SPAG_DispatchLoop_2
+                     ELSE
+                        t = 0.D0
+                        EXIT SPAG_Loop_2_3
+                     ENDIF
+                  ENDDO SPAG_Loop_2_3
+                  SPAG_Loop_2_4: DO WHILE ( ambda/=0 )
+                     spag_nextblock_3 = 1
+                     SPAG_DispatchLoop_3: DO
+                        SELECT CASE (spag_nextblock_3)
+                        CASE (1)
+                           z = 3.D0*(fx-fy)/ambda + dx + dy
+                           alfa = dmax1(dabs(z),dabs(dx),dabs(dy))
+                           dalfa = z/alfa
+                           dalfa = dalfa*dalfa - dx/alfa*dy/alfa
+                           IF ( dalfa<0 ) EXIT SPAG_Loop_1_2
+                           w = alfa*dsqrt(dalfa)
+                           alfa = dy - dx + w + w
+                           IF ( alfa/=0 ) THEN
+                              alfa = (dy-z+w)/alfa
+                           ELSE
+                              alfa = (z+dy-w)/(z+dx+z+dy)
+                           ENDIF
+                           alfa = alfa*ambda
+                           DO i = 1,N
+                              X(i) = X(i) + (t-alfa)*H(i)
+                           ENDDO
+!
+!        TERMINATE, IF THE VALUE OF THE ACTUAL FUNCTION AT X IS LESS
+!        THAN THE FUNCTION VALUES AT THE INTERVAL ENDS. OTHERWISE REDUCE
+!        THE INTERVAL BY CHOOSING ONE END-POINT EQUAL TO X AND REPEAT
+!        THE INTERPOLATION.  WHICH END-POINT IS CHOOSEN DEPENDS ON THE
+!        VALUE OF THE FUNCTION AND ITS GRADIENT AT X
+!
+                           CALL funct(N,X,F,G)
+                           IF ( F<=fx ) THEN
+                              IF ( F<=fy ) EXIT SPAG_Loop_2_4
+                           ENDIF
+                           dalfa = 0.D0
+                           DO i = 1,N
+                              dalfa = dalfa + G(i)*H(i)
+                           ENDDO
+                           IF ( dalfa<0 ) THEN
+                              IF ( F<fx ) THEN
+                              ELSEIF ( F==fx ) THEN
+                                 IF ( dx==dalfa ) EXIT SPAG_Loop_2_4
+                              ELSE
+                                 spag_nextblock_3 = 2
+                                 CYCLE SPAG_DispatchLoop_3
+                              ENDIF
+                              fx = F
+                              dx = dalfa
+                              t = alfa
+                              ambda = alfa
+                              CYCLE
+                           ENDIF
+                           spag_nextblock_3 = 2
+                        CASE (2)
+                           IF ( fy==F ) THEN
+                              IF ( dy==dalfa ) EXIT SPAG_Loop_2_4
+                           ENDIF
+                           fy = F
+                           dy = dalfa
+                           ambda = ambda - alfa
+                           t = 0.D0
+                           EXIT SPAG_DispatchLoop_3
+                        END SELECT
+                     ENDDO SPAG_DispatchLoop_3
+                  ENDDO SPAG_Loop_2_4
+                  spag_nextblock_2 = 2
+               CASE (2)
+!
+!        TERMINATE, IF FUNCTION HAS NOT DECREASED DURING LAST ITERATION
+                  IF ( oldf-F+Eps<0 ) EXIT SPAG_Loop_1_2
+!
+!        COMPUTE DIFFERENCE VECTORS OF ARGUMENT AND GRADIENT FROM
+!        TWO CONSECUTIVE ITERATIONS
+                  DO j = 1,N
+                     k = N + j
+                     H(k) = G(j) - H(k)
+                     k = N + k
+                     H(k) = X(j) - H(k)
+                  ENDDO
+!
+!        TEST LENGTH OF ARGUMENT DIFFERENCE VECTOR AND DIRECTION VECTOR
+!        IF AT LEAST N ITERATIONS HAVE BEEN EXECUTED. TERMINATE, IF
+!        BOTH ARE LESS THAN  EPS
+                  Ier = 0
+                  IF ( kount>=N ) THEN
+                     t = 0.D0
+                     z = 0.D0
+                     DO j = 1,N
+                        k = N + j
+                        w = H(k)
+                        k = k + N
+                        t = t + dabs(H(k))
+                        z = z + w*H(k)
+                     ENDDO
+                     IF ( hnrm<=Eps ) THEN
+                        IF ( t<=Eps ) RETURN
+                     ENDIF
+                  ENDIF
+!
+!        TERMINATE, IF NUMBER OF ITERATIONS WOULD EXCEED  LIMIT
+                  IF ( kount<Limit ) THEN
+!
+!        PREPARE UPDATING OF MATRIX H
+                     alfa = 0.D0
+                     DO j = 1,N
+                        k = j + n3
+                        w = 0.D0
+                        DO l = 1,N
+                           kl = N + l
+                           w = w + H(kl)*H(k)
+                           IF ( l<j ) THEN
+                              k = k + N - l
+                           ELSE
+                              k = k + 1
+                           ENDIF
+                        ENDDO
+                        k = N + j
+                        alfa = alfa + w*H(k)
+                        H(j) = w
+                     ENDDO
+!
+!        REPEAT SEARCH IN DIRECTION OF STEEPEST DESCENT IF RESULTS
+!        ARE NOT SATISFACTORY
+                     IF ( z*alfa==0 ) THEN
+                        spag_nextblock_1 = 2
+                        CYCLE SPAG_DispatchLoop_1
+                     ENDIF
+!
+!        UPDATE MATRIX H
+                     k = n31
+                     DO l = 1,N
+                        kl = n2 + l
+                        DO j = l,N
+                           nj = n2 + j
+                           H(k) = H(k) + H(kl)*H(nj)/z - H(l)*H(j)/alfa
+                           k = k + 1
+                        ENDDO
+                     ENDDO
+                  ELSE
+!        END OF ITERATION LOOP
+!
+!        NO CONVERGENCE AFTER  LIMIT  ITERATIONS
+                     Ier = 1
+                     RETURN
+                  ENDIF
+                  EXIT SPAG_DispatchLoop_2
+               END SELECT
+            ENDDO SPAG_DispatchLoop_2
+         ENDDO SPAG_Loop_1_2
+!
+!        RESTORE OLD VALUES OF FUNCTION AND ARGUMENTS
+         DO j = 1,N
+            k = n2 + j
+            X(j) = H(k)
+         ENDDO
+         CALL funct(N,X,F,G)
+!
+!        REPEAT SEARCH IN DIRECTION OF STEEPEST DESCENT IF DERIVATIVE
+!        FAILS TO BE SUFFICIENTLY SMALL
+         IF ( gnrm<=Eps ) THEN
+            Ier = 0
+!
+!        TEST FOR REPEATED FAILURE OF ITERATION
+         ELSEIF ( Ier>=0 ) THEN
+            Ier = -1
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE dfmfp

@@ -1,0 +1,322 @@
+!*==arat.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE ARAT
+!
+!        PURPOSE
+!           CALCULATE BEST RATIONAL APPROXIMATION OF A DISCRETE
+!           FUNCTION IN THE LEAST SQUARES SENSE
+!
+!        USAGE
+!           CALL ARAT(DATI,N,WORK,P,IP,IQ,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           DATI  - TWODIMENSIONAL ARRAY WITH 3 COLUMNS AND N ROWS
+!                   THE FIRST COLUMN MUST CONTAIN THE GIVEN ARGUMENTS,
+!                   THE SECOND COLUMN THE GIVEN FUNCTION VALUES AND
+!                   THE THIRD COLUMN THE GIVEN WEIGHTS IF ANY.
+!                   IF NO WEIGHTS ARE TO BE USED THEN THE THIRD
+!                   COLUMN MAY BE DROPPED,EXCEPT THE FIRST ELEMENT
+!                   WHICH MUST CONTAIN A NONPOSITIVE VALUE
+!           N     - NUMBER OF NODES OF THE GIVEN DISCRETE FUNCTION
+!           WORK  - WORKING STORAGE WHICH IS OF DIMENSION
+!                   (IP+IQ)*(IP+IQ+1)+4*N+1 AT LEAST.
+!                   ON RETURN THE VALUES OF THE NUMERATOR ARE CONTAINED
+!                   IN WORK(N+1) UP TO WORK(2*N), WHILE THE VALUES OF
+!                   THE DENOMINATOR ARE STORED IN WORK(2*N+1) UP TO
+!                   WORK(3*N)
+!           P     - RESULTANT COEFFICIENT VECTOR OF DENOMINATOR AND
+!                   NUMERATOR. THE DENOMINATOR IS STORED IN FIRST IQ
+!                   LOCATIONS, THE NUMERATOR IN THE FOLLOWING IP
+!                   LOCATIONS.
+!                   COEFFICIENTS ARE ORDERED FROM LOW TO HIGH.
+!           IP    - DIMENSION OF THE NUMERATOR   (INPUT VALUE)
+!           IQ    - DIMENSION OF THE DENOMINATOR (INPUT VALUE)
+!           IER   - RESULTANT ERROR PARAMETER
+!                   IER =-1 MEANS FORMAL ERRORS
+!                   IER = 0 MEANS NO ERRORS
+!                   IER = 1,2 MEANS POOR CONVERGENCE OF ITERATION
+!                   IER IS ALSO USED AS INPUT VALUE
+!                   A NONZERO INPUT VALUE INDICATES AVAILABILITY OF AN
+!                   INITIAL APPROXIMATION STORED IN P
+!
+!        REMARKS
+!           THE COEFFICIENT VECTORS OF THE DENOMINATOR AND NUMERATOR
+!           OF THE RATIONAL APPROXIMATION ARE BOTH STORED IN P
+!           STARTING WITH LOW POWERS (DENOMINATOR FIRST).
+!           IP+IQ MUST NOT EXCEED N, ALL THREE VALUES MUST BE POSITIVE.
+!           SINCE CHEBYSHEV POLYNOMIALS ARE USED AS FUNDAMENTAL
+!           FUNCTIONS, THE ARGUMENTS SHOULD BE REDUCED TO THE INTERVAL
+!           (-1,1). THIS CAN ALWAYS BE ACCOMPLISHED BY MEANS OF A LINEAR
+!           TRANSFORMATION OF THE ORIGINALLY GIVEN ARGUMENTS.
+!           IF A FIT IN OTHER FUNCTIONS IS REQUIRED, CNP AND CNPS MUST
+!           BE REPLACED BY SUBROUTINES WHICH ARE OF ANALOGOUS DESIGN.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           APLL, APFS, FRAT, CNPS, CNP
+!           CNP IS REQUIRED WITHIN FRAT
+!
+!        METHOD
+!           THE ITERATIVE SCHEME USED FOR CALCULATION OF THE
+!           APPROXIMATION IS REPEATED SOLUTION OF THE NORMAL EQUATIONS
+!           WHICH ARE OBTAINED BY LINEARIZATION.
+!           A REFINED TECHNIQUE OF THIS LINEAR LEAST SQUARES APPROACH
+!           IS USED WHICH GUARANTEES THAT THE DENOMINATOR IS FREE OF
+!           ZEROES WITHIN THE APPROXIMATION INTERVAL.
+!           FOR REFERENCE SEE
+!           D.BRAESS, UEBER DAEMPFUNG BEI MINIMALISIERUNGSVERFAHREN,
+!           COMPUTING(1966), VOL.1, ED.3, PP.264-272.
+!           D.W.MARQUARDT, AN ALGORITHM FOR LEAST-SQUARES ESTIMATION
+!           OF NONLINEAR PARAMETERS,
+!           JSIAM(1963), VOL.11, ED.2, PP.431-441.
+!
+!     ..................................................................
+!
+SUBROUTINE arat(Dati,N,Work,P,Ip,Iq,Ier)
+   IMPLICIT NONE
+
+   REAL Dati,diag,eps,eta,osum,P,relax,save,ssoe,sum,t,Work
+   INTEGER i,iend,Ier,ierv,incr,Ip,ipq,Iq,iqp1,ires,irhs,irp,irq,iter,ix,j,k,kount,l,limit
+   INTEGER m,N,ndp,nne
+
+!
+!
+   EXTERNAL frat
+!
+!        DIMENSIONED LOCAL VARIABLE
+   DIMENSION ierv(3)
+!
+!        DIMENSIONED DUMMY VARIABLES
+   DIMENSION Dati(*),Work(*),P(*)
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        INITIALIZE TESTVALUES
+         limit = 20
+         eta = 1.E-11
+         eps = 1.E-5
+!
+!        CHECK FOR FORMAL ERRORS
+         IF ( N>0 ) THEN
+            IF ( Ip>0 ) THEN
+               IF ( Iq>0 ) THEN
+                  ipq = Ip + Iq
+                  IF ( N>=ipq ) THEN
+!
+!        INITIALIZE ITERATION PROCESS
+                     kount = 0
+                     ierv(2) = Ip
+                     ierv(3) = Iq
+                     ndp = N + N + 1
+                     nne = ndp + ndp
+                     ix = ipq - 1
+                     iqp1 = Iq + 1
+                     irhs = nne + ipq*ix/2
+                     iend = irhs + ix
+!
+!        TEST FOR AVAILABILITY OF AN INITIAL APPROXIMATION
+                     IF ( Ier==0 ) THEN
+!
+!        INITIALIZE NUMERATOR AND DENOMINATOR
+                        DO i = 2,ipq
+                           P(i) = 0.
+                        ENDDO
+                        P(1) = 1.
+                     ENDIF
+!
+!        CALCULATE VALUES OF NUMERATOR AND DENOMINATOR FOR INITIAL
+!        APPROXIMATION
+                     DO j = 1,N
+                        t = Dati(j)
+                        i = j + N
+                        CALL cnps(Work(i),t,P(iqp1),Ip)
+                        k = i + N
+                        CALL cnps(Work(k),t,P,Iq)
+                     ENDDO
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+               ENDIF
+            ENDIF
+         ENDIF
+         spag_nextblock_1 = 2
+      CASE (2)
+!
+!        ERROR RETURN IN CASE OF FORMAL ERRORS
+         Ier = -1
+         RETURN
+      CASE (3)
+!
+!        SET UP NORMAL EQUATIONS (MAIN LOOP OF ITERATION)
+         CALL apll(frat,N,ix,Work,Work(iend+1),Dati,ierv)
+!
+!        CHECK FOR ZERO DENOMINATOR
+         IF ( ierv(1)/=0 ) THEN
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+         incr = 0
+         relax = 2.
+         spag_nextblock_1 = 4
+      CASE (4)
+!
+!        RESTORE MATRIX IN WORKING STORAGE
+         j = iend
+         DO i = nne,iend
+            j = j + 1
+            Work(i) = Work(j)
+         ENDDO
+         IF ( kount<=0 ) THEN
+!
+!        SAVE SQUARE SUM OF ERRORS
+            osum = Work(iend)
+            diag = osum*eps
+            k = Iq
+!
+!        ADD CONSTANT TO DIAGONAL
+            IF ( Work(nne)>0 ) THEN
+               spag_nextblock_1 = 5
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ELSE
+            IF ( incr<=0 ) THEN
+               spag_nextblock_1 = 5
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            k = ipq
+         ENDIF
+         j = nne - 1
+         DO i = 1,k
+            Work(j) = Work(j) + diag
+            j = j + i
+         ENDDO
+         spag_nextblock_1 = 5
+      CASE (5)
+!
+!        SOLVE NORMAL EQUATIONS
+         CALL apfs(Work(nne),ix,ires,1,eps,eta,Ier)
+!
+!        CHECK FOR FAILURE OF EQUATION SOLVER
+         IF ( ires<=0 ) THEN
+            spag_nextblock_1 = 2
+            CYCLE SPAG_DispatchLoop_1
+         ENDIF
+!
+!        TEST FOR DEFECTIVE NORMALEQUATIONS
+         IF ( ires<ix ) THEN
+            IF ( incr<=0 ) diag = diag*0.125
+            diag = diag + diag
+            incr = incr + 1
+!
+!        START WITH OVER RELAXATION
+            relax = 8.
+            IF ( incr<limit ) THEN
+               spag_nextblock_1 = 4
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ELSE
+!
+!        CALCULATE VALUES OF CHANGE OF NUMERATOR AND DENOMINATOR
+            l = ndp
+            j = nne + ires*(ires-1)/2 - 1
+            k = j + Iq
+            Work(j) = 0.
+            irq = Iq
+            irp = ires - Iq + 1
+            IF ( irp<0 ) irq = ires + 1
+            DO i = 1,N
+               t = Dati(i)
+               Work(i) = 0.
+               CALL cnps(Work(i),t,Work(k),irp)
+               m = l + N
+               CALL cnps(Work(m),t,Work(j),irq)
+               IF ( Work(m)*Work(l)<0 ) THEN
+                  sum = Work(l)/Work(m)
+                  IF ( relax+sum>0 ) relax = -sum
+               ENDIF
+               l = l + 1
+            ENDDO
+!
+!        MODIFY RELAXATION FACTOR IF NECESSARY
+            ssoe = osum
+            iter = limit
+            SPAG_Loop_1_1: DO
+               sum = 0.
+               relax = relax*0.5
+               DO i = 1,N
+                  m = i + N
+                  k = m + N
+                  l = k + N
+                  save = Dati(m) - (Work(m)+relax*Work(i))/(Work(k)+relax*Work(l))
+                  save = save*save
+                  IF ( Dati(ndp)>0 ) save = save*Dati(k)
+                  sum = sum + save
+               ENDDO
+               IF ( iter<0 ) EXIT SPAG_Loop_1_1
+               iter = iter - 1
+               IF ( sum<osum ) THEN
+                  osum = sum
+                  CYCLE
+               ELSEIF ( sum/=osum ) THEN
+!
+!        TEST FOR IMPROVEMENT
+                  IF ( osum>=ssoe ) CYCLE
+                  relax = relax + relax
+               ENDIF
+               t = 0.
+               save = 0.
+               k = ires + 1
+               DO i = 2,k
+                  j = j + 1
+                  t = t + abs(P(i))
+                  P(i) = P(i) + relax*Work(j)
+                  save = save + abs(P(i))
+               ENDDO
+!
+!        UPDATE CURRENT VALUES OF NUMERATOR AND DENOMINATOR
+               DO i = 1,N
+                  j = i + N
+                  k = j + N
+                  l = k + N
+                  Work(j) = Work(j) + relax*Work(i)
+                  Work(k) = Work(k) + relax*Work(l)
+               ENDDO
+!
+!        TEST FOR CONVERGENCE
+               IF ( incr<=0 ) THEN
+                  IF ( ssoe-osum<=relax*eps*osum ) THEN
+!
+!        NORMAL RETURN
+                     Ier = 0
+                     RETURN
+                  ELSEIF ( abs(t-save)<=relax*eps*save ) THEN
+                     Ier = 0
+                     RETURN
+                  ENDIF
+               ENDIF
+               IF ( osum<=eta*save ) THEN
+                  Ier = 0
+                  RETURN
+               ELSE
+                  kount = kount + 1
+                  IF ( kount<limit ) THEN
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+!
+!        ERROR RETURN IN CASE OF POOR CONVERGENCE
+                  Ier = 2
+                  RETURN
+               ENDIF
+            ENDDO SPAG_Loop_1_1
+         ENDIF
+         Ier = 1
+         RETURN
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE arat

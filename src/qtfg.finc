@@ -1,0 +1,59 @@
+!*==qtfg.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE QTFG
+!
+!        PURPOSE
+!           TO COMPUTE THE VECTOR OF INTEGRAL VALUES FOR A GIVEN
+!           GENERAL TABLE OF ARGUMENT AND FUNCTION VALUES.
+!
+!        USAGE
+!           CALL QTFG (X,Y,Z,NDIM)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X      - THE INPUT VECTOR OF ARGUMENT VALUES.
+!           Y      - THE INPUT VECTOR OF FUNCTION VALUES.
+!           Z      - THE RESULTING VECTOR OF INTEGRAL VALUES. Z MAY BE
+!                    IDENTICAL WITH X OR Y.
+!           NDIM   - THE DIMENSION OF VECTORS X,Y,Z.
+!
+!        REMARKS
+!           NO ACTION IN CASE NDIM LESS THAN 1.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           BEGINNING WITH Z(1)=0, EVALUATION OF VECTOR Z IS DONE BY
+!           MEANS OF TRAPEZOIDAL RULE (SECOND ORDER FORMULA).
+!           FOR REFERENCE, SEE
+!           F.B.HILDEBRAND, INTRODUCTION TO NUMERICAL ANALYSIS,
+!           MCGRAW-HILL, NEW YORK/TORONTO/LONDON, 1956, PP.75.
+!
+!     ..................................................................
+!
+SUBROUTINE qtfg(X,Y,Z,Ndim)
+   IMPLICIT NONE
+
+   INTEGER i,Ndim
+   REAL sum1,sum2,X,Y,Z
+
+!
+!
+   DIMENSION X(*),Y(*),Z(*)
+!
+   sum2 = 0.
+   IF ( Ndim<1 ) RETURN
+   IF ( Ndim/=1 ) THEN
+!
+!     INTEGRATION LOOP
+      DO i = 2,Ndim
+         sum1 = sum2
+         sum2 = sum2 + .5*(X(i)-X(i-1))*(Y(i)+Y(i-1))
+         Z(i-1) = sum1
+      ENDDO
+   ENDIF
+   Z(Ndim) = sum2
+END SUBROUTINE qtfg

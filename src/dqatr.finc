@@ -1,0 +1,150 @@
+!*==dqatr.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQATR
+!
+!
+!        PURPOSE
+!           TO COMPUTE AN APPROXIMATION FOR INTEGRAL(FCT(X), SUMMED
+!           OVER X FROM XL TO XU).
+!
+!        USAGE
+!           CALL DQATR (XL,XU,EPS,NDIM,FCT,Y,IER,AUX)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT.
+!
+!        DESCRIPTION OF PARAMETERS
+!           XL     - DOUBLE PRECISION LOWER BOUND OF THE INTERVAL.
+!           XU     - DOUBLE PRECISION UPPER BOUND OF THE INTERVAL.
+!           EPS    - SINGLE PRECISION UPPER BOUND OF THE ABSOLUTE ERROR.
+!           NDIM   - THE DIMENSION OF THE AUXILIARY STORAGE ARRAY AUX.
+!                    NDIM-1 IS THE MAXIMAL NUMBER OF BISECTIONS OF
+!                    THE INTERVAL (XL,XU).
+!           FCT    - THE NAME OF THE EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           Y      - RESULTING DOUBLE PRECISION APPROXIMATION FOR THE
+!                    INTEGRAL VALUE.
+!           IER    - A RESULTING ERROR PARAMETER.
+!           AUX    - AUXILIARY DOUBLE PRECISION STORAGE ARRAY WITH
+!                    DIMENSION NDIM.
+!
+!        REMARKS
+!           ERROR PARAMETER IER IS CODED IN THE FOLLOWING FORM
+!           IER=0  - IT WAS POSSIBLE TO REACH THE REQUIRED ACCURACY.
+!                    NO ERROR.
+!           IER=1  - IT IS IMPOSSIBLE TO REACH THE REQUIRED ACCURACY
+!                    BECAUSE OF ROUNDING ERRORS.
+!           IER=2  - IT WAS IMPOSSIBLE TO CHECK ACCURACY BECAUSE NDIM
+!                    IS LESS THAN 5, OR THE REQUIRED ACCURACY COULD NOT
+!                    BE REACHED WITHIN NDIM-1 STEPS. NDIM SHOULD BE
+!                    INCREASED.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE CODED BY THE USER. ITS DOUBLE PRECISION ARGUMENT X
+!           SHOULD NOT BE DESTROYED.
+!
+!        METHOD
+!           EVALUATION OF Y IS DONE BY MEANS OF TRAPEZOIDAL RULE IN
+!           CONNECTION WITH ROMBERGS PRINCIPLE. ON RETURN Y CONTAINS
+!           THE BEST POSSIBLE APPROXIMATION OF THE INTEGRAL VALUE AND
+!           VECTOR AUX THE UPWARD DIAGONAL OF ROMBERG SCHEME.
+!           COMPONENTS AUX(I) (I=1,2,...,IEND, WITH IEND LESS THAN OR
+!           EQUAL TO NDIM) BECOME APPROXIMATIONS TO INTEGRAL VALUE WITH
+!           DECREASING ACCURACY BY MULTIPLICATION WITH (XU-XL).
+!           FOR REFERENCE, SEE
+!           (1) FILIPPI, DAS VERFAHREN VON ROMBERG-STIEFEL-BAUER ALS
+!               SPEZIALFALL DES ALLGEMEINEN PRINZIPS VON RICHARDSON,
+!               MATHEMATIK-TECHNIK-WIRTSCHAFT, VOL.11, ISS.2 (1964),
+!               PP.49-54.
+!           (2) BAUER, ALGORITHM 60, CACM, VOL.4, ISS.6 (1961), PP.255.
+!
+!     ..................................................................
+!
+SUBROUTINE dqatr(Xl,Xu,Eps,Ndim,fct,Y,Ier,Aux)
+   IMPLICIT NONE
+
+   REAL delt1,delt2,e,Eps
+   INTEGER i,Ier,ii,j,ji,jj,Ndim
+
+!
+!
+   DIMENSION Aux(*)
+   DOUBLE PRECISION Aux,Xl,Xu,x,Y,h,hh,hd,p,q,sm,fct
+!
+!     PREPARATIONS OF ROMBERG-LOOP
+   Aux(1) = .5D0*(fct(Xl)+fct(Xu))
+   h = Xu - Xl
+   IF ( Ndim<=1 ) THEN
+      Ier = 2
+   ELSE
+      IF ( h==0 ) THEN
+         CALL spag_block_2
+         RETURN
+      ENDIF
+!
+!     NDIM IS GREATER THAN 1 AND H IS NOT EQUAL TO 0.
+      hh = h
+      e = Eps/dabs(h)
+      delt2 = 0.
+      p = 1.D0
+      jj = 1
+      DO i = 2,Ndim
+         Y = Aux(1)
+         delt1 = delt2
+         hd = hh
+         hh = .5D0*hh
+         p = .5D0*p
+         x = Xl + hh
+         sm = 0.D0
+         DO j = 1,jj
+            sm = sm + fct(x)
+            x = x + hd
+         ENDDO
+         Aux(i) = .5D0*Aux(i-1) + p*sm
+!     A NEW APPROXIMATION OF INTEGRAL VALUE IS COMPUTED BY MEANS OF
+!     TRAPEZOIDAL RULE.
+!
+!     START OF ROMBERGS EXTRAPOLATION METHOD.
+         q = 1.D0
+         ji = i - 1
+         DO j = 1,ji
+            ii = i - j
+            q = q + q
+            q = q + q
+            Aux(ii) = Aux(ii+1) + (Aux(ii+1)-Aux(ii))/(q-1.D0)
+         ENDDO
+!     END OF ROMBERG-STEP
+!
+         delt2 = dabs(Y-Aux(1))
+         IF ( i>=5 ) THEN
+            IF ( delt2<=e ) THEN
+               CALL spag_block_2
+               RETURN
+            ENDIF
+            IF ( delt2>=delt1 ) THEN
+               CALL spag_block_3
+               RETURN
+            ENDIF
+         ENDIF
+         jj = jj + jj
+      ENDDO
+      Ier = 2
+   ENDIF
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+      Y = h*Aux(1)
+      RETURN
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+      Ier = 0
+      CALL spag_block_1
+      RETURN
+   END SUBROUTINE spag_block_2
+   SUBROUTINE spag_block_3
+      Ier = 1
+      Y = h*Y
+   END SUBROUTINE spag_block_3
+END SUBROUTINE dqatr

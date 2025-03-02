@@ -1,0 +1,95 @@
+!*==rank.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RANK
+!
+!        PURPOSE
+!           RANK A VECTOR OF VALUES
+!
+!        USAGE
+!           CALL RANK(A,R,N)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - INPUT VECTOR OF N VALUES
+!           R - OUTPUT VECTOR OF LENGTH N. SMALLEST VALUE IS RANKED 1,
+!               LARGEST IS RANKED N. TIES ARE ASSIGNED AVERAGE OF TIED
+!               RANKS
+!           N - NUMBER OF VALUES
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           VECTOR IS SEARCHED FOR SUCCESSIVELY LARGER ELEMENTS. IF TIES
+!           OCCUR, THEY ARE LOCATED AND THEIR RANK VALUE COMPUTED.
+!           FOR EXAMPLE, IF 2 VALUES ARE TIED FOR SIXTH RANK, THEY ARE
+!           ASSIGNED A RANK OF 6.5 (=(6+7)/2)
+!
+!     ..................................................................
+!
+SUBROUTINE rank(A,R,N)
+   IMPLICIT NONE
+
+   REAL A,equal,p,R,small,x
+   INTEGER i,j,N
+
+   DIMENSION A(*),R(*)
+!
+!        INITIALIZATION
+!
+   DO i = 1,N
+      R(i) = 0.0
+   ENDDO
+!
+!        FIND RANK OF DATA
+!
+   DO i = 1,N
+!
+!        TEST WHETHER DATA POINT IS ALREADY RANKED
+!
+      IF ( R(i)<=0 ) THEN
+!
+!        DATA POINT TO BE RANKED
+!
+         small = 0.0
+         equal = 0.0
+         x = A(i)
+         DO j = 1,N
+            IF ( A(j)<x ) THEN
+!        COUNT NUMBER OF DATA POINTS WHICH ARE SMALLER
+!
+!
+               small = small + 1.0
+            ELSEIF ( A(j)==x ) THEN
+!
+!        COUNT NUMBER OF DATA POINTS WHICH ARE EQUAL
+!
+               equal = equal + 1.0
+               R(j) = -1.0
+            ENDIF
+         ENDDO
+!
+!        TEST FOR TIE
+!
+         IF ( equal<=1.0 ) THEN
+!
+!        STORE RANK OF DATA POINT WHERE NO TIE
+!
+            R(i) = small + 1.0
+         ELSE
+!
+!        CALCULATE RANK OF TIED DATA POINTS
+!
+            p = small + (equal+1.0)*0.5
+            DO j = i,N
+               IF ( R(j)+1.0==0 ) R(j) = p
+            ENDDO
+         ENDIF
+      ENDIF
+   ENDDO
+END SUBROUTINE rank

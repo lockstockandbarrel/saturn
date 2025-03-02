@@ -1,0 +1,82 @@
+!*==dlgam.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DLGAM
+!
+!        PURPOSE
+!           COMPUTES THE DOUBLE PRECISION NATURAL LOGARITHM OF THE
+!           GAMMA FUNCTION OF A GIVEN DOUBLE PRECISION ARGUMENT.
+!
+!        USAGE
+!           CALL DLGAM(XX,DLNG,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           XX   - THE DOUBLE PRECISION ARGUMENT FOR THE LOG GAMMA
+!                  FUNCTION.
+!           DLNG - THE RESULTANT DOUBLE PRECISION LOG GAMMA FUNCTION
+!                  VALUE.
+!           IER  - RESULTANT ERROR CODE WHERE
+!                  IER= 0----NO ERROR.
+!                  IER=-1----XX IS WITHIN 10**(-9) OF BEING ZERO OR XX
+!                            IS NEGATIVE.  DLNG IS SET TO -1.OD75.
+!                  IER=+1----XX IS GREATER THAN 10**70. DLNG IS SET TO
+!                            +1.OD75.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE EULER-MCLAURIN EXPANSION TO THE SEVENTH DERIVATIVE TERM
+!           IS USED, AS GIVEN BY M. ABRAMOWITZ AND I.A. STEGUN,
+!           'HANDBOOK OF MATHEMATICAL FUNCTIONS', U. S. DEPARTMENT OF
+!           COMMERCE, NATIONAL BUREAU OF STANDARDS APPLIED MATHEMATICS
+!           SERIES, 1966, EQUATION 6.1.41.
+!
+!     ..................................................................
+!
+SUBROUTINE dlgam(Xx,Dlng,Ier)
+   IMPLICIT NONE
+
+   INTEGER Ier
+
+   DOUBLE PRECISION Xx,zz,term,rz2,Dlng
+   Ier = 0
+   zz = Xx
+   IF ( Xx<=1.D10 ) THEN
+!
+!        SEE IF XX IS NEAR ZERO OR NEGATIVE
+!
+      IF ( Xx<=1.D-9 ) THEN
+         Ier = -1
+         Dlng = -1.D75
+      ELSE
+!
+!        XX GREATER THAN ZERO AND LESS THAN OR EQUAL TO 1.D+10
+!
+         term = 1.D0
+         DO WHILE ( zz<=18.D0 )
+            term = term*zz
+            zz = zz + 1.D0
+         ENDDO
+         rz2 = 1.D0/zz**2
+         Dlng = (zz-0.5D0)*dlog(zz) - zz + 0.9189385332046727 - dlog(term) + (1.D0/zz)                                              &
+              & *(.8333333333333333D-1-(rz2*(.2777777777777777D-2+(rz2*(.7936507936507936D-3-(rz2*(.5952380952380952D-3)))))))
+      ENDIF
+   ELSEIF ( Xx<1.D70 ) THEN
+!
+!        XX GREATER THAN 1.D+10 AND LESS THAN 1.D+70
+!
+      Dlng = zz*(dlog(zz)-1.D0)
+   ELSE
+!
+!        XX GREATER THAN OR EQUAL TO 1.D+70
+!
+      Ier = +1
+      Dlng = 1.D75
+   ENDIF
+END SUBROUTINE dlgam

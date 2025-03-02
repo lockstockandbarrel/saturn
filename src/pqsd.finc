@@ -1,0 +1,52 @@
+!*==pqsd.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PQSD
+!
+!        PURPOSE
+!           PERFORM QUADRATIC SYNTHETIC DIVISION
+!
+!        USAGE
+!           CALL PQSD(A,B,P,Q,X,IDIMX)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - COEFFICIENT OF Z IN REMAINDER (CALCULATED)
+!           B     - CONSTANT TERM IN REMAINDER (CALCULATED)
+!           P     - COEFFICIENT OF Z IN QUADRATIC POLYNOMIAL
+!           Q     - CONSTANT TERM IN QUADRATIC POLYNOMIAL
+!           X     - COEFFICIENT VECTOR FOR GIVEN POLYNOMIAL, ORDERED
+!                   FROM SMALLEST TO LARGEST POWER
+!           IDIMX - DIMENSION OF X
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           POLYNOMIAL IS DIVIDED BY THE QUADRATIC Z**2-P*Z-Q GIVING
+!           THE LINEAR REMAINDER A*Z+B
+!
+!     ..................................................................
+!
+SUBROUTINE pqsd(A,B,P,Q,X,Idimx)
+   IMPLICIT NONE
+
+   REAL A,B,P,Q,X,z
+   INTEGER Idimx,j
+
+   DIMENSION X(*)
+!
+   A = 0.
+   B = 0.
+   j = Idimx
+   DO WHILE ( j>0 )
+      z = P*A + B
+      B = Q*A + X(j)
+      A = z
+      j = j - 1
+   ENDDO
+END SUBROUTINE pqsd

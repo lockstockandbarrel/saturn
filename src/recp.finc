@@ -1,0 +1,33 @@
+!..................................................................
+! FUNCTION RECP
+!
+! PURPOSE
+!    Calculate reciprocal of an element. This is a Fortran
+!    function subprogram which may be used as an argument by
+!    subroutine MFUN.
+!
+! USAGE
+!    recp(E)
+!
+! DESCRIPTION OF PARAMETERS
+!    E - matrix element
+!
+! REMARKS
+!    Reciprocal of zero is taken to be huge(0.0)
+!
+! SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!    none
+!
+! METHOD
+!    Reciprocal of element E is placed in RECP
+!..................................................................
+function recp(e)
+real,intent(in) :: e
+real            :: recp
+real,parameter  :: big = huge(0.0)
+   if(e == 0 )then                    ! TEST ELEMENT FOR ZERO
+       recp=sign(big,e)               ! IF ZERO, SET EQUAL TO INFINITY
+   else                               
+       recp=1.0/e                     ! IF NON-ZERO, CALCULATE RECIPROCAL
+   endif
+end function recp

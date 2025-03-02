@@ -1,0 +1,68 @@
+!*==submx.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE SUBMX
+!
+!        PURPOSE
+!           BASED ON VECTOR S DERIVED FROM SUBROUTINE SUBST OR ABSNT,
+!           THIS SUBROUTINE COPIES FROM A LARGER MATRIX OF OBSERVATION
+!           DATA A SUBSET MATRIX OF THOSE OBSERVATIONS WHICH HAVE
+!           SATISFIED CERTAIN CONDITION.  THIS SUBROUTINE IS NORMALLY
+!           USED PRIOR TO STATISTICAL ANALYSES (E.G., MULTIPLE REGRES-
+!           SION, FACTOR ANALYSIS).
+!
+!        USAGE
+!           CALL SUBMX (A,D,S,NO,NV,N)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A  - INPUT MATRIX OF OBSERVATIONS, NO BY NV.
+!           D  - OUTPUT MATRIX OF OBSERVATIONS, N BY NV.
+!           S -  INPUT VECTOR OF LENGTH NO CONTAINING THE CODES DERIVED
+!                FROM SUBROUTINE SUBST OR ABSNT.
+!           NO - NUMBER OF OBSERVATIONS. NO MUST BE > OR = TO 1.
+!           NV - NUMBER OF VARIABLES. NV MUST BE > OR = TO 1.
+!           N  - OUTPUT VARIABLE CONTAINING THE NUMBER OF NON-ZERO CODES
+!                IN VECTOR S.
+!
+!        REMARKS
+!           MATRIX D CAN BE IN THE SAME LOCATION AS MATRIX A.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           IF S(I) CONTAINS A NON-ZERO CODE, I-TH OBSERVATION IS
+!           COPIED FROM THE INPUT MATRIX TO THE OUTPUT MATRIX.
+!
+!     ..................................................................
+!
+SUBROUTINE submx(A,D,S,No,Nv,N)
+   IMPLICIT NONE
+
+   REAL A,D,S
+   INTEGER i,j,l,ll,N,No,Nv
+
+   DIMENSION A(*),D(*),S(*)
+!
+   l = 0
+   ll = 0
+   DO j = 1,Nv
+      DO i = 1,No
+         l = l + 1
+         IF ( S(i)>0 ) THEN
+            ll = ll + 1
+            D(ll) = A(l)
+         ENDIF
+      ENDDO
+   ENDDO
+!
+!        COUNT NON-ZERO CODES IN VECTOR S
+!
+   N = 0
+   DO i = 1,No
+      IF ( S(i)>0 ) N = N + 1
+   ENDDO
+!
+END SUBROUTINE submx

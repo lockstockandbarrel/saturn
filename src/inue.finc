@@ -1,0 +1,94 @@
+!*==inue.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE INUE
+!
+!        PURPOSE
+!           COMPUTE THE MODIFIED BESSEL FUNCTIONS I FOR ORDERS 1 TO N
+!
+!        USAGE
+!           CALL INUE(X,N,ZI,RI)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X     -GIVEN ARGUMENT OF THE BESSEL FUNCTIONS I
+!           N     -GIVEN MAXIMUM ORDER OF BESSEL FUNCTIONS I
+!           ZI    -GIVEN VALUE OF BESSEL FUNCTION I OF ORDER ZERO
+!                  FOR ARGUMENT X
+!           RI    -RESULTANT VECTOR OF DIMENSION N, CONTAINING THE
+!                  VALUES OF THE FUNCTIONS I FOR ORDERS 1 TO N
+!
+!        REMARKS
+!           THE VALUE OF ZI MAY BE CALCULATED USING SUBROUTINE I0.
+!           USING A DIFFERENT VALUE HAS THE EFFECT THAT ALL VALUES OF
+!           BESSEL FUNCTIONS I ARE MULTIPLIED BY THE  FACTOR ZI/I(0,X)
+!           WHERE I(0,X) IS THE VALUE OF I FOR ORDER 0 AND ARGUMENT X.
+!           THIS MAY BE USED DISADVANTAGEOUSLY IF ONLY THE RATIOS OF I
+!           FOR DIFFERENT ORDERS ARE REQUIRED.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE VALUES ARE OBTAINED USING BACKWARD RECURRENCE RELATION
+!           TECHNIQUE. THE RATIO I(N+1,X)/I(N,X) IS OBTAINED FROM A
+!           CONTINUED FRACTION.
+!           FOR REFERENCE SEE
+!           G. BLANCH,'NUMERICAL EVALUATION OF CONTINUED FRACTIONS',
+!           SIAM REVIEW, VOL.6,NO.4,1964,PP.383-421.
+!
+!     ..................................................................
+!
+SUBROUTINE inue(X,N,Zi,Ri)
+   IMPLICIT NONE
+
+   REAL a,a0,a1,an,b,b0,b1,fi,fn,q0,q1,Ri,X,Zi
+   INTEGER i,k,N
+
+   DIMENSION Ri(*)
+   IF ( N>0 ) THEN
+      fn = N + N
+      q1 = X/fn
+      IF ( abs(X)<=5.E-4 ) THEN
+         k = N
+      ELSE
+         a0 = 1.
+         a1 = 0.
+         b0 = 0.
+         b1 = 1.
+         fi = fn
+         SPAG_Loop_1_1: DO
+            fi = fi + 2.
+            an = fi/abs(X)
+            a = an*a1 + a0
+            b = an*b1 + b0
+            a0 = a1
+            b0 = b1
+            a1 = a
+            b1 = b
+            q0 = q1
+            q1 = a/b
+            IF ( abs((q1-q0)/q1)<=1.E-6 ) THEN
+               IF ( X<0 ) q1 = -q1
+               k = N
+               EXIT SPAG_Loop_1_1
+            ENDIF
+         ENDDO SPAG_Loop_1_1
+      ENDIF
+      SPAG_Loop_1_2: DO
+         q1 = X/(fn+X*q1)
+         Ri(k) = q1
+         fn = fn - 2.
+         k = k - 1
+         IF ( k<=0 ) THEN
+            fi = Zi
+            DO i = 1,N
+               fi = fi*Ri(i)
+               Ri(i) = fi
+            ENDDO
+            EXIT SPAG_Loop_1_2
+         ENDIF
+      ENDDO SPAG_Loop_1_2
+   ENDIF
+END SUBROUTINE inue

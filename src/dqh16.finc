@@ -1,0 +1,70 @@
+!*==dqh16.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQH16
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(EXP(-X*X)*FCT(X), SUMMED OVER X FROM
+!                               -INFINITY TO +INFINITY).
+!
+!        USAGE
+!           CALL DQH16 (FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           FCT    - THE NAME OF AN EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           Y      - THE RESULTING DOUBLE PRECISION INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 16-POINT GAUSSIAN-HERMITE
+!           QUADRATURE FORMULA, WHICH INTEGRATES EXACTLY WHENEVER
+!           FCT(X) IS A POLYNOMIAL UP TO DEGREE 31.
+!           FOR REFERENCE, SEE
+!           SHAO/CHEN/FRANK, TABLES OF ZEROS AND GAUSSIAN WEIGHTS OF
+!           CERTAIN ASSOCIATED LAGUERRE POLYNOMIALS AND THE RELATED
+!           GENERALIZED HERMITE POLYNOMIALS, IBM TECHNICAL REPORT
+!           TR00.1100 (MARCH 1964), PP.213-214.
+!
+!     ..................................................................
+!
+SUBROUTINE dqh16(fct,Y)
+   IMPLICIT NONE
+!
+!
+   DOUBLE PRECISION x,Y,z,fct
+!
+   x = .46887389393058184D1
+   z = -x
+   Y = .26548074740111822D-9*(fct(x)+fct(z))
+   x = .38694479048601227D1
+   z = -x
+   Y = Y + .23209808448652107D-6*(fct(x)+fct(z))
+   x = .31769991619799560D1
+   z = -x
+   Y = Y + .27118600925378815D-4*(fct(x)+fct(z))
+   x = .25462021578474814D1
+   z = -x
+   Y = Y + .9322840086241805D-3*(fct(x)+fct(z))
+   x = .19517879909162540D1
+   z = -x
+   Y = Y + .12880311535509974D-1*(fct(x)+fct(z))
+   x = .13802585391988808D1
+   z = -x
+   Y = Y + .8381004139898583D-1*(fct(x)+fct(z))
+   x = .8229514491446559D0
+   z = -x
+   Y = Y + .28064745852853368D0*(fct(x)+fct(z))
+   x = .27348104613815245D0
+   z = -x
+   Y = Y + .50792947901661374D0*(fct(x)+fct(z))
+END SUBROUTINE dqh16

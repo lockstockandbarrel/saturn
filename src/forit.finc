@@ -1,0 +1,119 @@
+!*==forit.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE FORIT
+!
+!        PURPOSE
+!           FOURIER ANALYSIS OF A PERIODICALLY TABULATED FUNCTION.
+!           COMPUTES THE COEFFICIENTS OF THE DESIRED NUMBER OF TERMS
+!           IN THE FOURIER SERIES F(X)=A(0)+SUM(A(K)COS KX+B(K)SIN KX)
+!           WHERE K=1,2,...,M TO APPROXIMATE A GIVEN SET OF
+!           PERIODICALLY TABULATED VALUES OF A FUNCTION.
+!
+!        USAGE
+!           CALL FORIT(FNT,N,M,A,B,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           FNT-VECTOR OF TABULATED FUNCTION VALUES OF LENGTH 2N+1
+!           N  -DEFINES THE INTERVAL SUCH THAT 2N+1 POINTS ARE TAKEN
+!               OVER THE INTERVAL (0,2PI). THE SPACING IS THUS 2PI/2N+1
+!           M  -MAXIMUM ORDER OF HARMONICS TO BE FITTED
+!           A  -RESULTANT VECTOR OF FOURIER COSINE COEFFICIENTS OF
+!               LENGTH M+1
+!               A SUB 0, A SUB 1,..., A SUB M
+!           B  -RESULTANT VECTOR OF FOURIER SINE COEFFICIENTS OF
+!               LENGTH M+1
+!               B SUB 0, B SUB 1,..., B SUB M
+!           IER-RESULTANT ERROR CODE WHERE
+!               IER=0  NO ERROR
+!               IER=1  N NOT GREATER OR EQUAL TO M
+!               IER=2  M LESS THAN 0
+!
+!        REMARKS
+!           M MUST BE GREATER THAN OR EQUAL TO ZERO
+!           N MUST BE GREATER THAN OR EQUAL TO M
+!           THE FIRST ELEMENT OF VECTOR B IS ZERO IN ALL CASES
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           USES RECURSIVE TECHNIQUE DESCRIBED IN A. RALSTON, H. WILF,
+!           'MATHEMATICAL METHODS FOR DIGITAL COMPUTERS', JOHN WILEY
+!           AND SONS, NEW YORK, 1960, CHAPTER 24. THE METHOD OF INDEXING
+!           THROUGH THE PROCEDURE HAS BEEN MODIFIED TO SIMPLIFY THE
+!           COMPUTATION.
+!
+!     ..................................................................
+!
+SUBROUTINE forit(Fnt,N,M,A,B,Ier)
+   IMPLICIT NONE
+
+   REAL A,an,B,c,c1,coef,const,Fnt,fntz,q,s,s1,u0,u1,u2
+   INTEGER i,Ier,j,M,N
+
+   DIMENSION A(*),B(*),Fnt(*)
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        CHECK FOR PARAMETER ERRORS
+!
+         Ier = 0
+         IF ( M<0 ) THEN
+            Ier = 2
+            RETURN
+         ELSEIF ( M<=N ) THEN
+!
+!        COMPUTE AND PRESET CONSTANTS
+!
+            an = N
+            coef = 2.0/(2.0*an+1.0)
+            const = 3.141593*coef
+            s1 = sin(const)
+            c1 = cos(const)
+            c = 1.0
+            s = 0.0
+            j = 1
+            fntz = Fnt(1)
+         ELSE
+            Ier = 1
+            RETURN
+         ENDIF
+         spag_nextblock_1 = 2
+      CASE (2)
+         u2 = 0.0
+         u1 = 0.0
+         i = 2*N + 1
+         SPAG_Loop_1_1: DO
+!
+!        FORM FOURIER COEFFICIENTS RECURSIVELY
+!
+            u0 = Fnt(i) + 2.0*c*u1 - u2
+            u2 = u1
+            u1 = u0
+            i = i - 1
+            IF ( i<=1 ) THEN
+               A(j) = coef*(fntz+c*u1-u2)
+               B(j) = coef*s*u1
+               IF ( j<(M+1) ) THEN
+                  q = c1*c - s1*s
+                  s = c1*s + s1*c
+                  c = q
+                  j = j + 1
+                  spag_nextblock_1 = 2
+                  CYCLE SPAG_DispatchLoop_1
+               ELSE
+                  A(1) = A(1)*0.5
+                  EXIT SPAG_Loop_1_1
+               ENDIF
+            ENDIF
+         ENDDO SPAG_Loop_1_1
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE forit

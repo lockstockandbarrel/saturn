@@ -1,0 +1,159 @@
+!*==factr.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+!..................................................................
+!   SUBROUTINE FACTR
+!
+!   PURPOSE
+!      FACTORIZATION OF THE MATRIX A INTO A PRODUCT OF A LOWER
+!      TRIANGULAR MATRIX L AND AN UPPER TRIANGULAR MATRIX U.  L HAS
+!      UNIT DIAGONAL WHICH IS NOT STORED.
+!
+!   USAGE
+!      CALL FACTR(A,PER,N,IA,IER)
+!
+!   DESCRIPTION OF PARAMETERS
+!      A      MATRIX A
+!      PER    ONE DIMENSIONAL ARRAY WHERE PERMUTATIONS OF ROWS OF
+!             THE MATRIX ARE STORED
+!             DIMENSION OF PER MUST BE GREATER THAN OR EQUAL TO N
+!      N      ORDER OF THE MATRIX A
+!      IA     SIZE OF THE FIRST DIMENSION ASSIGNED TO THE ARRAY A
+!             IN THE CALLING PROGRAM WHEN THE MATRIX IS IN DOUBLE
+!             SUBSCRIPTED DATA STORAGE MODE.  IA=N WHEN THE MATRIX
+!             IS IN SSP VECTOR STORAGE MODE.
+!      IER    ERROR INDICATOR WHICH IS ZERO IF THERE IS NO ERROR,
+!             AND IS THREE IF THE PROCEDURE FAILS.
+!
+!   REMARKS
+!      THE ORIGINAL MATRIX, A,IS REPLACED BY THE TRIANGULAR FACTORS
+!
+!   SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!      NONE
+!
+!   METHOD
+!      SUCCESSIVE COMPUTATION OF THE COLUMNS OF L AND THE
+!      CORRESPONDING ROWS OF U.
+!
+!   REFERENCES
+!      J. H. WILKINSON - THE ALGEBRAIC EIGENVALUE PROBLEM -
+!      CLARENDON PRESS, OXFORD, 1965. H. J. BOWDLER, R. S. MARTIN,
+!      G. PETERS, AND J. H. WILKINSON - 'SOLUTION OF REAL AND
+!      COMPLEX SYSTEMS OF LINEAR EQUATIONS', NUMERISCHE MATHEMATIK,
+!      VOL. 8, NO. 3, 1966, P. 217-234.
+!..................................................................
+SUBROUTINE factr(A,Per,N,Ia,Ier)
+IMPLICIT NONE
+
+REAL A,Per,x
+INTEGER i,i0,Ia,Ier,ij,im1,ip1,ipivot,j,k,k0,ki,kj,N
+
+DIMENSION A(*),Per(*)
+DOUBLE PRECISION dp
+!
+!        COMPUTATION OF WEIGHTS FOR EQUILIBRATION
+!
+   DO i = 1,N
+      x = 0.
+      ij = i
+      DO j = 1,N
+         IF ( abs(A(ij))>x ) x = abs(A(ij))
+         ij = ij + Ia
+      ENDDO
+      IF ( x<=0 ) THEN
+         CALL spag_block_1
+         RETURN
+      ENDIF
+      Per(i) = 1./x
+   ENDDO
+   i0 = 0
+   DO i = 1,N
+      im1 = i - 1
+      ip1 = i + 1
+      ipivot = i
+      x = 0.
+!
+!        COMPUTATION OF THE ITH COLUMN OF L
+!
+      DO k = i,N
+         ki = i0 + k
+         dp = A(ki)
+         IF ( i<1 ) THEN
+            CALL spag_block_1
+            RETURN
+         ENDIF
+         IF ( i/=1 ) THEN
+            kj = k
+            DO j = 1,im1
+               ij = i0 + j
+               dp = dp - 1.D0*A(kj)*A(ij)
+               kj = kj + Ia
+            ENDDO
+            A(ki) = dp
+         ENDIF
+!
+!        SEARCH FOR EQUILIBRATED PIVOT
+!
+         IF ( x<dabs(dp)*Per(k) ) THEN
+            ipivot = k
+            x = dabs(dp)*Per(k)
+         ENDIF
+      ENDDO
+      IF ( x<=0 ) THEN
+         CALL spag_block_1
+         RETURN
+      ENDIF
+!
+!        PERMUTATION OF ROWS IF REQUIRED
+!
+      IF ( ipivot<i ) THEN
+         CALL spag_block_1
+         RETURN
+      ENDIF
+      IF ( ipivot/=i ) THEN
+         ki = ipivot
+         ij = i
+         DO j = 1,N
+            x = A(ij)
+            A(ij) = A(ki)
+            A(ki) = x
+            ki = ki + Ia
+            ij = ij + Ia
+         ENDDO
+         Per(ipivot) = Per(i)
+      ENDIF
+      Per(i) = ipivot
+      IF ( i<N ) THEN
+         ij = i0 + i
+         x = A(ij)
+!
+!        COMPUTATION OF THE ITH ROW OF U
+!
+         k0 = i0 + Ia
+         DO k = ip1,N
+            ki = i0 + k
+            A(ki) = A(ki)/x
+            IF ( i<1 ) THEN
+               CALL spag_block_1
+               RETURN
+            ENDIF
+            IF ( i/=1 ) THEN
+               ij = i
+               ki = k0 + i
+               dp = A(ki)
+               DO j = 1,im1
+                  kj = k0 + j
+                  dp = dp - 1.D0*A(ij)*A(kj)
+                  ij = ij + Ia
+               ENDDO
+               A(ki) = dp
+            ENDIF
+            k0 = k0 + Ia
+         ENDDO
+      ENDIF
+      i0 = i0 + Ia
+   ENDDO
+   Ier = 0
+CONTAINS
+SUBROUTINE spag_block_1
+   Ier = 3
+END SUBROUTINE spag_block_1
+END SUBROUTINE factr

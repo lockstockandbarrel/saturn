@@ -1,0 +1,66 @@
+!*==ndtri.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+!.......................................................................
+!
+!  SUBROUTINE NDTRI
+!
+!  PURPOSE
+!    COMPUTES X = P**(-1)(Y), THE ARGUMENT X SUCH THAT Y= P(X) =
+!    THE PROBABILITY THAT THE RANDOM VARIABLE U, DISTRIBUTED
+!    NORMALLY(0,1), IS LESS THAN OR EQUAL TO X.  F(X), THE
+!    ORDINATE OF THE NORMAL DENSITY, AT X, IS ALSO COMPUTED.
+!
+!  USAGE
+!    CALL NDTRI(P,X,D,IER)
+!
+!  DESCRIPTION OF PARAMETERS
+!    P   - INPUT PROBABILITY.
+!    X   - OUTPUT ARGUMENT SUCH THAT P = Y = THE PROBABILITY THAT
+!             U, THE RANDOM VARIABLE, IS LESS THAN OR EQUAL TO X.
+!    D   - OUTPUT DENSITY, F(X).
+!    IER - OUTPUT ERROR CODE
+!          = -1 IF P IS NOT IN THE INTERVAL (0,1), INCLUSIVE.
+!            X=D=HUGE(0.0) IN THIS CASE
+!          = 0 IF THERE IS NO ERROR.  SEE REMARKS, BELOW.
+!
+!  REMARKS
+!    MAXIMUM ERROR IS 0.00045.
+!    IF P = 0, X IS SET TO -HUGE(0.0). D IS SET TO 0.
+!    IF P = 1, X IS SET TO  HUGE(0.0). D IS SET TO 0.
+!
+!  SUBROUTINES AND SUBPROGRAMS REQUIRED
+!    NONE
+!
+!  METHOD
+!    BASED ON APPROXIMATIONS IN C. HASTINGS, APPROXIMATIONS FOR
+!    DIGITAL COMPUTERS, PRINCETON UNIV. PRESS, PRINCETON, N.J.,
+!    1955.  SEE EQUATION 26.2.23, HANDBOOK OF MATHEMATICAL
+!    FUNCTIONS, ABRAMOWITZ AND STEGUN, DOVER PUBLICATIONS, INC.,
+!    NEW YORK.
+!.......................................................................
+SUBROUTINE ndtri(P,X,D,Ie)
+IMPLICIT NONE
+REAL D,P,t,t2,X
+INTEGER Ie
+!
+   Ie = 0
+   X = huge(0.0)
+   D = X
+   IF ( P<0 ) THEN
+      Ie = -1
+   ELSEIF ( P==0 ) THEN
+      X = -huge(0.0)
+      D = 0.0
+   ELSEIF ( P<1.0 ) THEN
+      D = P
+      IF ( D>0.5 ) D = 1.0 - D
+      t2 = alog(1.0/(D*D))
+      t = sqrt(t2)
+      X = t - (2.515517+0.802853*t+0.010328*t2)/(1.0+1.432788*t+0.189269*t2+0.001308*t*t2)
+      IF ( P<=0.5 ) X = -X
+      D = 0.3989423*exp(-X*X/2.0)
+   ELSEIF ( P==1.0 ) THEN
+      D = 0.0
+   ELSE
+      Ie = -1
+   ENDIF
+END SUBROUTINE ndtri

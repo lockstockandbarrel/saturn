@@ -1,0 +1,80 @@
+!*==rk2.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RK2
+!
+!        PURPOSE
+!           INTEGRATES A FIRST ORDER DIFFERENTIAL EQUATION
+!           DY/DX=FUN(X,Y) AND PRODUCES A TABLE OF INTEGRATED VALUES
+!
+!        USAGE
+!           CALL RK2(FUN,H,XI,YI,K,N,VEC)
+!
+!        DESCRIPTION OF PARAMETERS
+!           FUN-USER-SUPPLIED FUNCTION SUBPROGRAM WITH ARGUMENTS X,Y
+!               WHICH GIVES DY/DX
+!           H  -STEP SIZE
+!           XI -INITIAL VALUE OF X
+!           YI -INITIAL VALUE OF Y WHERE YI=Y(XI)
+!           K  -THE INTERVAL AT WHICH COMPUTED VALUES ARE TO BE STORED
+!           N  -THE NUMBER OF VALUES TO BE STORED
+!           VEC-THE RESULTANT VECTOR OF LENGTH N IN WHICH COMPUTED
+!               VALUES OF Y ARE TO BE STORED
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           FUN - USER-SUPPLIED FUNCTION SUBPROGRAM FOR DY/DX
+!           CALLING PROGRAM MUST HAVE FORTRAN EXTERNAL STATEMENT
+!           CONTAINING NAMES OF FUNCTION SUBPROGRAMS LISTED IN CALL TO
+!           RK2
+!
+!        METHOD
+!           FOURTH ORDER RUNGE-KUTTA INTEGRATION ON A RECURSIVE BASIS AS
+!           SHOWN IN F.B. HILDEBRAND, 'INTRODUCTION TO NUMERICAL
+!           ANALYSIS', MCGRAW-HILL, NEW YORK, 1956
+!
+!     ..................................................................
+!
+SUBROUTINE rk2(fun,H,Xi,Yi,K,N,Vec)
+   IMPLICIT NONE
+
+   REAL fun,H,h2,t1,t2,t3,t4,Vec,x,Xi,y,Yi
+   INTEGER i,j,K,N
+
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION H,XI,YI,VEC,H2,Y,X,T1,T2,T3,T4,FUN
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        USER FUNCTION SUBPROGRAM, FUN, MUST BE IN DOUBLE PRECISION.
+!
+!        ...............................................................
+!
+   DIMENSION Vec(*)
+   h2 = H/2.
+   y = Yi
+   x = Xi
+   DO i = 1,N
+      DO j = 1,K
+         t1 = H*fun(x,y)
+         t2 = H*fun(x+h2,y+t1/2.)
+         t3 = H*fun(x+h2,y+t2/2.)
+         t4 = H*fun(x+H,y+t3)
+         y = y + (t1+2.*t2+2.*t3+t4)/6.
+         x = x + H
+      ENDDO
+      Vec(i) = y
+   ENDDO
+END SUBROUTINE rk2

@@ -1,0 +1,139 @@
+!*==krank.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE KRANK
+!
+!        PURPOSE
+!           TEST CORRELATION BETWEEN TWO VARIABLES BY MEANS OF KENDALL
+!           RANK CORRELATION COEFFICIENT
+!
+!        USAGE
+!           CALL KRANK(A,B,R,N,TAU,SD,Z,NR)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A   - INPUT VECTOR OF N OBSERVATIONS FOR FIRST VARIABLE
+!           B   - INPUT VECTOR OF N OBSERVATIONS FOR SECOND VARIABLE
+!           R   - OUTPUT VECTOR OF RANKED DATA OF LENGTH 2*N. SMALLEST
+!                 OBSERVATION IS RANKED 1, LARGEST IS RANKED N. TIES
+!                 ARE ASSIGNED AVERAGE OF TIED RANKS.
+!           N   - NUMBER OF OBSERVATIONS
+!           TAU - KENDALL RANK CORRELATION COEFFICIENT (OUTPUT)
+!           SD  - STANDARD DEVIATION (OUTPUT)
+!           Z   - TEST OF SIGNIFICANCE OF TAU IN TERMS OF NORMAL
+!                 DISTRIBUTION (OUTPUT)
+!           NR  - CODE, 0 FOR UNRANKED DATA IN A AND B, 1 FOR RANKED
+!                 DATA IN A AND B (INPUT)
+!
+!        REMARKS
+!           SD AND Z ARE SET TO ZERO IF N IS LESS THAN TEN
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           RANK
+!           TIE
+!
+!        METHOD
+!           DESCRIBED IN S. SIEGEL, 'NONPARAMETRIC STATISTICS FOR THE
+!           BEHAVIORAL SCIENCES', MCGRAW-HILL, NEW YORK, 1956,
+!           CHAPTER 9
+!
+!     ..................................................................
+!
+SUBROUTINE krank(A,B,R,N,Tau,Sd,Z,Nr)
+   IMPLICIT NONE
+
+   REAL A,B,fn,fn1,R,rsave,s,saver,Sd,ta,Tau,tb,Z
+   INTEGER i,i2,isort,j,k,kt,l,N,nm,Nr
+
+   DIMENSION A(*),B(*),R(*)
+!
+   Sd = 0.0
+   Z = 0.0
+   fn = N
+   fn1 = N*(N-1)
+!
+!        DETERMINE WHETHER DATA IS RANKED
+!
+   IF ( Nr/=1 ) THEN
+!
+!        RANK DATA IN A AND B VECTORS AND ASSIGN TIED OBSERVATIONS
+!        AVERAGE OF TIED RANKS
+!
+      CALL rank(A,R,N)
+      CALL rank(B,R(N+1),N)
+   ELSE
+!
+!        MOVE RANKED DATA TO R VECTOR
+!
+      DO i = 1,N
+         R(i) = A(i)
+      ENDDO
+      DO i = 1,N
+         j = i + N
+         R(j) = B(i)
+      ENDDO
+   ENDIF
+   SPAG_Loop_1_1: DO
+!
+!        SORT RANK VECTOR R IN SEQUENCE OF VARIABLE A
+!
+      isort = 0
+      DO i = 2,N
+         IF ( R(i)<R(i-1) ) THEN
+            isort = isort + 1
+            rsave = R(i)
+            R(i) = R(i-1)
+            R(i-1) = rsave
+            i2 = i + N
+            saver = R(i2)
+            R(i2) = R(i2-1)
+            R(i2-1) = saver
+         ENDIF
+      ENDDO
+      IF ( isort==0 ) THEN
+!
+!        COMPUTE S ON VARIABLE B. STARTING WITH THE FIRST RANK, ADD 1
+!        TO S FOR EACH LARGER RANK TO ITS RIGHT AND SUBTRACT 1 FOR EACH
+!        SMALLER RANK.  REPEAT FOR ALL RANKS.
+!
+         s = 0.0
+         nm = N - 1
+         DO i = 1,nm
+            j = N + i
+            DO l = i,N
+               k = N + l
+               IF ( R(k)<R(j) ) THEN
+                  s = s - 1.0
+               ELSEIF ( R(k)/=R(j) ) THEN
+                  s = s + 1.0
+               ENDIF
+            ENDDO
+         ENDDO
+!
+!        COMPUTE TIED SCORE INDEX FOR BOTH VARIABLES
+!
+         kt = 2
+         CALL tie(R,N,kt,ta)
+         CALL tie(R(N+1),N,kt,tb)
+!
+!        COMPUTE TAU
+!
+         IF ( ta/=0 ) THEN
+            Tau = s/((sqrt(0.5*fn1-ta))*(sqrt(0.5*fn1-tb)))
+         ELSEIF ( tb/=0 ) THEN
+            Tau = s/((sqrt(0.5*fn1-ta))*(sqrt(0.5*fn1-tb)))
+         ELSE
+            Tau = s/(0.5*fn1)
+         ENDIF
+!
+!     COMPUTE STANDARD DEVIATION AND Z IF N IS 10 OR LARGER
+!
+         IF ( N>=10 ) THEN
+            Sd = (sqrt((2.0*(fn+fn+5.0))/(9.0*fn1)))
+            Z = Tau/Sd
+         ENDIF
+         EXIT SPAG_Loop_1_1
+      ENDIF
+   ENDDO SPAG_Loop_1_1
+END SUBROUTINE krank

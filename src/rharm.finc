@@ -1,0 +1,136 @@
+!*==rharm.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RHARM
+!
+!        PURPOSE
+!           FINDS THE FOURIER COEFFICIENTS OF ONE DIMENSIONAL REAL DATA
+!
+!        USAGE
+!           CALL RHARM (A,M,INV,S,IFERR)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A     - AS INPUT, CONTAINS ONE DIMENSIONAL REAL DATA. A IS
+!                   2*N+4 CORE LOCATIONS, WHERE N = 2**M. 2*N REAL
+!                   NUMBERS ARE PUT INTO THE FIRST 2*N CORE LOCATIONS
+!                   OF A
+!                   AS OUTPUT, A CONTAINS THE FOURIER COEFFICIENTS
+!                   A0/2,B0=0,A1,B1,A2,B2,...,AN/2,BN=0 RESPECTIVELY IN
+!                   THE FIRST 2N+2 CORE LOCATIONS OF A
+!           M     - AN INTEGER WHICH DETERMINES THE SIZE OF THE VECTOR
+!                   A. THE SIZE OF A IS 2*(2**M) + 4
+!           INV   - A VECTOR WORK AREA FOR BIT AND INDEX MANIPULATION OF
+!                   DIMENSION ONE EIGHTH THE NUMBER OF REAL INPUT, VIZ.,
+!                   (1/8)*2*(2**M)
+!           S     - A VECTOR WORK AREA FOR SINE TABLES WITH DIMENSION
+!                   THE SAME AS INV
+!           IFERR - A RETURNED VALUE OF 1 MEANS THAT M IS LESS THAN 3 OR
+!                   GREATER THAN 20. OTHERWISE IFERR IS SET = 0
+!
+!        REMARKS
+!           THIS SUBROUTINE GIVES THE FOURIER COEFFICIENTS OF 2*(2**M)
+!           REAL POINTS. SEE SUBROUTINE HARM FOR THREE DIMENSIONAL,
+!           COMPLEX FOURIER TRANSFORMS
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           HARM
+!
+!        METHOD
+!           THE FOURIER COEFFICIENTS A0,B0=0,A1,B1,...,AN,BN=0 ARE
+!           OBTAINED FOR INPUT XJ, J=0,1,2,...,2N-1 FOR THE FOLLOWING
+!           EQUATION (PI = 3.14159...)
+!
+!                 N-1                                               J
+!     XJ=(1/2)A0+SUM (AK*COS(PI*J*K/N)+BK*SIN(PI*J*K/N))+(1/2)AN(-1)
+!                 K=1
+!
+!        SEE REFERENCE UNDER SUBROUTINE HARM
+!
+!     ..................................................................
+!
+SUBROUTINE rharm(A,M,Inv,S,Iferr)
+   IMPLICIT NONE
+
+   REAL A,ap1im,ap1re,ap2im,ap2re,ciim,cire,cniim,cnire,co,del,fn,S,sc,si,sis,ss
+   INTEGER i,Iferr,ifset,Inv,j0,k0,k1,k6,k8,l,M,nt,nto,ntot,ntot2
+
+   DIMENSION A(*),l(3),Inv(*),S(*)
+   ifset = 1
+   l(1) = M
+   l(2) = 0
+   l(3) = 0
+   ntot = 2**M
+   ntot2 = 2*ntot
+   fn = ntot
+   DO i = 2,ntot2,2
+      A(i) = -A(i)
+   ENDDO
+   DO i = 1,ntot2
+      A(i) = A(i)/fn
+   ENDDO
+   CALL harm(A,l,Inv,S,ifset,Iferr)
+!
+!     MOVE LAST HALF OF A(J)S DOWN ONE SLOT AND ADD A(N) AT BOTTOM TO
+!     GIVE ARRAY FOR A1PRIME AND A2PRIME CALCULATION
+!
+   DO i = 1,ntot,2
+      j0 = ntot2 + 2 - i
+      A(j0) = A(j0-2)
+      A(j0+1) = A(j0-1)
+   ENDDO
+   A(ntot2+3) = A(1)
+   A(ntot2+4) = A(2)
+!
+!     CALCULATE A1PRIMES AND STORE IN FIRST N SLOTS
+!     CALCULATE A2PRIMES AND STORE IN SECOND N SLOTS IN REVERSE ORDER
+   k0 = ntot + 1
+   DO i = 1,k0,2
+      k1 = ntot2 - i + 4
+      ap1re = .5*(A(i)+A(k1))
+      ap2re = -.5*(A(i+1)+A(k1+1))
+      ap1im = .5*(-A(i+1)+A(k1+1))
+      ap2im = -.5*(A(i)-A(k1))
+      A(i) = ap1re
+      A(i+1) = ap1im
+      A(k1) = ap2re
+      A(k1+1) = ap2im
+   ENDDO
+   nto = ntot/2
+   nt = nto + 1
+   del = 3.1415927/float(ntot)
+   ss = sin(del)
+   sc = cos(del)
+   si = 0.0
+   co = 1.0
+!
+!     COMPUTE C(J)S FOR J=0 THRU J=N
+   DO i = 1,nt
+      k6 = ntot2 - 2*i + 5
+      ap2re = A(k6)*co + A(k6+1)*si
+      ap2im = -A(k6)*si + A(k6+1)*co
+      cire = .5*(A(2*i-1)+ap2re)
+      ciim = .5*(A(2*i)+ap2im)
+      cnire = .5*(A(2*i-1)-ap2re)
+      cniim = .5*(A(2*i)-ap2im)
+      A(2*i-1) = cire
+      A(2*i) = ciim
+      A(k6) = cnire
+      A(k6+1) = -cniim
+      sis = si
+      si = si*sc + co*ss
+      co = co*sc - sis*ss
+   ENDDO
+!
+!     SHIFT C(J)S FOR J=N/2+1 TO J=N UP ONE SLOT
+   DO i = 1,ntot,2
+      k8 = ntot + 4 + i
+      A(k8-2) = A(k8)
+      A(k8-1) = A(k8+1)
+   ENDDO
+   DO i = 3,ntot2,2
+      A(i) = 2.*A(i)
+      A(i+1) = -2.*A(i+1)
+   ENDDO
+END SUBROUTINE rharm

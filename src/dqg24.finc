@@ -1,0 +1,70 @@
+!*==dqg24.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DQG24
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(FCT(X), SUMMED OVER X FROM XL TO XU)
+!
+!        USAGE
+!           CALL DQG24 (XL,XU,FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           XL     - DOUBLE PRECISION LOWER BOUND OF THE INTERVAL.
+!           XU     - DOUBLE PRECISION UPPER BOUND OF THE INTERVAL.
+!           FCT    - THE NAME OF AN EXTERNAL DOUBLE PRECISION FUNCTION
+!                    SUBPROGRAM USED.
+!           Y      - THE RESULTING DOUBLE PRECISION INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL DOUBLE PRECISION FUNCTION SUBPROGRAM FCT(X)
+!           MUST BE FURNISHED BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 24-POINT GAUSS QUADRATURE
+!           FORMULA, WHICH INTEGRATES POLYNOMIALS UP TO DEGREE 47
+!           EXACTLY. FOR REFERENCE, SEE
+!           V.I.KRYLOV, APPROXIMATE CALCULATION OF INTEGRALS,
+!           MACMILLAN, NEW YORK/LONDON, 1962, PP.100-111 AND 337-340.
+!
+!     ..................................................................
+!
+SUBROUTINE dqg24(Xl,Xu,fct,Y)
+   IMPLICIT NONE
+!
+!
+   DOUBLE PRECISION Xl,Xu,Y,a,b,c,fct
+!
+   a = .5D0*(Xu+Xl)
+   b = Xu - Xl
+   c = .49759360999851068D0*b
+   Y = .61706148999935998D-2*(fct(a+c)+fct(a-c))
+   c = .48736427798565475D0*b
+   Y = Y + .14265694314466832D-1*(fct(a+c)+fct(a-c))
+   c = .46913727600136638D0*b
+   Y = Y + .22138719408709903D-1*(fct(a+c)+fct(a-c))
+   c = .44320776350220052D0*b
+   Y = Y + .29649292457718390D-1*(fct(a+c)+fct(a-c))
+   c = .41000099298695146D0*b
+   Y = Y + .36673240705540153D-1*(fct(a+c)+fct(a-c))
+   c = .37006209578927718D0*b
+   Y = Y + .43095080765976638D-1*(fct(a+c)+fct(a-c))
+   c = .32404682596848778D0*b
+   Y = Y + .48809326052056944D-1*(fct(a+c)+fct(a-c))
+   c = .27271073569441977D0*b
+   Y = Y + .53722135057982817D-1*(fct(a+c)+fct(a-c))
+   c = .21689675381302257D0*b
+   Y = Y + .57752834026862801D-1*(fct(a+c)+fct(a-c))
+   c = .15752133984808169D0*b
+   Y = Y + .60835236463901696D-1*(fct(a+c)+fct(a-c))
+   c = .9555943373680815D-1*b
+   Y = Y + .62918728173414148D-1*(fct(a+c)+fct(a-c))
+   c = .32028446431302813D-1*b
+   Y = b*(Y+.63969097673376078D-1*(fct(a+c)+fct(a-c)))
+END SUBROUTINE dqg24

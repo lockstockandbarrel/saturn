@@ -1,0 +1,68 @@
+!*==paddm.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PADDM
+!
+!        PURPOSE
+!           ADD COEFFICIENTS OF ONE POLYNOMIAL TO THE PRODUCT OF A
+!           FACTOR BY COEFFICIENTS OF ANOTHER POLYNOMIAL
+!
+!        USAGE
+!           CALL PADDM(Z,IDIMZ,X,IDIMX,FACT,Y,IDIMY)
+!
+!        DESCRIPTION OF PARAMETERS
+!           Z     - VECTOR OF RESULTANT COEFFICIENTS, ORDERED FROM
+!                   SMALLEST TO LARGEST POWER
+!           IDIMZ - DIMENSION OF Z (CALCULATED)
+!           X     - VECTOR OF COEFFICIENTS FOR FIRST POLYNOMIAL, ORDERED
+!                   FROM SMALLEST TO LARGEST POWER
+!           IDIMX - DIMENSION OF X (DEGREE IS IDIMX-1)
+!           FACT  - FACTOR TO BE MULTIPLIED BY VECTOR Y
+!           Y     - VECTOR OF COEFFICIENTS FOR SECOND POLYNOMIAL,
+!                   ORDERED FROM SMALLEST TO LARGEST POWER
+!           IDIMY - DIMENSION OF Y (DEGREE IS IDIMY-1)
+!
+!        REMARKS
+!           VECTOR Z MAY BE IN SAME LOCATION AS EITHER VECTOR X OR
+!           VECTOR Y ONLY IF THE DIMENSION OF THAT VECTOR IS NOT LESS
+!           THAN THE OTHER INPUT VECTOR
+!           THE RESULTANT POLYNOMIAL MAY HAVE TRAILING ZERO COEFFICIENTS
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DIMENSION OF RESULTANT VECTOR IDIMZ IS CALCULATED AS THE
+!           LARGER OF THE TWO INPUT VECTOR DIMENSIONS. COEFFICIENT IN
+!           VECTOR X IS THEN ADDED TO COEFFICIENT IN VECTOR Y MULTIPLIED
+!           BY FACTOR TO FORM Z.
+!
+!     ..................................................................
+!
+SUBROUTINE paddm(Z,Idimz,X,Idimx,Fact,Y,Idimy)
+   IMPLICIT NONE
+
+   REAL Fact,X,Y,Z
+   INTEGER i,Idimx,Idimy,Idimz,ndim
+
+   DIMENSION Z(*),X(*),Y(*)
+!
+!     TEST DIMENSIONS OF SUMMANDS
+!
+   ndim = Idimx
+   IF ( Idimx<Idimy ) ndim = Idimy
+   IF ( ndim>0 ) THEN
+      DO i = 1,ndim
+         IF ( i>Idimx ) THEN
+            Z(i) = Fact*Y(i)
+         ELSEIF ( i<=Idimy ) THEN
+            Z(i) = Fact*Y(i) + X(i)
+         ELSE
+            Z(i) = X(i)
+         ENDIF
+      ENDDO
+   ENDIF
+   Idimz = ndim
+END SUBROUTINE paddm

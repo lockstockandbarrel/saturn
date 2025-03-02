@@ -1,0 +1,121 @@
+!*==momen.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MOMEN
+!
+!        PURPOSE
+!           TO FIND THE THE FIRST FOUR MOMENTS FOR GROUPED DATA ON
+!           EQUAL CLASS INTERVALS.
+!
+!        USAGE
+!           CALL MOMEN (F,UBO,NOP,ANS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           F   - GROUPED DATA (FREQUENCIES).  GIVEN AS A VECTOR OF
+!                 LENGTH (UBO(3)-UBO(1))/UBO(2)
+!           UBO - 3 CELL VECTOR, UBO(1) IS LOWER BOUND AND UBO(3) UPPER
+!                 BOUND ON DATA.  UBO(2) IS CLASS INTERVAL.  NOTE THAT
+!                 UBO(3) MUST BE GREATER THAN UBO(1).
+!           NOP - OPTION PARAMETER.  IF NOP = 1, ANS(1) = MEAN.  IF
+!                 NOP = 2, ANS(2) = SECOND MOMENT.  IF NOP = 3, ANS(3) =
+!                 THIRD MOMENT.  IF NOP = 4, ANS(4) = FOURTH MOMENT.
+!                 IF NOP = 5, ALL FOUR MOMENTS ARE FILLED IN.
+!           ANS - OUTPUT VECTOR OF LENGTH 4 INTO WHICH MOMENTS ARE PUT.
+!
+!        REMARKS
+!           NOTE THAT THE FIRST MOMENT IS NOT CENTRAL BUT THE VALUE OF
+!           THE MEAN ITSELF.  THE MEAN IS ALWAYS CALCULATED.  MOMENTS
+!           ARE BIASED AND NOT CORRECTED FOR GROUPING.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           REFER TO M. G. KENDALL, 'THE ADVANCED THEORY OF STATISTICS',
+!           V.1, HAFNER PUBLISHING COMPANY, 1958, CHAPTER 3.
+!
+!     ..................................................................
+!
+SUBROUTINE momen(F,Ubo,Nop,Ans)
+   IMPLICIT NONE
+
+   REAL Ans,F,fi,t,Ubo
+   INTEGER i,jump,n,Nop
+
+   DIMENSION F(*),Ubo(*),Ans(*)
+!
+   DO i = 1,4
+      Ans(i) = 0.0
+   ENDDO
+!
+!     CALCULATE THE NUMBER OF CLASS INTERVALS
+!
+   n = (Ubo(3)-Ubo(1))/Ubo(2) + 0.5
+!
+!     CALCULATE TOTAL FREQUENCY
+!
+   t = 0.0
+   DO i = 1,n
+      t = t + F(i)
+   ENDDO
+!
+   IF ( Nop<5 ) THEN
+      jump = 2
+      CALL spag_block_1
+      RETURN
+   ELSEIF ( Nop/=5 ) THEN
+      Nop = 5
+   ENDIF
+   jump = 1
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+!
+!        FIRST MOMENT
+!
+      DO i = 1,n
+         fi = i
+         Ans(1) = Ans(1) + F(i)*(Ubo(1)+(fi-0.5)*Ubo(2))
+      ENDDO
+      Ans(1) = Ans(1)/t
+!
+      IF ( Nop==1 ) RETURN
+      IF ( Nop==3 ) THEN
+      ELSEIF ( Nop==4 ) THEN
+         CALL spag_block_2
+         RETURN
+      ELSE
+!
+!        SECOND MOMENT
+!
+         DO i = 1,n
+            fi = i
+            Ans(2) = Ans(2) + F(i)*(Ubo(1)+(fi-0.5)*Ubo(2)-Ans(1))**2
+         ENDDO
+         Ans(2) = Ans(2)/t
+         IF ( jump==2 ) RETURN
+      ENDIF
+!
+!        THIRD MOMENT
+!
+      DO i = 1,n
+         fi = i
+         Ans(3) = Ans(3) + F(i)*(Ubo(1)+(fi-0.5)*Ubo(2)-Ans(1))**3
+      ENDDO
+      Ans(3) = Ans(3)/t
+      IF ( jump==2 ) RETURN
+      CALL spag_block_2
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+!
+!        FOURTH MOMENT
+!
+      DO i = 1,n
+         fi = i
+         Ans(4) = Ans(4) + F(i)*(Ubo(1)+(fi-0.5)*Ubo(2)-Ans(1))**4
+      ENDDO
+      Ans(4) = Ans(4)/t
+   END SUBROUTINE spag_block_2
+END SUBROUTINE momen

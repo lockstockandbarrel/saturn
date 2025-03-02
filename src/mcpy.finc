@@ -1,0 +1,53 @@
+!*==mcpy.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!        ...............................................................
+!
+!        SUBROUTINE MCPY
+!
+!        PURPOSE
+!           COPY ENTIRE MATRIX
+!
+!        USAGE
+!           CALL MCPY (A,R,N,M,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX
+!           R - NAME OF OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A OR R
+!           M - NUMBER OF COLUMNS IN A OR R
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A (AND R)
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           EACH ELEMENT OF MATRIX A IS MOVED TO THE CORRESPONDING
+!           ELEMENT OF MATRIX R
+!
+!     ..................................................................
+!
+SUBROUTINE mcpy(A,R,N,M,Ms)
+   IMPLICIT NONE
+
+   REAL A,R
+   INTEGER i,it,M,Ms,N
+
+   DIMENSION A(*),R(*)
+!
+!        COMPUTE VECTOR LENGTH, IT
+!
+   CALL loc(N,M,it,N,M,Ms)
+!
+!        COPY MATRIX
+!
+   DO i = 1,it
+      R(i) = A(i)
+   ENDDO
+END SUBROUTINE mcpy

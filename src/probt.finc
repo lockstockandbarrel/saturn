@@ -1,0 +1,273 @@
+!*==probt.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PROBT
+!
+!        PURPOSE
+!           TO OBTAIN MAXIMUM LIKELIHOOD ESTIMATES FOR THE PARAMETERS A
+!           AND B IN THE PROBIT EQUATION  Y = A + BX.  AN ITERATIVE
+!           SCHEME IS USED.  THE INPUT TO THE SUBROUTINE CONSISTS OF K
+!           DIFFERENT DOSAGE LEVELS APPLIED TO K GROUPS OF SUBJECTS, AND
+!           THE NUMBER OF SUBJECTS IN EACH GROUP RESPONDING TO THE
+!           RESPECTIVE DOSAGE OF THE DRUG.
+!
+!        USAGE
+!           CALL PROBT (K,X,S,R,LOG,ANS,W1,W2,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           K   - NUMBER OF DIFFERENT DOSE LEVELS OF THE DRUG.  K SHOULD
+!                 BE GREATER THAN 2.
+!           X   - INPUT VECTOR OF LENGTH K CONTAINING THE DOSE LEVEL OF
+!                 THE DRUG TESTED.  X MUST BE NON-NEGATIVE.
+!           S   - INPUT VECTOR OF LENGTH K CONTAINING THE NUMBER OF
+!                 SUBJECTS TESTED AT EACH DOSE LEVEL
+!           R   - INPUT VECTOR OF LENGTH K CONTAINING THE NUMBER OF
+!                 SUBJECTS AT EACH LEVEL RESPONDING TO THE DRUG
+!           LOG - INPUT OPTION CODE
+!                 1- IF IT IS DESIRED TO CONVERT THE DOSE LEVELS TO
+!                    COMMON LOGARITHMS.  THE DOSAGE LEVELS SHOULD BE
+!                    NON-NULL IN THIS CASE.
+!                 0- IF NO CONVERSION IS DESIRED
+!           ANS - OUTPUT VECTOR OF LENGTH 4 CONTAINING THE FOLLOWING
+!                 RESULTS
+!                 ANS(1)- ESTIMATE OF THE INTERCEPT CONSTANT A
+!                 ANS(2)- ESTIMATE OF THE PROBIT REGRESSION COEFFICIENT
+!                         B
+!                 ANS(3)- CHI-SQUARED VALUE FOR A TEST OF SIGNIFICANCE
+!                         OF THE FINAL PROBIT EQUATION
+!                 ANS(4)- DEGREES OF FREEDOM FOR THE CHI-SQUARE
+!                         STATISTIC
+!           W1  - OUTPUT VECTOR OF LENGTH K CONTAINING THE PROPORTIONS
+!                 OF SUBJECTS RESPONDING TO THE VARIOUS DOSE LEVELS OF
+!                 THE DRUG
+!           W2  - OUTPUT VECTOR OF LENGTH K CONTAINING THE VALUES OF THE
+!                 EXPECTED PROBIT FOR THE VARIOUS LEVELS OF A DRUG
+!           IER - 1 IF K IS NOT GREATER THAN 2.
+!                 2 IF SOME DOSAGE LEVEL IS NEGATIVE, OR IF THE INPUT
+!                   OPTION CODE LOG IS 1 AND SOME DOSAGE LEVEL IS ZERO.
+!                 3 IF SOME ELEMENT OF S IS NOT POSITIVE.
+!                 4 IF NUMBER OF SUBJECTS RESPONDING IS GREATER THAN
+!                 NUMBER OF SUBJECTS TESTED.
+!                 ONLY IF IER IS ZERO IS A PROBIT ANALYSIS PERFORMED.
+!                 OTHERWISE, ANS, W1, AND W2 ARE SET TO ZERO.
+!
+!        REMARKS
+!           THE PROGRAM WILL ITERATE ON THE PROBIT EQUATION UNTIL TWO
+!           SUCCESSIVE SOLUTIONS PRODUCE CHANGES OF LESS THAN 10**(-7).
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NDTR
+!           NDTRI
+!
+!        METHOD
+!           REFER TO D. J. FINNEY, PROBIT ANALYSIS. 2ND ED. (CAMBRIDGE,
+!           1952)
+!
+!     ..................................................................
+!
+SUBROUTINE probt(K,X,S,R,Log,Ans,W1,W2,Ier)
+   IMPLICIT NONE
+
+   REAL a,aa,Ans,b,d,dd,p,q,R,S,snw,snwx,snwxx,snwxy,snwy,sxx,sxy,w,W1,W2
+   REAL wn,wp,X,xbar,y,z
+   INTEGER i,Ier,K,Log
+
+!
+   DIMENSION X(*),S(*),R(*),Ans(*),W1(*),W2(*)
+   INTEGER :: spag_nextblock_1
+   INTEGER :: spag_nextblock_2
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        TEST WHETHER LOG CONVERSION IS NEEDED
+!
+         Ier = 0
+         IF ( K<=2 ) THEN
+            Ier = 1
+            spag_nextblock_1 = 3
+            CYCLE SPAG_DispatchLoop_1
+         ELSE
+            DO i = 1,K
+               IF ( X(i)<0 ) GOTO 2
+            ENDDO
+            IF ( Log==1 ) THEN
+               DO i = 1,K
+                  spag_nextblock_2 = 1
+                  SPAG_DispatchLoop_2: DO
+                     SELECT CASE (spag_nextblock_2)
+                     CASE (1)
+                        IF ( X(i)>0 ) THEN
+                           X(i) = alog10(X(i))
+                           CYCLE
+                        ENDIF
+                        spag_nextblock_2 = 2
+                     CASE (2)
+ 2                      Ier = 2
+                        spag_nextblock_1 = 3
+                        CYCLE SPAG_DispatchLoop_1
+                     END SELECT
+                  ENDDO SPAG_DispatchLoop_2
+               ENDDO
+            ENDIF
+!
+!        COMPUTE PROPORTIONS OF OBJECTS RESPONDING
+!
+            DO i = 1,K
+               IF ( S(i)<R(i) ) THEN
+                  Ier = 4
+                  spag_nextblock_1 = 3
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+            ENDDO
+            DO i = 1,K
+               IF ( S(i)<=0 ) THEN
+                  Ier = 3
+                  spag_nextblock_1 = 3
+                  CYCLE SPAG_DispatchLoop_1
+               ELSE
+                  W1(i) = R(i)/S(i)
+               ENDIF
+            ENDDO
+!
+!        COMPUTE INITIAL ESTIMATES OF INTERCEPT AND PROBIT REGRESSION
+!        COEFFICIENT
+!
+            wn = 0.0
+            xbar = 0.0
+            snwy = 0.0
+            sxx = 0.0
+            sxy = 0.0
+!
+            DO i = 1,K
+               p = W1(i)
+               IF ( p>0 ) THEN
+                  IF ( p<1.0 ) THEN
+                     wn = wn + 1.0
+!
+                     CALL ndtri(p,z,d,Ier)
+!
+                     z = z + 5.0
+                     xbar = xbar + X(i)
+                     snwy = snwy + z
+                     sxx = sxx + X(i)**2
+                     sxy = sxy + X(i)*z
+                  ENDIF
+               ENDIF
+            ENDDO
+!
+            b = (sxy-(xbar*snwy)/wn)/(sxx-(xbar*xbar)/wn)
+            xbar = xbar/wn
+            snwy = snwy/wn
+            a = snwy - b*xbar
+            dd = 0.0
+!
+!        COMPUTE EXPECTED PROBIT
+!
+            DO i = 1,K
+               W2(i) = a + b*X(i)
+            ENDDO
+            SPAG_Loop_1_1: DO
+!
+               snw = 0.0
+               snwx = 0.0
+               snwy = 0.0
+               snwxx = 0.0
+               snwxy = 0.0
+               DO i = 1,K
+                  y = W2(i)
+!
+!        FIND A WEIGHTING COEFFICIENT FOR PROBIT ANALYSIS
+!
+                  d = y - 5.0
+!
+                  CALL ndtr(d,p,z)
+!
+                  q = 1.0 - p
+                  w = (z*z)/(p*q)
+!
+!        COMPUTE WORKING PROBIT
+!
+                  IF ( y<=5.0 ) THEN
+                     wp = (y-p/z) + W1(i)/z
+                  ELSE
+                     wp = (y+q/z) - (1.0-W1(i))/z
+                  ENDIF
+!
+!        SUM INTERMEDIATE RESULTS
+!
+                  wn = w*S(i)
+                  snw = snw + wn
+                  snwx = snwx + wn*X(i)
+                  snwy = snwy + wn*wp
+                  snwxx = snwxx + wn*X(i)**2
+                  snwxy = snwxy + wn*X(i)*wp
+               ENDDO
+!
+!        COMPUTE NEW ESTIMATES OF INTERCEPT AND COEFFICIENT
+!
+               xbar = snwx/snw
+!
+               sxx = snwxx - (snwx)*(snwx)/snw
+               sxy = snwxy - (snwx)*(snwy)/snw
+               b = sxy/sxx
+!
+               a = snwy/snw - b*xbar
+!
+!        EXAMINE THE CHANGES IN Y
+!
+               sxx = 0.0
+               DO i = 1,K
+                  y = a + b*X(i)
+                  d = W2(i) - y
+                  sxx = sxx + d*d
+                  W2(i) = y
+               ENDDO
+               IF ( (abs(dd-sxx))<=(1.0E-7) ) THEN
+!
+!        STORE INTERCEPT AND COEFFICIENT
+!
+                  Ans(1) = a
+                  Ans(2) = b
+!
+!        COMPUTE CHI-SQUARE
+!
+                  Ans(3) = 0.0
+                  DO i = 1,K
+                     y = W2(i) - 5.0
+!
+                     CALL ndtr(y,p,d)
+!
+                     aa = R(i) - S(i)*p
+                     dd = S(i)*p*(1.0-p)
+                     Ans(3) = Ans(3) + aa*aa/dd
+                  ENDDO
+!
+!        DEGREES OF FREEDOM FOR CHI-SQUARE
+!
+                  Ans(4) = K - 2
+                  EXIT SPAG_Loop_1_1
+               ELSE
+                  dd = sxx
+               ENDIF
+            ENDDO SPAG_Loop_1_1
+         ENDIF
+      CASE (2)
+!
+         RETURN
+      CASE (3)
+         DO i = 1,K
+            W1(i) = 0.0
+            W2(i) = 0.0
+         ENDDO
+         DO i = 1,4
+            Ans(i) = 0.0
+         ENDDO
+         spag_nextblock_1 = 2
+         CYCLE SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE probt

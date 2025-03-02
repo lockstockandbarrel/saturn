@@ -1,0 +1,60 @@
+!*==ql8.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE QL8
+!
+!        PURPOSE
+!           TO COMPUTE INTEGRAL(EXP(-X)*FCT(X), SUMMED OVER X FROM 0
+!                               TO INFINITY).
+!
+!        USAGE
+!           CALL QL8 (FCT,Y)
+!           PARAMETER FCT REQUIRES AN EXTERNAL STATEMENT
+!
+!        DESCRIPTION OF PARAMETERS
+!           FCT    - THE NAME OF AN EXTERNAL FUNCTION SUBPROGRAM USED.
+!           Y      - THE RESULTING INTEGRAL VALUE.
+!
+!        REMARKS
+!           NONE
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           THE EXTERNAL FUNCTION SUBPROGRAM FCT(X) MUST BE FURNISHED
+!           BY THE USER.
+!
+!        METHOD
+!           EVALUATION IS DONE BY MEANS OF 8-POINT GAUSSIAN-LAGUERRE
+!           QUADRATURE FORMULA, WHICH INTEGRATES EXACTLY WHENEVER
+!           FCT(X) IS A POLYNOMIAL UP TO DEGREE 15.
+!           FOR REFERENCE, SEE
+!           V.I.KRYLOV, APPROXIMATE CALCULATION OF INTEGRALS,
+!           MACMILLAN, NEW YORK/LONDON, 1962, PP.130-132 AND 347-352.
+!
+!     ..................................................................
+!
+SUBROUTINE ql8(fct,Y)
+   IMPLICIT NONE
+
+   REAL fct,x,Y
+
+!
+!
+   x = 22.86313
+   Y = .1048001E-8*fct(x)
+   x = 15.74068
+   Y = Y + .8485747E-6*fct(x)
+   x = 10.75852
+   Y = Y + .9076509E-4*fct(x)
+   x = 7.045905
+   Y = Y + .2794536E-2*fct(x)
+   x = 4.266700
+   Y = Y + .03334349*fct(x)
+   x = 2.251087
+   Y = Y + .1757950*fct(x)
+   x = .9037018
+   Y = Y + .4187868*fct(x)
+   x = .1702796
+   Y = Y + .3691886*fct(x)
+END SUBROUTINE ql8

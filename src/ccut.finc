@@ -1,0 +1,86 @@
+!*==ccut.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE CCUT
+!
+!        PURPOSE
+!           PARTITION A MATRIX BETWEEN SPECIFIED COLUMNS TO FORM TWO
+!           RESULTANT MATRICES
+!
+!        USAGE
+!           CALL CCUT (A,L,R,S,N,M,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX
+!           L - COLUMN OF A TO THE LEFT OF WHICH PARTITIONING TAKES
+!               PLACE
+!           R - NAME OF MATRIX TO BE FORMED FROM LEFT PORTION OF A
+!           S - NAME OF MATRIX TO BE FORMED FROM RIGHT PORTION OF A
+!           N - NUMBER OF ROWS IN A
+!           M - NUMBER OF COLUMNS IN A
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN SAME LOCATION AS MATRIX A
+!           MATRIX S CANNOT BE IN SAME LOCATION AS MATRIX A
+!           MATRIX R CANNOT BE IN SAME LOCATION AS MATRIX S
+!           MATRIX R AND MATRIX S ARE ALWAYS GENERAL MATRICES
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           ELEMENTS OF MATRIX A TO THE LEFT OF COLUMN L ARE MOVED TO
+!           FORM MATRIX R OF N ROWS AND L-1 COLUMNS. ELEMENTS OF
+!           MATRIX A IN COLUMN L AND TO THE RIGHT OF L ARE MOVED TO FORM
+!           MATRIX S OF N ROWS AND M-L+1 COLUMNS.
+!
+!     ..................................................................
+!
+SUBROUTINE ccut(A,L,R,S,N,M,Ms)
+   IMPLICIT NONE
+
+   REAL A,R,S
+   INTEGER i,ij,ir,is,j,L,M,Ms,N
+
+   DIMENSION A(*),R(*),S(*)
+!
+   ir = 0
+   is = 0
+   DO j = 1,M
+      DO i = 1,N
+!
+!        FIND LOCATION IN OUTPUT MATRIX AND SET TO ZERO
+!
+         IF ( j<L ) THEN
+            ir = ir + 1
+            R(ir) = 0.0
+         ELSE
+            is = is + 1
+            S(is) = 0.0
+         ENDIF
+!
+!        LOCATE ELEMENT FOR ANY MATRIX STORAGE MODE
+!
+         CALL loc(i,j,ij,N,M,Ms)
+!
+!        TEST FOR ZERO ELEMENT IN DIAGONAL MATRIX
+!
+         IF ( ij/=0 ) THEN
+!
+!        DETERMINE WHETHER RIGHT OR LEFT OF L
+!
+            IF ( j<L ) THEN
+               R(ir) = A(ij)
+            ELSE
+               S(is) = A(ij)
+            ENDIF
+         ENDIF
+      ENDDO
+   ENDDO
+END SUBROUTINE ccut

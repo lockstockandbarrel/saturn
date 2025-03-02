@@ -1,0 +1,56 @@
+!*==rint.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RINT
+!
+!        PURPOSE
+!           INTERCHANGE TWO ROWS OF A MATRIX
+!
+!        USAGE
+!           CALL RINT(A,N,M,LA,LB)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A  - NAME OF MATRIX
+!           N  - NUMBER OF ROWS IN A
+!           M  - NUMBER OF COLUMNS IN A
+!           LA - ROW TO BE INTERCHANGED WITH ROW LB
+!           LB - ROW TO BE INTERCHANGED WITH ROW LA
+!
+!        REMARKS
+!           MATRIX A MUST BE A GENERAL MATRIX
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           EACH ELEMENT OF ROW LA IS INTERCHANGED WITH CORRESPONDING
+!           ELEMENT OF ROW LB
+!
+!     ..................................................................
+!
+SUBROUTINE rint(A,N,M,La,Lb)
+   IMPLICIT NONE
+
+   REAL A,save
+   INTEGER j,La,laj,Lb,lbj,M,N
+
+   DIMENSION A(*)
+!
+   laj = La - N
+   lbj = Lb - N
+   DO j = 1,M
+!
+!        LOCATE ELEMENTS IN BOTH ROWS
+!
+      laj = laj + N
+      lbj = lbj + N
+!
+!        INTERCHANGE ELEMENTS
+!
+      save = A(laj)
+      A(laj) = A(lbj)
+      A(lbj) = save
+   ENDDO
+END SUBROUTINE rint

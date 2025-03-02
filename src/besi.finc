@@ -1,0 +1,142 @@
+!*==besi.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE BESI
+!
+!        PURPOSE
+!           COMPUTE THE I BESSEL FUNCTION FOR A GIVEN ARGUMENT AND ORDER
+!
+!        USAGE
+!           CALL BESI(X,N,BI,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X  -THE ARGUMENT OF THE I BESSEL FUNCTION DESIRED
+!           N  -THE ORDER OF THE I BESSEL FUNCTION DESIRED
+!           BI -THE RESULTANT I BESSEL FUNCTION
+!           IER-RESULTANT ERROR CODE WHERE
+!              IER=0 NO ERROR
+!              IER=1 N IS NEGATIVE
+!              IER=2 X IS NEGATIVE
+!              IER=3 UNDERFLOW, BI .LT. 1.E-69, BI SET TO 0.0
+!              IER=4 OVERFLOW, X .GT. 170 WHERE X .GT. N
+!
+!        REMARKS
+!           N AND X MUST BE .GE. ZERO
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           COMPUTES I BESSEL FUNCTION USING SERIES OR ASYMPTOTIC
+!           APPROXIMATION DEPENDING ON RANGE OF ARGUMENTS.
+!
+!     ..................................................................
+!
+SUBROUTINE besi(X,N,Bi,Ier)
+   IMPLICIT NONE
+
+   REAL Bi,fi,fk,fn,pi,term,tol,X,xx
+   INTEGER i,Ier,k,N
+
+!
+!     CHECK FOR ERRORS IN N AND X AND EXIT IF ANY ARE PRESENT
+!
+   Ier = 0
+   Bi = 1.0
+   IF ( N<0 ) THEN
+      Ier = 1
+      CALL spag_block_1
+      RETURN
+   ELSEIF ( N==0 ) THEN
+      IF ( X<0 ) THEN
+         Ier = 2
+         CALL spag_block_1
+         RETURN
+      ELSEIF ( X==0 ) THEN
+         RETURN
+      ENDIF
+   ELSEIF ( X<0 ) THEN
+      Ier = 2
+      CALL spag_block_1
+      RETURN
+   ENDIF
+!
+!     DEFINE TOLERANCE
+!
+   tol = 1.E-6
+!
+!     IF ARGUMENT GT 12 AND GT N, USE ASYMPTOTIC FORM
+!
+   IF ( X>12. ) THEN
+      IF ( X>float(N) ) THEN
+!
+!     X GT 12 AND X GT N, SO USE ASYMPTOTIC APPROXIMATION
+!
+         fn = 4*N*N
+         IF ( X<170.0 ) THEN
+            xx = 1./(8.*X)
+            term = 1.
+            Bi = 1.
+            DO k = 1,30
+               IF ( abs(term)<=abs(tol*Bi) ) THEN
+                  CALL spag_block_2
+                  RETURN
+               ENDIF
+               fk = (2*k-1)**2
+               term = term*xx*(fk-fn)/float(k)
+               Bi = Bi + term
+!
+!     SIGNIFICANCE LOST AFTER 30 TERMS, TRY SERIES
+!
+            ENDDO
+         ELSE
+            Ier = 4
+            RETURN
+         ENDIF
+      ENDIF
+   ENDIF
+!
+!     COMPUTE FIRST TERM OF SERIES AND SET INITIAL VALUE OF THE SUM
+!
+   xx = X/2.
+   term = 1.0
+   IF ( N>0 ) THEN
+      DO i = 1,N
+         fi = i
+         IF ( abs(term)<1.E-68 ) THEN
+            Ier = 3
+            Bi = 0.0
+            RETURN
+         ELSE
+            term = term*xx/fi
+         ENDIF
+      ENDDO
+   ENDIF
+   Bi = term
+   xx = xx*xx
+!
+!     COMPUTE TERMS, STOPPING WHEN ABS(TERM) LE ABS(SUM OF TERMS)
+!     TIMES TOLERANCE
+!
+   SPAG_Loop_1_1: DO k = 1,1000
+      IF ( abs(term)<=abs(Bi*tol) ) EXIT SPAG_Loop_1_1
+      fk = k*(N+k)
+      term = term*(xx/fk)
+      Bi = Bi + term
+   ENDDO SPAG_Loop_1_1
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+!
+!     RETURN BI AS ANSWER
+!
+      RETURN
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+      pi = 3.141592653
+      Bi = Bi*exp(X)/sqrt(2.*pi*X)
+      CALL spag_block_1
+   END SUBROUTINE spag_block_2
+END SUBROUTINE besi

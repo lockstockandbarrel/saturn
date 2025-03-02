@@ -1,0 +1,70 @@
+!*==xcpy.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE XCPY
+!
+!        PURPOSE
+!           COPY A PORTION OF A MATRIX
+!
+!        USAGE
+!           CALL XCPY(A,R,L,K,NR,MR,NA,MA,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A  - NAME OF INPUT MATRIX
+!           R  - NAME OF OUTPUT MATRIX
+!           L  - ROW OF A WHERE FIRST ELEMENT OF R CAN BE FOUND
+!           K  - COLUMN OF A WHERE FIRST ELEMENT OF R CAN BE FOUND
+!           NR - NUMBER OF ROWS TO BE COPIED INTO R
+!           MR - NUMBER OF COLUMNS TO BE COPIED INTO R
+!           NA - NUMBER OF ROWS IN A
+!           MA - NUMBER OF COLUMNS IN A
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRIX A
+!           MATRIX R IS ALWAYS A GENERAL MATRIX
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           MATRIX R IS FORMED BY COPYING A PORTION OF MATRIX A. THIS
+!           IS DONE BY EXTRACTING NR ROWS AND MR COLUMNS OF MATRIX A,
+!           STARTING WITH ELEMENT AT ROW L, COLUMN K
+!
+!     ..................................................................
+!
+SUBROUTINE xcpy(A,R,L,K,Nr,Mr,Na,Ma,Ms)
+   IMPLICIT NONE
+
+   REAL A,R
+   INTEGER i,ia,ir,j,K,k2,L,l2,Ma,Mr,Ms,Na,Nr
+
+   DIMENSION A(*),R(*)
+!
+!        INITIALIZE
+!
+   ir = 0
+   l2 = L + Nr - 1
+   k2 = K + Mr - 1
+!
+   DO j = K,k2
+      DO i = L,l2
+         ir = ir + 1
+         R(ir) = 0.0
+!
+!        LOCATE ELEMENT FOR ANY MATRIX STORAGE MODE
+!
+         CALL loc(i,j,ia,Na,Ma,Ms)
+!
+!        TEST FOR ZERO ELEMENT IN DIAGONAL MATRIX
+!
+         IF ( ia/=0 ) R(ir) = A(ia)
+      ENDDO
+   ENDDO
+END SUBROUTINE xcpy

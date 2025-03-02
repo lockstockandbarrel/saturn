@@ -1,0 +1,82 @@
+!*==cross.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE CROSS
+!
+!        PURPOSE
+!           TO FIND THE CROSSCOVARIANCES OF SERIES A WITH SERIES B
+!           (WHICH LEADS AND LAGS A).
+!
+!        USAGE
+!           CALL CROSS (A,B,N,L,R,S)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A    - INPUT VECTOR OF LENGTH N CONTAINING FIRST TIME
+!                  SERIES.
+!           B    - INPUT VECTOR OF LENGTH N CONTAINING SECOND TIME
+!                  SERIES.
+!           N    - LENGTH OF SERIES A AND B.
+!           L    - CROSSCOVARIANCE IS CALCULATED FOR LAGS AND LEADS OF
+!                  0, 1, 2,..., L-1.
+!           R    - OUTPUT VECTOR OF LENGTH L CONTAINING CROSSCOVARI-
+!                  ANCES OF A WITH B, WHERE B LAGS A.
+!           S    - OUTPUT VECTOR OF LENGTH L CONTAINING CROSSCOVARI-
+!                  ANCES OF A WITH B, WHERE B LEADS A.
+!
+!        REMARKS
+!           N MUST BE GREATER THAN L.  IF NOT, R(1) AND S(1) ARE SET TO
+!           ZERO AND RETURN IS MADE TO THE CALLING PROGRAM.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DESCRIBED IN R.B. BLACKMAN AND J.W. TUKEY, 'THE MEASURMENT
+!        OF POWER SPECTRA', DOVER PUBLICATIONS INC., NEW YORK, 1959.
+!
+!     ..................................................................
+!
+SUBROUTINE cross(A,B,N,L,R,S)
+   IMPLICIT NONE
+
+   REAL A,avera,averb,B,fn,fnj,R,S,sumr,sums
+   INTEGER i,ij,j,L,N,nj
+
+   DIMENSION A(*),B(*),R(*),S(*)
+!
+!     CALCULATE AVERAGES OF SERIES A AND B
+!
+   fn = N
+   avera = 0.0
+   averb = 0.0
+   IF ( N<=L ) THEN
+      R(1) = 0.0
+      S(1) = 0.0
+      RETURN
+   ELSE
+      DO i = 1,N
+         avera = avera + A(i)
+         averb = averb + B(i)
+      ENDDO
+      avera = avera/fn
+      averb = averb/fn
+!
+!     CALCULATE CROSSCOVARIANCES OF SERIES A AND B
+!
+      DO j = 1,L
+         nj = N - j + 1
+         sumr = 0.0
+         sums = 0.0
+         DO i = 1,nj
+            ij = i + j - 1
+            sumr = sumr + (A(i)-avera)*(B(ij)-averb)
+            sums = sums + (A(ij)-avera)*(B(i)-averb)
+         ENDDO
+         fnj = nj
+         R(j) = sumr/fnj
+         S(j) = sums/fnj
+      ENDDO
+   ENDIF
+END SUBROUTINE cross

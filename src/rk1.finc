@@ -1,0 +1,212 @@
+!*==rk1.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RK1
+!
+!        PURPOSE
+!           INTEGRATES A FIRST ORDER DIFFERENTIAL EQUATION
+!           DY/DX=FUN(X,Y) UP TO A SPECIFIED FINAL VALUE
+!
+!        USAGE
+!           CALL RK1(FUN,HI,XI,YI,XF,YF,ANSX,ANSY,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           FUN -USER-SUPPLIED FUNCTION SUBPROGRAM WITH ARGUMENTS X,Y
+!                WHICH GIVES DY/DX
+!           HI  -THE STEP SIZE
+!           XI  -INITIAL VALUE OF X
+!           YI  -INITIAL VALUE OF Y WHERE YI=Y(XI)
+!           XF  -FINAL VALUE OF X
+!           YF  -FINAL VALUE OF Y
+!           ANSX-RESULTANT FINAL VALUE OF X
+!           ANSY-RESULTANT FINAL VALUE OF Y
+!                EITHER ANSX WILL EQUAL XF OR ANSY WILL EQUAL YF
+!                DEPENDING ON WHICH IS REACHED FIRST
+!           IER -ERROR CODE
+!                IER=0 NO ERROR
+!                IER=1 STEP SIZE IS ZERO
+!
+!        REMARKS
+!           IF XI IS GREATER THAN XF, ANSX=XI AND ANSY=YI
+!           IF H IS ZERO, IER IS SET TO ONE, ANSX IS SET TO XI, AND
+!           ANSY IS SET TO ZERO
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           FUN IS A TWO ARGUMENT FUNCTION SUBPROGRAM FURNISHED BY THE
+!           USER.  DY/DX=FUN (X,Y)
+!           CALLING PROGRAM MUST HAVE FORTRAN EXTERNAL STATEMENT
+!           CONTAINING NAMES OF FUNCTION SUBPROGRAMS LISTED IN CALL TO
+!           RK1
+!
+!        METHOD
+!           USES FOURTH ORDER RUNGE-KUTTA INTEGRATION PROCESS ON A
+!           RECURSIVE BASIS AS SHOWN IN F.B. HILDEBRAND, 'INTRODUCTION
+!           TO NUMERICAL ANALYSIS',MCGRAW-HILL,1956. PROCESS IS
+!           TERMINATED AND FINAL VALUE ADJUSTED WHEN EITHER XF OR YF
+!           IS REACHED.
+!
+!     ..................................................................
+!
+SUBROUTINE rk1(fun,Hi,Xi,Yi,Xf,Yf,Ansx,Ansy,Ier)
+   IMPLICIT NONE
+
+   REAL Ansx,Ansy,fun,h,h2,Hi,hnew,t1,t2,t3,t4,Xf,Xi,xn,xn1,xnew,xx,Yf,Yi,yn
+   REAL yn1,ynew,yy
+   INTEGER i,Ier,jump
+
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION HI,XI,YI,XF,YF,ANSX,ANSY,H,XN,YN,HNEW,XN1,YN1,
+!    1                 XX,YY,XNEW,YNEW,H2,T1,T2,T3,T4,FUN
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        USER FUNCTION SUBPROGRAM, FUN, MUST BE IN DOUBLE PRECISION.
+!
+!        ...............................................................
+!
+!     IF XF IS LESS THAN OR EQUAL TO XI, RETURN XI,YI AS ANSWER
+!
+   Ier = 0
+   IF ( Xf<=Xi ) THEN
+      Ansx = Xi
+      Ansy = Yi
+      RETURN
+   ELSE
+!
+!     TEST INTERVAL VALUE
+!
+      h = Hi
+      IF ( Hi<0 ) THEN
+         h = -Hi
+      ELSEIF ( Hi==0 ) THEN
+         Ier = 1
+         Ansx = Xi
+         Ansy = 0.0
+         RETURN
+      ENDIF
+!
+!     SET XN=INITIAL X,YN=INITIAL Y
+!
+      xn = Xi
+      yn = Yi
+!
+!     INTEGRATE ONE TIME STEP
+!
+      hnew = h
+      jump = 1
+      SPAG_Loop_1_1: DO
+!
+         h2 = hnew/2.0
+         t1 = hnew*fun(xn,yn)
+         t2 = hnew*fun(xn+h2,yn+t1/2.0)
+         t3 = hnew*fun(xn+h2,yn+t2/2.0)
+         t4 = hnew*fun(xn+hnew,yn+t3)
+         yy = yn + (t1+2.0*t2+2.0*t3+t4)/6.0
+         xx = xn + hnew
+         IF ( jump==1 ) THEN
+            xn1 = xx
+            yn1 = yy
+!
+!     COMPARE XN1 (=X(N+1)) TO X FINAL AND BRANCH ACCORDINGLY
+!
+            IF ( xn1<Xf ) THEN
+!
+!     XN1 LESS THAN X FINAL, CHECK IF (YN,YN1) SPAN Y FINAL
+!
+!
+               IF ( (yn1-Yf)*(Yf-yn)<0 ) THEN
+!
+!     YN1 AND YN DO NOT SPAN YF. SET (XN,YN) AS (XN1,YN1) AND REPEAT
+!
+                  yn = yn1
+                  xn = xn1
+                  CYCLE
+               ELSEIF ( (yn1-Yf)*(Yf-yn)==0 ) THEN
+!
+!     EITHER YN OR YN1 =YF. CHECK WHICH AND SET PROPER (X,Y) AS ANSWER
+!
+                  IF ( yn1/=Yf ) THEN
+                     Ansy = yn
+                     Ansx = xn
+                  ELSE
+                     Ansy = yn1
+                     Ansx = xn1
+                  ENDIF
+               ELSE
+!
+!     YN AND YN1 SPAN YF. TRY TO FIND X VALUE ASSOCIATED WITH YF
+!
+                  DO i = 1,10
+!
+!     INTERPOLATE TO FIND NEW TIME STEP AND INTEGRATE ONE STEP
+!     TRY TEN INTERPOLATIONS AT MOST
+!
+                     hnew = ((Yf-yn)/(yn1-yn))*(xn1-xn)
+                     jump = 3
+                     CYCLE SPAG_Loop_1_1
+ 2                ENDDO
+!
+!     RETURN (XNEW,YF) AS ANSWER
+!
+ 4                Ansx = xnew
+                  Ansy = Yf
+               ENDIF
+            ELSEIF ( xn1==Xf ) THEN
+!
+!     XN1=XF, RETURN (XF,YN1) AS ANSWER
+!
+               Ansx = Xf
+               Ansy = yn1
+            ELSE
+!
+!     XN1 GREATER THAN XF, SET NEW STEP SIZE AND INTEGRATE ONE STEP
+!     RETURN RESULTS OF INTEGRATION AS ANSWER
+!
+               hnew = Xf - xn
+               jump = 2
+               CYCLE
+            ENDIF
+         ELSEIF ( jump==2 ) THEN
+            Ansx = xx
+            Ansy = yy
+         ELSEIF ( jump==3 ) THEN
+            xnew = xx
+            ynew = yy
+!
+!     COMPARE COMPUTED Y VALUE WITH YF AND BRANCH
+!
+            IF ( ynew<Yf ) THEN
+!
+!     ADVANCE, YF IS BETWEEN YNEW AND YN1
+!
+               yn = ynew
+               xn = xnew
+            ELSEIF ( ynew==Yf ) THEN
+               GOTO 4
+            ELSE
+!
+!     ADVANCE, YF IS BETWEEN YN AND YNEW
+!
+               yn1 = ynew
+               xn1 = xnew
+            ENDIF
+            GOTO 2
+         ELSE
+            RETURN
+         ENDIF
+         EXIT SPAG_Loop_1_1
+      ENDDO SPAG_Loop_1_1
+   ENDIF
+   RETURN
+!
+END SUBROUTINE rk1

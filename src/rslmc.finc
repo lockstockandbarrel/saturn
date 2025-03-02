@@ -1,0 +1,189 @@
+!*==rslmc.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE RSLMC
+!
+!        PURPOSE
+!           SOLUTION OF A SYSTEM OF LINEAR EQUATIONS AX=B
+!
+!        USAGE
+!           CALL RSLMC(A,AF,B,X,N,EPSI,IER,IA,V,PER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A      INPUT MATRIX
+!           AF     ARRAY OF THE FACTORIZATION OF THE ORIGINAL MATRIX
+!           B      RIGHT HAND SIDE VECTOR
+!           X      VECTOR CONTAINING THE SOLUTION ON RETURN
+!           N      ORDER OF THE SYSTEM
+!           EPSI   RELATIVE PRECISION INDICATOR(REQUIRED INPUT)
+!           IER    ERROR INDICATOR
+!                     =0 IF EACH COMPONENT OF X MEETS THE PRECISION EPSI
+!                     =1 IF ONLY THE NORM OF X MEETS THIS PRECISION
+!                     =2 IF THE PRECISION IN THE NORM OF THE COMPUTED
+!                        SOLUTION IS LOWER THAN EPSI
+!                     =3 IF THE SOLUTION OBTAINED HAS NO MEANING AT ALL
+!                     =4 IF A DIAGONAL TERM OF THE UPPER TRIANGULAR
+!                        FACTOR IS ZERO
+!           IA     SIZE OF THE FIRST DIMENSION ASSIGNED TO THE ARRAY A
+!                  IN THE CALLING PROGRAM WHEN THE MATRIX IS IN DOUBLE
+!                  SUBSCRIPTED DATA STORAGE MODE.  IA=N WHEN THE MATRIX
+!                  IS IN SSP VECTOR STORAGE MODE.
+!           V      WORKING STORAGE VECTOR
+!                  DIMENSION OF V MUST BE GREATER THAN OR EQUAL TO N
+!           PER    VECTOR WHERE PERMUTATIONS OF ROWS OF THE MATRIX ARE
+!                  STORED
+!                  DIMENSION OF PER MUST BE GREATER THAN OR EQUAL TO N
+!
+!        REMARKS
+!           THE MATRIX OF THE SYSTEM MAY BE FACTORIZED BY THE SUBROUTINE
+!           FACTR IN THE ARRAY AF PRIOR TO ENTRY TO THIS SUBROUTINE.
+!           THE LOWER TRIANGULAR FACTOR MUST HAVE AN UNIT DIAGONAL.
+!           EPSI IS MODIFIED WHEN IER=2
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           A TRIAL SOLUTION IS FIRST COMPUTED.  THEN CORRECTIONS ARE
+!           CALCULATED FROM RESIDUAL VECTORS.
+!
+!        REFERENCES
+!           J. H. WILKINSON - THE ALGEBRAIC EIGENVALUE PROBLEM -
+!           CLARENDON PRESS OXFORD, 1965.  H. J. BOWDLER, R. S. MARTIN,
+!           G. PETERS, AND J. H. WILKINSON.  'SOLUTION OF REAL AND
+!           COMPLEX SYSTEMS OF LINEAR EQUATIONS', NUMERISCHE MATHEMATIK,
+!           VOL. 8, NO. 3, 1966, 217-234.
+!
+!     ..................................................................
+!
+SUBROUTINE rslmc(A,Af,B,X,N,Epsi,Ier,Ia,V,Per)
+   IMPLICIT NONE
+
+   REAL A,Af,B,d0,d1,d2,Epsi,Per,V,X
+   INTEGER i,Ia,Ier,ik,im1,inf,ite,k,kle,N
+
+   DIMENSION A(*),Af(*),B(*),X(*),V(*),Per(*)
+   DOUBLE PRECISION dp
+!
+!        INITIALIZATION
+!
+   d0 = 0.
+   Ier = 0
+   ite = 0
+   DO i = 1,N
+      V(i) = B(i)
+      X(i) = 0.
+   ENDDO
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+      ite = ite + 1
+!
+!        THE PERMUTATIONS OF ROWS OF A ARE APPLIED TO V
+!
+      DO i = 1,N
+         k = Per(i)
+         IF ( k/=i ) THEN
+            d1 = V(k)
+            V(k) = V(i)
+            V(i) = d1
+         ENDIF
+      ENDDO
+!
+!        SOLUTION OF THE LOWER TRIANGULAR SYSTEM
+!
+      DO i = 2,N
+         im1 = i - 1
+         dp = V(i)
+         ik = i
+         DO k = 1,im1
+            dp = dp - 1.D0*Af(ik)*V(k)
+            ik = ik + Ia
+         ENDDO
+         V(i) = dp
+      ENDDO
+!
+!        SOLUTION OF THE UPPER TRIANGULAR SYSTEM
+!
+      IF ( Af(ik)/=0 ) THEN
+         V(N) = dp/Af(ik)
+         DO i = 2,N
+            im1 = N - i + 1
+            inf = im1 + 1
+            dp = V(im1)
+            ik = (im1-1)*Ia + im1
+            d1 = Af(ik)
+            DO k = inf,N
+               ik = ik + Ia
+               dp = dp - 1.D0*Af(ik)*V(k)
+            ENDDO
+            V(im1) = dp/d1
+         ENDDO
+!
+!        TEST OF PRECISION
+!
+         d1 = 0.
+         d2 = 0.
+         kle = 0
+         DO i = 1,N
+            d1 = d1 + abs(V(i))
+            d2 = d2 + abs(X(i))
+            IF ( abs(V(i))>Epsi*abs(X(i)) ) kle = 1
+         ENDDO
+         IF ( kle<0 ) THEN
+            Ier = 3
+            RETURN
+         ELSEIF ( kle/=0 ) THEN
+            IF ( ite<1 ) THEN
+               Ier = 3
+               RETURN
+            ELSEIF ( ite==1 ) THEN
+               CALL spag_block_2
+               RETURN
+            ELSE
+!
+!        ITERATIONS ARE STOPPED WHEN THE NORM OF THE CORRECTION IS MORE
+!        THAN HALF OF THE ONE OF THE FORMER
+!
+               IF ( d0>=2.*d1 ) THEN
+                  CALL spag_block_2
+                  RETURN
+               ENDIF
+               IF ( ite<=2 ) THEN
+                  Ier = 3
+                  RETURN
+               ELSEIF ( d1<=Epsi*d2 ) THEN
+                  Ier = 1
+                  RETURN
+               ELSE
+                  Ier = 2
+                  Epsi = d1/d2
+                  RETURN
+               ENDIF
+            ENDIF
+         ENDIF
+      ELSE
+         Ier = 4
+      ENDIF
+      RETURN
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+      DO i = 1,N
+         X(i) = X(i) + V(i)
+      ENDDO
+      DO i = 1,N
+         dp = B(i)
+         ik = i
+         DO k = 1,N
+            dp = dp - 1.D0*A(ik)*X(k)
+            ik = ik + Ia
+         ENDDO
+         V(i) = dp
+      ENDDO
+      d0 = d1
+      CALL spag_block_1
+      RETURN
+   END SUBROUTINE spag_block_2
+END SUBROUTINE rslmc

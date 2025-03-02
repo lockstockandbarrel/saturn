@@ -1,0 +1,311 @@
+!*==dprbm.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DPRBM
+!
+!        PURPOSE
+!           TO CALCULATE ALL REAL AND COMPLEX ROOTS OF A GIVEN
+!           POLYNOMIAL WITH REAL COEFFICIENTS.
+!
+!        USAGE
+!           CALL DPRBM (C,IC,RR,RC,POL,IR,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           C      - DOUBLE PRECISION INPUT VECTOR CONTAINING THE
+!                    COEFFICIENTS OF THE GIVEN POLYNOMIAL. COEFFICIENTS
+!                    ARE ORDERED FROM LOW TO HIGH. ON RETURN COEFFI-
+!                    CIENTS ARE DIVIDED BY THE LAST NONZERO TERM.
+!           IC     - DIMENSION OF VECTORS C, RR, RC, AND POL.
+!           RR     - RESULTANT DOUBLE PRECISION VECTOR OF REAL PARTS
+!                    OF THE ROOTS.
+!           RC     - RESULTANT DOUBLE PRECISION VECTOR OF COMPLEX PARTS
+!                    OF THE ROOTS.
+!           POL    - RESULTANT DOUBLE PRECISION VECTOR OF COEFFICIENTS
+!                    OF THE POLYNOMIAL WITH CALCULATED ROOTS.
+!                    COEFFICIENTS ARE ORDERED FROM LOW TO HIGH (SEE
+!                    REMARK 4).
+!           IR     - OUTPUT VALUE SPECIFYING THE NUMBER OF CALCULATED
+!                    ROOTS. NORMALLY IR IS EQUAL TO IC-1.
+!           IER    - RESULTANT ERROR PARAMETER CODED AS FOLLOWS
+!                     IER=0  - NO ERROR,
+!                     IER=1  - SUBROUTINE DPQFB RECORDS POOR CONVERGENCE
+!                              AT SOME QUADRATIC FACTORIZATION WITHIN
+!                              100 ITERATION STEPS,
+!                     IER=2  - POLYNOMIAL IS DEGENERATE, I.E. ZERO OR
+!                              CONSTANT,
+!                              OR OVERFLOW IN NORMALIZATION OF GIVEN
+!                              POLYNOMIAL,
+!                     IER=3  - THE SUBROUTINE IS BYPASSED DUE TO
+!                              SUCCESSIVE ZERO DIVISORS OR OVERFLOWS
+!                              IN QUADRATIC FACTORIZATION OR DUE TO
+!                              COMPLETELY UNSATISFACTORY ACCURACY,
+!                     IER=-1 - CALCULATED COEFFICIENT VECTOR HAS LESS
+!                              THAN SIX CORRECT SIGNIFICANT DIGITS.
+!                              THIS REVEALS POOR ACCURACY OF CALCULATED
+!                              ROOTS.
+!
+!        REMARKS
+!           (1) REAL PARTS OF THE ROOTS ARE STORED IN RR(1) UP TO RR(IR)
+!               AND CORRESPONDING COMPLEX PARTS IN RC(1) UP TO RC(IR).
+!           (2) ERROR MESSAGE IER=1 INDICATES POOR CONVERGENCE WITHIN
+!               100 ITERATION STEPS AT SOME QUADRATIC FACTORIZATION
+!               PERFORMED BY SUBROUTINE DPQFB.
+!           (3) NO ACTION BESIDES ERROR MESSAGE IER=2 IN CASE OF A ZERO
+!               OR CONSTANT POLYNOMIAL. THE SAME ERROR MESSAGE IS GIVEN
+!               IN CASE OF AN OVERFLOW IN NORMALIZATION OF GIVEN
+!               POLYNOMIAL.
+!           (4) ERROR MESSAGE IER=3 INDICATES SUCCESSIVE ZERO DIVISORS
+!               OR OVERFLOWS OR COMPLETELY UNSATISFACTORY ACCURACY AT
+!               ANY QUADRATIC FACTORIZATION PERFORMED BY
+!               SUBROUTINE DPQFB. IN THIS CASE CALCULATION IS BYPASSED.
+!               IR RECORDS THE NUMBER OF CALCULATED ROOTS.
+!               POL(1),...,POL(J-IR) ARE THE COEFFICIENTS OF THE
+!               REMAINING POLYNOMIAL, WHERE J IS THE ACTUAL NUMBER OF
+!               COEFFICIENTS IN VECTOR C (NORMALLY J=IC).
+!           (5) IF CALCULATED COEFFICIENT VECTOR HAS LESS THAN SIX
+!               CORRECT SIGNIFICANT DIGITS THOUGH ALL QUADRATIC
+!               FACTORIZATIONS SHOWED SATISFACTORY ACCURACY, THE ERROR
+!               MESSAGE IER=-1 IS GIVEN.
+!           (6) THE FINAL COMPARISON BETWEEN GIVEN AND CALCULATED
+!               COEFFICIENT VECTOR IS PERFORMED ONLY IF ALL ROOTS HAVE
+!               BEEN CALCULATED. IN THIS CASE THE NUMBER OF ROOTS IR IS
+!               EQUAL TO THE ACTUAL DEGREE OF THE POLYNOMIAL (NORMALLY
+!               IR=IC-1). THE MAXIMAL RELATIVE ERROR OF THE COEFFICIENT
+!               VECTOR IS RECORDED IN RR(IR+1).
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           SUBROUTINE DPQFB    QUADRATIC FACTORIZATION OF A POLYNOMIAL
+!                               BY BAIRSTOW ITERATION.
+!
+!        METHOD
+!           THE ROOTS OF THE POLYNOMIAL ARE CALCULATED BY MEANS OF
+!           SUCCESSIVE QUADRATIC FACTORIZATION PERFORMED BY BAIRSTOW
+!           ITERATION. X**2 IS USED AS INITIAL GUESS FOR THE FIRST
+!           QUADRATIC FACTOR, AND FURTHER EACH CALCULATED QUADRATIC
+!           FACTOR IS USED AS INITIAL GUESS FOR THE NEXT ONE. AFTER
+!           COMPUTATION OF ALL ROOTS THE COEFFICIENT VECTOR IS
+!           CALCULATED AND COMPARED WITH THE GIVEN ONE.
+!           FOR REFERENCE, SEE J. H. WILKINSON, THE EVALUATION OF THE
+!           ZEROS OF ILL-CONDITIONED POLYNOMIALS (PART ONE AND TWO),
+!           NUMERISCHE MATHEMATIK, VOL.1 (1959), PP.150-180.
+!
+!     ..................................................................
+!
+SUBROUTINE dprbm(C,Ic,Rr,Rc,Pol,Ir,Ier)
+   IMPLICIT NONE
+
+   INTEGER i,Ic,Ier,Ir,ist,j,l,lim,n
+
+!
+!
+   DIMENSION C(*),Rr(*),Rc(*),Pol(*),q(4)
+   DOUBLE PRECISION C,Rr,Rc,Pol,q,eps,a,b,h,q1,q2
+   INTEGER :: spag_nextblock_1
+   spag_nextblock_1 = 1
+   SPAG_DispatchLoop_1: DO
+      SELECT CASE (spag_nextblock_1)
+      CASE (1)
+!
+!        TEST ON LEADING ZERO COEFFICIENTS
+         eps = 1.D-6
+         lim = 100
+         Ir = Ic + 1
+         SPAG_Loop_1_1: DO
+            Ir = Ir - 1
+            IF ( Ir<=1 ) THEN
+               spag_nextblock_1 = 6
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            IF ( C(Ir)/=0 ) THEN
+!
+!        WORK UP ZERO ROOTS AND NORMALIZE REMAINING POLYNOMIAL
+               Ier = 0
+               j = Ir
+               l = 0
+               a = C(Ir)
+               DO i = 1,Ir
+                  IF ( l<=0 ) THEN
+                     IF ( C(i)/=0 ) THEN
+                        l = 1
+                        ist = i
+                        j = 0
+                     ELSE
+                        Rr(i) = 0.D0
+                        Rc(i) = 0.D0
+                        Pol(j) = 0.D0
+                        j = j - 1
+                        CYCLE
+                     ENDIF
+                  ENDIF
+                  j = j + 1
+                  C(i) = C(i)/a
+                  Pol(j) = C(i)
+                  CALL overfl(n)
+                  IF ( n<2 ) THEN
+                     spag_nextblock_1 = 6
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+               ENDDO
+!
+!        START BAIRSTOW ITERATION
+               q1 = 0.D0
+               q2 = 0.D0
+               EXIT SPAG_Loop_1_1
+            ENDIF
+         ENDDO SPAG_Loop_1_1
+         spag_nextblock_1 = 2
+      CASE (2)
+         IF ( j<2 ) THEN
+!
+!        SHIFT BACK ELEMENTS OF POL BY 1 AND COMPARE VECTORS POL AND C
+            Ir = Ir - 1
+            spag_nextblock_1 = 5
+            CYCLE SPAG_DispatchLoop_1
+         ELSEIF ( j==2 ) THEN
+!
+!        DEGREE OF RESTPOLYNOMIAL IS EQUAL TO ONE
+            a = Pol(1)
+            Rr(ist) = -a
+            Rc(ist) = 0.D0
+            Ir = Ir - 1
+            q2 = 0.D0
+            IF ( Ir>1 ) THEN
+               DO i = 2,Ir
+                  q1 = q2
+                  q2 = Pol(i+1)
+                  Pol(i) = a*q2 + q1
+               ENDDO
+            ENDIF
+            Pol(Ir+1) = a + q2
+            spag_nextblock_1 = 5
+            CYCLE SPAG_DispatchLoop_1
+         ELSE
+!        THIS IS BRANCH TO COMPARISON OF COEFFICIENT VECTORS C AND POL
+!
+!        DEGREE OF RESTPOLYNOMIAL IS GREATER THAN ONE
+            DO l = 1,10
+               n = 1
+               SPAG_Loop_2_2: DO
+                  q(1) = q1
+                  q(2) = q2
+                  CALL dpqfb(Pol,j,q,lim,i)
+                  IF ( i<0 ) THEN
+                     IF ( q1==0 ) THEN
+                        IF ( q2==0 ) EXIT SPAG_Loop_2_2
+                     ENDIF
+                     IF ( n==2 ) THEN
+                        q2 = -q2
+                        n = n + 1
+                     ELSEIF ( n==4 ) THEN
+                        EXIT SPAG_Loop_2_2
+                     ELSE
+                        q1 = -q1
+                        n = n + 1
+                     ENDIF
+                  ELSEIF ( i==0 ) THEN
+                     spag_nextblock_1 = 4
+                     CYCLE SPAG_DispatchLoop_1
+                  ELSE
+                     spag_nextblock_1 = 3
+                     CYCLE SPAG_DispatchLoop_1
+                  ENDIF
+               ENDDO SPAG_Loop_2_2
+               q1 = 1.D0 + q1
+               q2 = 1.D0 - q2
+            ENDDO
+!
+!        ERROR EXIT DUE TO UNSATISFACTORY RESULTS OF FACTORIZATION
+            Ier = 3
+            Ir = Ir - j
+            RETURN
+         ENDIF
+      CASE (3)
+!
+!        WORK UP RESULTS OF QUADRATIC FACTORIZATION
+         Ier = 1
+         spag_nextblock_1 = 4
+      CASE (4)
+         q1 = q(1)
+         q2 = q(2)
+!
+!        PERFORM DIVISION OF FACTORIZED POLYNOMIAL BY QUADRATIC FACTOR
+         b = 0.D0
+         a = 0.D0
+         i = j
+         DO
+            h = -q1*b - q2*a + Pol(i)
+            Pol(i) = b
+            b = a
+            a = h
+            i = i - 1
+            IF ( i<=2 ) THEN
+               Pol(2) = b
+               Pol(1) = a
+!
+!        MULTIPLY POLYNOMIAL WITH CALCULATED ROOTS BY QUADRATIC FACTOR
+               l = Ir - 1
+               IF ( j<=l ) THEN
+                  DO i = j,l
+                     Pol(i-1) = Pol(i-1) + Pol(i)*q2 + Pol(i+1)*q1
+                  ENDDO
+               ENDIF
+               Pol(l) = Pol(l) + Pol(l+1)*q2 + q1
+               Pol(Ir) = Pol(Ir) + q2
+!
+!        CALCULATE ROOT-PAIR FROM QUADRATIC FACTOR X*X+Q2*X+Q1
+               h = -.5D0*q2
+               a = h*h - q1
+               b = dsqrt(dabs(a))
+               IF ( a<=0 ) THEN
+                  Rr(ist) = h
+                  Rc(ist) = b
+                  ist = ist + 1
+                  Rr(ist) = h
+                  Rc(ist) = -b
+               ELSE
+                  b = h + dsign(b,h)
+                  Rr(ist) = q1/b
+                  Rc(ist) = 0.D0
+                  ist = ist + 1
+                  Rr(ist) = b
+                  Rc(ist) = 0.D0
+               ENDIF
+               ist = ist + 1
+               j = j - 2
+               spag_nextblock_1 = 2
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+         ENDDO
+         spag_nextblock_1 = 5
+      CASE (5)
+         a = 0.D0
+         DO i = 1,Ir
+            q1 = C(i)
+            q2 = Pol(i+1)
+            Pol(i) = q2
+            IF ( q1/=0 ) q2 = (q1-q2)/q1
+            q2 = dabs(q2)
+            IF ( q2>a ) a = q2
+         ENDDO
+         i = Ir + 1
+         Pol(i) = 1.D0
+         Rr(i) = a
+         Rc(i) = 0.D0
+         IF ( Ier<=0 ) THEN
+!
+!        WARNING DUE TO POOR ACCURACY OF CALCULATED COEFFICIENT VECTOR
+            IF ( a>eps ) Ier = -1
+         ENDIF
+         RETURN
+      CASE (6)
+!
+!        ERROR EXIT DUE TO DEGENERATE POLYNOMIAL OR OVERFLOW IN
+!        NORMALIZATION
+         Ier = 2
+         Ir = 0
+         EXIT SPAG_DispatchLoop_1
+      END SELECT
+   ENDDO SPAG_DispatchLoop_1
+END SUBROUTINE dprbm

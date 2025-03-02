@@ -1,0 +1,144 @@
+!*==qsf.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE QSF
+!
+!        PURPOSE
+!           TO COMPUTE THE VECTOR OF INTEGRAL VALUES FOR A GIVEN
+!           EQUIDISTANT TABLE OF FUNCTION VALUES.
+!
+!        USAGE
+!           CALL QSF (H,Y,Z,NDIM)
+!
+!        DESCRIPTION OF PARAMETERS
+!           H      - THE INCREMENT OF ARGUMENT VALUES.
+!           Y      - THE INPUT VECTOR OF FUNCTION VALUES.
+!           Z      - THE RESULTING VECTOR OF INTEGRAL VALUES. Z MAY BE
+!                    IDENTICAL WITH Y.
+!           NDIM   - THE DIMENSION OF VECTORS Y AND Z.
+!
+!        REMARKS
+!           NO ACTION IN CASE NDIM LESS THAN 3.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           BEGINNING WITH Z(1)=0, EVALUATION OF VECTOR Z IS DONE BY
+!           MEANS OF SIMPSONS RULE TOGETHER WITH NEWTONS 3/8 RULE OR A
+!           COMBINATION OF THESE TWO RULES. TRUNCATION ERROR IS OF
+!           ORDER H**5 (I.E. FOURTH ORDER METHOD). ONLY IN CASE NDIM=3
+!           TRUNCATION ERROR OF Z(2) IS OF ORDER H**4.
+!           FOR REFERENCE, SEE
+!           (1) F.B.HILDEBRAND, INTRODUCTION TO NUMERICAL ANALYSIS,
+!               MCGRAW-HILL, NEW YORK/TORONTO/LONDON, 1956, PP.71-76.
+!           (2) R.ZURMUEHL, PRAKTISCHE MATHEMATIK FUER INGENIEURE UND
+!               PHYSIKER, SPRINGER, BERLIN/GOETTINGEN/HEIDELBERG, 1963,
+!               PP.214-221.
+!
+!     ..................................................................
+!
+SUBROUTINE qsf(H,Y,Z,Ndim)
+   IMPLICIT NONE
+
+   REAL aux,aux1,aux2,H,ht,sum1,sum2,Y,Z
+   INTEGER i,Ndim
+
+!
+!
+   DIMENSION Y(*),Z(*)
+!
+   ht = .3333333*H
+   IF ( Ndim<5 ) THEN
+!     END OF INTEGRATION LOOP
+!
+      IF ( Ndim<3 ) THEN
+      ELSEIF ( Ndim==3 ) THEN
+!
+!     NDIM IS EQUAL TO 3
+         sum1 = ht*(1.25*Y(1)+Y(2)+Y(2)-.25*Y(3))
+         sum2 = Y(2) + Y(2)
+         sum2 = sum2 + sum2
+         Z(3) = ht*(Y(1)+sum2+Y(3))
+         Z(1) = 0.
+         Z(2) = sum1
+      ELSE
+         CALL spag_block_2
+         RETURN
+      ENDIF
+      RETURN
+   ELSEIF ( Ndim==5 ) THEN
+      CALL spag_block_2
+      RETURN
+   ELSE
+!
+!     NDIM IS GREATER THAN 5. PREPARATIONS OF INTEGRATION LOOP
+      sum1 = Y(2) + Y(2)
+      sum1 = sum1 + sum1
+      sum1 = ht*(Y(1)+sum1+Y(3))
+      aux1 = Y(4) + Y(4)
+      aux1 = aux1 + aux1
+      aux1 = sum1 + ht*(Y(3)+aux1+Y(5))
+      aux2 = ht*(Y(1)+3.875*(Y(2)+Y(5))+2.625*(Y(3)+Y(4))+Y(6))
+      sum2 = Y(5) + Y(5)
+      sum2 = sum2 + sum2
+      sum2 = aux2 - ht*(Y(4)+sum2+Y(6))
+      Z(1) = 0.
+      aux = Y(3) + Y(3)
+      aux = aux + aux
+      Z(2) = sum2 - ht*(Y(2)+aux+Y(4))
+      Z(3) = sum1
+      Z(4) = sum2
+      IF ( Ndim>6 ) THEN
+!
+!     INTEGRATION LOOP
+         DO i = 7,Ndim,2
+            sum1 = aux1
+            sum2 = aux2
+            aux1 = Y(i-1) + Y(i-1)
+            aux1 = aux1 + aux1
+            aux1 = sum1 + ht*(Y(i-2)+aux1+Y(i))
+            Z(i-2) = sum1
+            IF ( i>=Ndim ) THEN
+               CALL spag_block_1
+               RETURN
+            ENDIF
+            aux2 = Y(i) + Y(i)
+            aux2 = aux2 + aux2
+            aux2 = sum2 + ht*(Y(i-1)+aux2+Y(i+1))
+            Z(i-1) = sum2
+         ENDDO
+      ENDIF
+      Z(Ndim-1) = aux1
+      Z(Ndim) = aux2
+      RETURN
+   ENDIF
+CONTAINS
+   SUBROUTINE spag_block_1
+      Z(Ndim-1) = sum2
+      Z(Ndim) = aux1
+      RETURN
+   END SUBROUTINE spag_block_1
+   SUBROUTINE spag_block_2
+!
+!     NDIM IS EQUAL TO 4 OR 5
+      sum2 = 1.125*ht*(Y(1)+Y(2)+Y(2)+Y(2)+Y(3)+Y(3)+Y(3)+Y(4))
+      sum1 = Y(2) + Y(2)
+      sum1 = sum1 + sum1
+      sum1 = ht*(Y(1)+sum1+Y(3))
+      Z(1) = 0.
+      aux1 = Y(3) + Y(3)
+      aux1 = aux1 + aux1
+      Z(2) = sum2 - ht*(Y(2)+aux1+Y(4))
+      IF ( Ndim>=5 ) THEN
+         aux1 = Y(4) + Y(4)
+         aux1 = aux1 + aux1
+         Z(5) = sum1 + ht*(Y(3)+aux1+Y(5))
+      ENDIF
+      Z(3) = sum1
+      Z(4) = sum2
+      RETURN
+   END SUBROUTINE spag_block_2
+END SUBROUTINE qsf

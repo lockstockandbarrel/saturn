@@ -1,0 +1,93 @@
+!*==tprd.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE TPRD
+!
+!        PURPOSE
+!           TRANSPOSE A MATRIX AND POSTMULTIPLY BY ANOTHER TO FORM
+!           A RESULTANT MATRIX
+!
+!        USAGE
+!           CALL TPRD(A,B,R,N,M,MSA,MSB,L)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF FIRST INPUT MATRIX
+!           B - NAME OF SECOND INPUT MATRIX
+!           R - NAME OF OUTPUT MATRIX
+!           N - NUMBER OF ROWS IN A AND B
+!           M - NUMBER OF COLUMNS IN A AND ROWS IN R
+!           MSA - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!           MSB - SAME AS MSA EXCEPT FOR MATRIX B
+!           L - NUMBER OF COLUMNS IN B AND R
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRICES A OR B
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!
+!        METHOD
+!           MATRIX TRANSPOSE OF A IS NOT ACTUALLY CALCULATED. INSTEAD,
+!           ELEMENTS IN MATRIX A ARE TAKEN COLUMNWISE RATHER THAN
+!           ROWWISE FOR MULTIPLICATION BY MATRIX B.
+!           THE FOLLOWING TABLE SHOWS THE STORAGE MODE OF THE OUTPUT
+!           MATRIX FOR ALL COMBINATIONS OF INPUT MATRICES
+!                         A                B                R
+!                      GENERAL          GENERAL          GENERAL
+!                      GENERAL          SYMMETRIC        GENERAL
+!                      GENERAL          DIAGONAL         GENERAL
+!                      SYMMETRIC        GENERAL          GENERAL
+!                      SYMMETRIC        SYMMETRIC        GENERAL
+!                      SYMMETRIC        DIAGONAL         GENERAL
+!                      DIAGONAL         GENERAL          GENERAL
+!                      DIAGONAL         SYMMETRIC        GENERAL
+!                      DIAGONAL         DIAGONAL         DIAGONAL
+!
+!     ..................................................................
+!
+SUBROUTINE tprd(A,B,R,N,M,Msa,Msb,L)
+   IMPLICIT NONE
+
+   REAL A,B,R
+   INTEGER i,ia,ib,ir,j,k,L,M,ms,Msa,Msb,N
+
+   DIMENSION A(*),B(*),R(*)
+!
+!        SPECIAL CASE FOR DIAGONAL BY DIAGONAL
+!
+   ms = Msa*10 + Msb
+   IF ( ms/=22 ) THEN
+!
+!        MULTIPLY TRANSPOSE OF A BY B
+!
+      ir = 1
+      DO k = 1,L
+         DO j = 1,M
+            R(ir) = 0.0
+            DO i = 1,N
+               IF ( ms/=0 ) THEN
+                  CALL loc(i,j,ia,N,M,Msa)
+                  CALL loc(i,k,ib,N,L,Msb)
+                  IF ( ia==0 ) CYCLE
+                  IF ( ib==0 ) CYCLE
+               ELSE
+                  ia = N*(j-1) + i
+                  ib = N*(k-1) + i
+               ENDIF
+               R(ir) = R(ir) + A(ia)*B(ib)
+            ENDDO
+            ir = ir + 1
+         ENDDO
+      ENDDO
+      RETURN
+   ENDIF
+   DO i = 1,N
+      R(i) = A(i)*B(i)
+   ENDDO
+   RETURN
+END SUBROUTINE tprd

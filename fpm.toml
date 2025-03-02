@@ -1,0 +1,22 @@
+name = "Scientific-Subroutine-Package"
+version = "0.1.0"
+license = "license"
+author = "John S. Urban"
+maintainer = "urbanjost@comcast.net"
+copyright = "Copyright 2025, John S. Urban"
+[build]
+   auto-executables = true
+   auto-tests = true
+   auto-examples = true
+   module-naming = false
+[install]
+   library = false
+   test = false
+[fortran]
+   #implicit-typing = false
+   implicit-typing = true
+   #implicit-external = false
+   implicit-external = true
+   source-form = "default"
+   #source-form = "free"
+   

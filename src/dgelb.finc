@@ -1,0 +1,272 @@
+!*==dgelb.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DGELB
+!
+!        PURPOSE
+!           TO SOLVE A SYSTEM OF SIMULTANEOUS LINEAR EQUATIONS WITH A
+!           COEFFICIENT MATRIX OF BAND STRUCTURE.
+!
+!        USAGE
+!           CALL DGELB(R,A,M,N,MUD,MLD,EPS,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           R      - DOUBLE PRECISION M BY N RIGHT HAND SIDE MATRIX
+!                    (DESTROYED). ON RETURN R CONTAINS THE SOLUTION
+!                    OF THE EQUATIONS.
+!           A      - DOUBLE PRECISION M BY M COEFFICIENT MATRIX WITH
+!                    BAND STRUCTURE (DESTROYED).
+!           M      - THE NUMBER OF EQUATIONS IN THE SYSTEM.
+!           N      - THE NUMBER OF RIGHT HAND SIDE VECTORS.
+!           MUD    - THE NUMBER OF UPPER CODIAGONALS (THAT MEANS
+!                    CODIAGONALS ABOVE MAIN DIAGONAL).
+!           MLD    - THE NUMBER OF LOWER CODIAGONALS (THAT MEANS
+!                    CODIAGONALS BELOW MAIN DIAGONAL).
+!           EPS    - SINGLE PRECISION INPUT CONSTANT WHICH IS USED AS
+!                    RELATIVE TOLERANCE FOR TEST ON LOSS OF
+!                    SIGNIFICANCE.
+!           IER    - RESULTING ERROR PARAMETER CODED AS FOLLOWS
+!                    IER=0  - NO ERROR,
+!                    IER=-1 - NO RESULT BECAUSE OF WRONG INPUT PARAME-
+!                             TERS M,MUD,MLD OR BECAUSE OF PIVOT ELEMENT
+!                             AT ANY ELIMINATION STEP EQUAL TO 0,
+!                    IER=K  - WARNING DUE TO POSSIBLE LOSS OF SIGNIFI-
+!                             CANCE INDICATED AT ELIMINATION STEP K+1,
+!                             WHERE PIVOT ELEMENT WAS LESS THAN OR
+!                             EQUAL TO THE INTERNAL TOLERANCE EPS TIMES
+!                             ABSOLUTELY GREATEST ELEMENT OF MATRIX A.
+!
+!        REMARKS
+!           BAND MATRIX A IS ASSUMED TO BE STORED ROWWISE IN THE FIRST
+!           ME SUCCESSIVE STORAGE LOCATIONS OF TOTALLY NEEDED MA
+!           STORAGE LOCATIONS, WHERE
+!             MA=M*MC-ML*(ML+1)/2    AND    ME=MA-MU*(MU+1)/2    WITH
+!             MC=MIN(M,1+MUD+MLD),  ML=MC-1-MLD,  MU=MC-1-MUD.
+!           RIGHT HAND SIDE MATRIX R IS ASSUMED TO BE STORED COLUMNWISE
+!           IN N*M SUCCESSIVE STORAGE LOCATIONS. ON RETURN SOLUTION
+!           MATRIX R IS STORED COLUMNWISE TOO.
+!           INPUT PARAMETERS M, MUD, MLD SHOULD SATISFY THE FOLLOWING
+!           RESTRICTIONS     MUD NOT LESS THAN ZERO
+!                            MLD NOT LESS THAN ZERO
+!                            MUD+MLD NOT GREATER THAN 2*M-2.
+!           NO ACTION BESIDES ERROR MESSAGE IER=-1 TAKES PLACE IF THESE
+!           RESTRICTIONS ARE NOT SATISFIED.
+!           THE PROCEDURE GIVES RESULTS IF THE RESTRICTIONS ON INPUT
+!           PARAMETERS ARE SATISFIED AND IF PIVOT ELEMENTS AT ALL
+!           ELIMINATION STEPS ARE DIFFERENT FROM 0. HOWEVER WARNING
+!           IER=K - IF GIVEN - INDICATES POSSIBLE LOSS OF SIGNIFICANCE.
+!           IN CASE OF A WELL SCALED MATRIX A AND APPROPRIATE TOLERANCE
+!           EPS, IER=K MAY BE INTERPRETED THAT MATRIX A HAS THE RANK K.
+!           NO WARNING IS GIVEN IF MATRIX A HAS NO LOWER CODIAGONAL.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           SOLUTION IS DONE BY MEANS OF GAUSS ELIMINATION WITH
+!           COLUMN PIVOTING ONLY, IN ORDER TO PRESERVE BAND STRUCTURE
+!           IN REMAINING COEFFICIENT MATRICES.
+!
+!     ..................................................................
+!
+SUBROUTINE dgelb(R,A,M,N,Mud,Mld,Eps,Ier)
+   IMPLICIT NONE
+
+   REAL Eps
+   INTEGER i,ic,id,idst,Ier,ii,ilr,j,jj,k,kst,M,ma,mc,ml,Mld,mr,mu,Mud,mz
+   INTEGER N,nm
+
+!
+!
+   DIMENSION R(*),A(*)
+   DOUBLE PRECISION R,A,piv,tb,tol
+!
+!     TEST ON WRONG INPUT PARAMETERS
+   IF ( Mld>=0 ) THEN
+      IF ( Mud>=0 ) THEN
+         mc = 1 + Mld + Mud
+         IF ( mc+1-M<=M ) THEN
+!
+!     PREPARE INTEGER PARAMETERS
+!        MC=NUMBER OF COLUMNS IN MATRIX A
+!        MU=NUMBER OF ZEROS TO BE INSERTED IN FIRST ROW OF MATRIX A
+!        ML=NUMBER OF MISSING ELEMENTS IN LAST ROW OF MATRIX A
+!        MR=INDEX OF LAST ROW IN MATRIX A WITH MC ELEMENTS
+!        MZ=TOTAL NUMBER OF ZEROS TO BE INSERTED IN MATRIX A
+!        MA=TOTAL NUMBER OF STORAGE LOCATIONS NECESSARY FOR MATRIX A
+!        NM=NUMBER OF ELEMENTS IN MATRIX R
+            IF ( mc>M ) mc = M
+            mu = mc - Mud - 1
+            ml = mc - Mld - 1
+            mr = M - ml
+            mz = (mu*(mu+1))/2
+            ma = M*mc - (ml*(ml+1))/2
+            nm = N*M
+!
+!     MOVE ELEMENTS BACKWARD AND SEARCH FOR ABSOLUTELY GREATEST ELEMENT
+!     (NOT NECESSARY IN CASE OF A MATRIX WITHOUT LOWER CODIAGONALS)
+            Ier = 0
+            piv = 0.D0
+            IF ( Mld>0 ) THEN
+               jj = ma
+               j = ma - mz
+               kst = j
+               DO k = 1,kst
+                  tb = A(j)
+                  A(jj) = tb
+                  tb = dabs(tb)
+                  IF ( tb>piv ) piv = tb
+                  j = j - 1
+                  jj = jj - 1
+               ENDDO
+!
+!     INSERT ZEROS IN FIRST MU ROWS (NOT NECESSARY IN CASE MZ=0)
+               IF ( mz>0 ) THEN
+                  jj = 1
+                  j = 1 + mz
+                  ic = 1 + Mud
+                  DO i = 1,mu
+                     DO k = 1,mc
+                        A(jj) = 0.D0
+                        IF ( k<=ic ) THEN
+                           A(jj) = A(j)
+                           j = j + 1
+                        ENDIF
+                        jj = jj + 1
+                     ENDDO
+                     ic = ic + 1
+                  ENDDO
+               ENDIF
+            ENDIF
+!
+!     GENERATE TEST VALUE FOR SINGULARITY
+            tol = Eps*piv
+!
+!
+!     START DECOMPOSITION LOOP
+            kst = 1
+            idst = mc
+            ic = mc - 1
+            DO k = 1,M
+               IF ( k-mr>1 ) idst = idst - 1
+               id = idst
+               ilr = k + Mld
+               IF ( ilr>M ) ilr = M
+               ii = kst
+!
+!     PIVOT SEARCH IN FIRST COLUMN (ROW INDEXES FROM I=K UP TO I=ILR)
+               piv = 0.D0
+               DO i = k,ilr
+                  tb = dabs(A(ii))
+                  IF ( tb>piv ) THEN
+                     piv = tb
+                     j = i
+                     jj = ii
+                  ENDIF
+                  IF ( i>mr ) id = id - 1
+                  ii = ii + id
+               ENDDO
+!
+!     TEST ON SINGULARITY
+               IF ( piv<=0 ) THEN
+                  CALL spag_block_1
+                  RETURN
+               ENDIF
+               IF ( Ier==0 ) THEN
+                  IF ( piv<=tol ) Ier = k - 1
+               ENDIF
+               piv = 1.D0/A(jj)
+!
+!     PIVOT ROW REDUCTION AND ROW INTERCHANGE IN RIGHT HAND SIDE R
+               id = j - k
+               DO i = k,nm,M
+                  ii = i + id
+                  tb = piv*R(ii)
+                  R(ii) = R(i)
+                  R(i) = tb
+               ENDDO
+!
+!     PIVOT ROW REDUCTION AND ROW INTERCHANGE IN COEFFICIENT MATRIX A
+               ii = kst
+               j = jj + ic
+               DO i = jj,j
+                  tb = piv*A(i)
+                  A(i) = A(ii)
+                  A(ii) = tb
+                  ii = ii + 1
+               ENDDO
+!
+!     ELEMENT REDUCTION
+               IF ( k<ilr ) THEN
+                  id = kst
+                  ii = k + 1
+                  mu = kst + 1
+                  mz = kst + ic
+                  DO i = ii,ilr
+!
+!     IN MATRIX A
+                     id = id + mc
+                     jj = i - mr - 1
+                     IF ( jj>0 ) id = id - jj
+                     piv = -A(id)
+                     j = id + 1
+                     DO jj = mu,mz
+                        A(j-1) = A(j) + piv*A(jj)
+                        j = j + 1
+                     ENDDO
+                     A(j-1) = 0.D0
+!
+!     IN MATRIX R
+                     j = k
+                     DO jj = i,nm,M
+                        R(jj) = R(jj) + piv*R(j)
+                        j = j + M
+                     ENDDO
+                  ENDDO
+               ENDIF
+               kst = kst + mc
+               IF ( ilr>=mr ) ic = ic - 1
+               id = k - mr
+               IF ( id>0 ) kst = kst - id
+            ENDDO
+!     END OF DECOMPOSITION LOOP
+!
+!
+!     BACK SUBSTITUTION
+            IF ( mc>1 ) THEN
+               ic = 2
+               kst = ma + ml - mc + 2
+               ii = M
+               DO i = 2,M
+                  kst = kst - mc
+                  ii = ii - 1
+                  j = ii - mr
+                  IF ( j>0 ) kst = kst + j
+                  DO j = ii,nm,M
+                     tb = R(j)
+                     mz = kst + ic - 2
+                     id = j
+                     DO jj = kst,mz
+                        id = id + 1
+                        tb = tb - A(jj)*R(id)
+                     ENDDO
+                     R(j) = tb
+                  ENDDO
+                  IF ( ic<mc ) ic = ic + 1
+               ENDDO
+            ENDIF
+            RETURN
+         ENDIF
+      ENDIF
+   ENDIF
+   CALL spag_block_1
+CONTAINS
+   SUBROUTINE spag_block_1
+!
+!
+!     ERROR RETURN
+      Ier = -1
+   END SUBROUTINE spag_block_1
+END SUBROUTINE dgelb

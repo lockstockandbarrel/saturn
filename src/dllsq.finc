@@ -1,0 +1,272 @@
+!*==dllsq.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DLLSQ
+!
+!        PURPOSE
+!           TO SOLVE LINEAR LEAST SQUARES PROBLEMS, I.E. TO MINIMIZE
+!           THE EUCLIDEAN NORM OF B-A*X, WHERE A IS A M BY N MATRIX
+!           WITH M NOT LESS THAN N. IN THE SPECIAL CASE M=N SYSTEMS OF
+!           LINEAR EQUATIONS MAY BE SOLVED.
+!
+!        USAGE
+!           CALL DLLSQ (A,B,M,N,L,X,IPIV,EPS,IER,AUX)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A      - DOUBLE PRECISION M BY N COEFFICIENT MATRIX
+!                    (DESTROYED).
+!           B      - DOUBLE PRECISION M BY L RIGHT HAND SIDE MATRIX
+!                    (DESTROYED).
+!           M      - ROW NUMBER OF MATRICES A AND B.
+!           N      - COLUMN NUMBER OF MATRIX A, ROW NUMBER OF MATRIX X.
+!           L      - COLUMN NUMBER OF MATRICES B AND X.
+!           X      - DOUBLE PRECISION N BY L SOLUTION MATRIX.
+!           IPIV   - INTEGER OUTPUT VECTOR OF DIMENSION N WHICH
+!                    CONTAINS INFORMATIONS ON COLUMN INTERCHANGES
+!                    IN MATRIX A. (SEE REMARK NO.3).
+!           EPS    - SINGLE PRECISION INPUT PARAMETER WHICH SPECIFIES
+!                    A RELATIVE TOLERANCE FOR DETERMINATION OF RANK OF
+!                    MATRIX A.
+!           IER    - A RESULTING ERROR PARAMETER.
+!           AUX    - A DOUBLE PRECISION AUXILIARY STORAGE ARRAY OF
+!                    DIMENSION MAX(2*N,L). ON RETURN FIRST L LOCATIONS
+!                    OF AUX CONTAIN THE RESULTING LEAST SQUARES.
+!
+!        REMARKS
+!           (1) NO ACTION BESIDES ERROR MESSAGE IER=-2 IN CASE
+!               M LESS THAN N.
+!           (2) NO ACTION BESIDES ERROR MESSAGE IER=-1 IN CASE
+!               OF A ZERO-MATRIX A.
+!           (3) IF RANK K OF MATRIX A IS FOUND TO BE LESS THAN N BUT
+!               GREATER THAN 0, THE PROCEDURE RETURNS WITH ERROR CODE
+!               IER=K INTO CALLING PROGRAM. THE LAST N-K ELEMENTS OF
+!               VECTOR IPIV DENOTE THE USELESS COLUMNS IN MATRIX A.
+!               THE REMAINING USEFUL COLUMNS FORM A BASE OF MATRIX A.
+!           (4) IF THE PROCEDURE WAS SUCCESSFUL, ERROR PARAMETER IER
+!               IS SET TO 0.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           HOUSEHOLDER TRANSFORMATIONS ARE USED TO TRANSFORM MATRIX A
+!           TO UPPER TRIANGULAR FORM. AFTER HAVING APPLIED THE SAME
+!           TRANSFORMATION TO THE RIGHT HAND SIDE MATRIX B, AN
+!           APPROXIMATE SOLUTION OF THE PROBLEM IS COMPUTED BY
+!           BACK SUBSTITUTION. FOR REFERENCE, SEE
+!           G. GOLUB, NUMERICAL METHODS FOR SOLVING LINEAR LEAST
+!           SQUARES PROBLEMS, NUMERISCHE MATHEMATIK, VOL.7,
+!           ISS.3 (1965), PP.206-216.
+!
+!     ..................................................................
+!
+SUBROUTINE dllsq(A,B,M,N,L,X,Ipiv,Eps,Ier,Aux)
+   IMPLICIT NONE
+
+   REAL Eps
+   INTEGER i,id,iend,Ier,ii,Ipiv,ist,j,jst,k,kpiv,kst,L,lm,ln,M,N
+
+!
+   DIMENSION A(*),B(*),X(*),Ipiv(*),Aux(*)
+   DOUBLE PRECISION A,B,X,Aux,piv,h,sig,beta,tol
+!
+!     ERROR TEST
+   IF ( M<N ) THEN
+!
+!     ERROR RETURN IN CASE M LESS THAN N
+      Ier = -2
+      RETURN
+   ELSE
+!
+!     GENERATION OF INITIAL VECTOR S(K) (K=1,2,...,N) IN STORAGE
+!     LOCATIONS AUX(K) (K=1,2,...,N)
+      piv = 0.D0
+      iend = 0
+      DO k = 1,N
+         Ipiv(k) = k
+         h = 0.D0
+         ist = iend + 1
+         iend = iend + M
+         DO i = ist,iend
+            h = h + A(i)*A(i)
+         ENDDO
+         Aux(k) = h
+         IF ( h>piv ) THEN
+            piv = h
+            kpiv = k
+         ENDIF
+      ENDDO
+!
+!     ERROR TEST
+      IF ( piv<=0 ) THEN
+!
+!     ERROR RETURN IN CASE OF ZERO-MATRIX A
+         Ier = -1
+         RETURN
+      ELSE
+!
+!     DEFINE TOLERANCE FOR CHECKING RANK OF A
+         sig = dsqrt(piv)
+         tol = sig*abs(Eps)
+!
+!
+!     DECOMPOSITION LOOP
+         lm = L*M
+         ist = -M
+         DO k = 1,N
+            ist = ist + M + 1
+            iend = ist + M - k
+            i = kpiv - k
+            IF ( i>0 ) THEN
+!
+!     INTERCHANGE K-TH COLUMN OF A WITH KPIV-TH IN CASE KPIV.GT.K
+               h = Aux(k)
+               Aux(k) = Aux(kpiv)
+               Aux(kpiv) = h
+               id = i*M
+               DO i = ist,iend
+                  j = i + id
+                  h = A(i)
+                  A(i) = A(j)
+                  A(j) = h
+               ENDDO
+            ENDIF
+!
+!     COMPUTATION OF PARAMETER SIG
+            IF ( k>1 ) THEN
+               sig = 0.D0
+               DO i = ist,iend
+                  sig = sig + A(i)*A(i)
+               ENDDO
+               sig = dsqrt(sig)
+!
+!     TEST ON SINGULARITY
+               IF ( sig<=tol ) GOTO 50
+            ENDIF
+!
+!     GENERATE CORRECT SIGN OF PARAMETER SIG
+            h = A(ist)
+            IF ( h<0 ) sig = -sig
+!
+!     SAVE INTERCHANGE INFORMATION
+            Ipiv(kpiv) = Ipiv(k)
+            Ipiv(k) = kpiv
+!
+!     GENERATION OF VECTOR UK IN K-TH COLUMN OF MATRIX A AND OF
+!     PARAMETER BETA
+            beta = h + sig
+            A(ist) = beta
+            beta = 1.D0/(sig*beta)
+            j = N + k
+            Aux(j) = -sig
+            IF ( k<N ) THEN
+!
+!     TRANSFORMATION OF MATRIX A
+               piv = 0.D0
+               id = 0
+               jst = k + 1
+               kpiv = jst
+               DO j = jst,N
+                  id = id + M
+                  h = 0.D0
+                  DO i = ist,iend
+                     ii = i + id
+                     h = h + A(i)*A(ii)
+                  ENDDO
+                  h = beta*h
+                  DO i = ist,iend
+                     ii = i + id
+                     A(ii) = A(ii) - A(i)*h
+                  ENDDO
+!
+!     UPDATING OF ELEMENT S(J) STORED IN LOCATION AUX(J)
+                  ii = ist + id
+                  h = Aux(j) - A(ii)*A(ii)
+                  Aux(j) = h
+                  IF ( h>piv ) THEN
+                     piv = h
+                     kpiv = j
+                  ENDIF
+               ENDDO
+            ENDIF
+!
+!     TRANSFORMATION OF RIGHT HAND SIDE MATRIX B
+            DO j = k,lm,M
+               h = 0.D0
+               iend = j + M - k
+               ii = ist
+               DO i = j,iend
+                  h = h + A(ii)*B(i)
+                  ii = ii + 1
+               ENDDO
+               h = beta*h
+               ii = ist
+               DO i = j,iend
+                  B(i) = B(i) - A(ii)*h
+                  ii = ii + 1
+               ENDDO
+            ENDDO
+         ENDDO
+!     END OF DECOMPOSITION LOOP
+!
+!
+!     BACK SUBSTITUTION AND BACK INTERCHANGE
+         Ier = 0
+         i = N
+         ln = L*N
+         piv = 1.D0/Aux(2*N)
+         DO k = N,ln,N
+            X(k) = piv*B(i)
+            i = i + M
+         ENDDO
+         IF ( N>1 ) THEN
+            jst = (N-1)*M + N
+            DO j = 2,N
+               jst = jst - M - 1
+               k = N + N + 1 - j
+               piv = 1.D0/Aux(k)
+               kst = k - N
+               id = Ipiv(kst) - kst
+               ist = 2 - j
+               DO k = 1,L
+                  h = B(kst)
+                  ist = ist + N
+                  iend = ist + j - 2
+                  ii = jst
+                  DO i = ist,iend
+                     ii = ii + M
+                     h = h - A(ii)*X(i)
+                  ENDDO
+                  i = ist - 1
+                  ii = i + id
+                  X(i) = X(ii)
+                  X(ii) = piv*h
+                  kst = kst + M
+               ENDDO
+            ENDDO
+         ENDIF
+!
+!
+!     COMPUTATION OF LEAST SQUARES
+         ist = N + 1
+         iend = 0
+         DO j = 1,L
+            iend = iend + M
+            h = 0.D0
+            IF ( M>N ) THEN
+               DO i = ist,iend
+                  h = h + B(i)*B(i)
+               ENDDO
+               ist = ist + M
+            ENDIF
+            Aux(j) = h
+         ENDDO
+         RETURN
+      ENDIF
+!
+!     ERROR RETURN IN CASE OF RANK OF MATRIX A LESS THAN N
+ 50   Ier = k - 1
+   ENDIF
+END SUBROUTINE dllsq

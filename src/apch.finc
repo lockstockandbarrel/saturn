@@ -1,0 +1,187 @@
+!*==apch.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE APCH
+!
+!        PURPOSE
+!           SET UP NORMAL EQUATIONS OF LEAST SQUARES FIT IN TERMS OF
+!           CHEBYSHEV POLYNOMIALS FOR A GIVEN DISCRETE FUNCTION
+!
+!        USAGE
+!           CALL APCH(DATI,N,IP,XD,X0,WORK,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           DATI  - VECTOR OF DIMENSION 3*N (OR DIMENSION 2*N+1)
+!                   CONTAINING THE GIVEN ARGUMENTS, FOLLOWED BY THE
+!                   FUNCTION VALUES AND N (RESPECTIVELY 1) WEIGHT
+!                   VALUES. THE CONTENT OF VECTOR DATI REMAINS
+!                   UNCHANGED.
+!           N     - NUMBER OF GIVEN POINTS
+!           IP    - DIMENSION OF LEAST SQUARES FIT, I.E. NUMBER OF
+!                   CHEBYSHEV POLYNOMIALS USED AS FUNDAMENTAL FUNCTIONS
+!                   IP SHOULD NOT EXCEED N
+!           XD    - RESULTANT MULTIPLICATIVE CONSTANT FOR LINEAR
+!                   TRANSFORMATION OF ARGUMENT RANGE
+!           X0    - RESULTANT ADDITIVE CONSTANT FOR LINEAR
+!                   TRANSFORMATION OF ARGUMENT RANGE
+!           WORK  - WORKING STORAGE OF DIMENSION (IP+1)*(IP+2)/2
+!                   ON RETURN WORK CONTAINS THE SYMMETRIC COEFFICIENT
+!                   MATRIX OF THE NORMAL EQUATIONS IN COMPRESSED FORM
+!                   FOLLOWED IMMEDIATELY BY RIGHT HAND SIDE
+!                   AND SQUARE SUM OF FUNCTION VALUES
+!           IER   - RESULTING ERROR PARAMETER
+!                   IER =-1 MEANS FORMAL ERRORS IN DIMENSION
+!                   IER = 0 MEANS NO ERRORS
+!                   IER = 1 MEANS COINCIDING ARGUMENTS
+!
+!        REMARKS
+!           NO WEIGHTS ARE USED IF THE VALUE OF DATI(2*N+1) IS
+!           NOT POSITIVE.
+!           EXECUTION OF SUBROUTINE APCH IS A PREPARATORY STEP FOR
+!           CALCULATION OF LEAST SQUARES FITS IN CHEBYSHEV POLYNOMIALS
+!           IT SHOULD BE FOLLOWED BY EXECUTION OF SUBROUTINE APFS
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           THE LEAST SQUARE FIT IS DETERMINED USING CHEBYSHEV
+!           POLYNOMIALS AS FUNDAMENTAL FUNCTION SYSTEM.
+!           THE METHOD IS DISCUSSED IN THE ARTICLE
+!           A.T.BERZTISS, LEAST SQUARES FITTING TO IRREGULARLY SPACED
+!           DATA, SIAM REVIEW, VOL.6, ISS.3, 1964, PP. 203-227.
+!
+!     ..................................................................
+!
+SUBROUTINE apch(Dati,N,Ip,Xd,X0,Work,Ier)
+   IMPLICIT NONE
+
+   REAL Dati,df,sum,t,Work,X0,xa,Xd,xe,xm
+   INTEGER i,iend,Ier,Ip,j,jj,k,kk,ll,m,mt2,mt2m,N
+
+!
+!
+!       DIMENSIONED DUMMY VARIABLES
+   DIMENSION Dati(*),Work(*)
+   INTEGER :: spag_nextblock_1
+!
+!        CHECK FOR FORMAL ERRORS IN SPECIFIED DIMENSIONS
+   IF ( N<1 ) THEN
+   ELSEIF ( N==1 ) THEN
+!
+!        ERROR RETURN IN CASE OF COINCIDING ARGUMENTS
+      Ier = 1
+      RETURN
+   ELSEIF ( Ip>0 ) THEN
+!
+!        SEARCH SMALLEST AND LARGEST ARGUMENT
+      IF ( Ip<=N ) THEN
+         xa = Dati(1)
+         X0 = xa
+         xe = 0.
+         DO i = 1,N
+            xm = Dati(i)
+            IF ( xa>xm ) xa = xm
+            IF ( X0<xm ) X0 = xm
+         ENDDO
+!
+!        INITIALIZE CALCULATION OF NORMAL EQUATIONS
+         Xd = X0 - xa
+         m = (Ip*(Ip+1))/2
+         iend = m + Ip + 1
+         mt2 = Ip + Ip
+         mt2m = mt2 - 1
+!
+!        SET WORKING STORAGE AND RIGHT HAND SIDE TO ZERO
+         DO i = 1,Ip
+            j = mt2 - i
+            Work(j) = 0.
+            Work(i) = 0.
+            k = m + i
+            Work(k) = 0.
+         ENDDO
+!
+!        CHECK FOR DEGENERATE ARGUMENT RANGE
+         IF ( Xd<=0 ) THEN
+            Ier = 1
+            RETURN
+         ELSE
+!
+!        CALCULATE CONSTANTS FOR REDUCTION OF ARGUMENTS
+            X0 = -(X0+xa)/Xd
+            Xd = 2./Xd
+            sum = 0.
+!
+!        START GREAT LOOP OVER ALL GIVEN POINTS
+            DO i = 1,N
+               spag_nextblock_1 = 1
+               SPAG_DispatchLoop_1: DO
+                  SELECT CASE (spag_nextblock_1)
+                  CASE (1)
+                     t = Dati(i)*Xd + X0
+                     j = i + N
+                     df = Dati(j)
+!
+!        CALCULATE AND STORE VALUES OF CHEBYSHEV POLYNOMIALS
+!        FOR ARGUMENT T
+                     xa = 1.
+                     xm = t
+                     IF ( Dati(2*N+1)>0 ) THEN
+                        j = j + N
+                        xa = Dati(j)
+                        xm = t*xa
+                     ENDIF
+                     t = t + t
+                     sum = sum + df*df*xa
+                     df = df + df
+                     j = 1
+                     spag_nextblock_1 = 2
+                  CASE (2)
+                     k = m + j
+                     Work(k) = Work(k) + df*xa
+                     SPAG_Loop_2_1: DO
+                        Work(j) = Work(j) + xa
+                        IF ( j>=mt2m ) EXIT SPAG_Loop_2_1
+                        j = j + 1
+                        xe = t*xm - xa
+                        xa = xm
+                        xm = xe
+                        IF ( j<=Ip ) THEN
+                           spag_nextblock_1 = 2
+                           CYCLE SPAG_DispatchLoop_1
+                        ENDIF
+                     ENDDO SPAG_Loop_2_1
+                     EXIT SPAG_DispatchLoop_1
+                  END SELECT
+               ENDDO SPAG_DispatchLoop_1
+            ENDDO
+            Work(iend) = sum + sum
+!
+!        CALCULATE MATRIX OF NORMAL EQUATIONS
+            ll = m
+            kk = mt2m
+            jj = 1
+            k = kk
+            DO j = 1,m
+               Work(ll) = Work(k) + Work(jj)
+               ll = ll - 1
+               IF ( k<=jj ) THEN
+                  kk = kk - 2
+                  k = kk
+                  jj = 1
+               ELSE
+                  jj = jj + 1
+                  k = k - 1
+               ENDIF
+            ENDDO
+            Ier = 0
+            RETURN
+         ENDIF
+      ENDIF
+   ENDIF
+!
+!        ERROR RETURN IN CASE OF FORMAL ERRORS
+   Ier = -1
+END SUBROUTINE apch

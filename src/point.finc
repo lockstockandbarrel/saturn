@@ -1,0 +1,136 @@
+!*==point.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE POINT
+!
+!        PURPOSE
+!           TO COMPUTE THE POINT-BISERIAL CORRELATION COEFFICIENT
+!           BETWEEN TWO VARIABLES, WHEN ONE OF THE VARIABLES IS A BINARY
+!           VARIABLE AND ONE IS CONTINUOUS.  THIS IS A SPECIAL CASE OF
+!           THE PEARSON PRODUCT-MOMENT CORRELATION COEFFICIENT.
+!
+!        USAGE
+!           CALL POINT (N,A,B,HI,ANS,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           N   - NUMBER OF OBSERVATIONS
+!           A   - INPUT VECTOR OF LENGTH N CONTAINING THE CONTINUOUS
+!                 VARIABLE
+!           B   - INPUT VECTOR OF LENGTH N CONTAINING THE DICHOTOMOUS
+!                 (BINARY) VARIABLE
+!           HI  - INPUT NUMERICAL CODE TO INDICATE THE HIGHER CATEGORY.
+!                 ANY VALUE OF THE BINARY VARIABLE NOT LESS THAN HI WILL
+!                 BE CLASSIFIED IN THE HIGHER OF THE TWO CATEGORIES.
+!           ANS - OUTPUT VECTOR OF LENGTH 9 CONTAINING THE FOLLOWING
+!                 RESULTS
+!                    ANS(1)- MEAN OF VARIABLE A
+!                    ANS(2)- STANDARD DEVIATION OF VARIABLE A
+!                    ANS(3)- NUMBER OF OBSERVATIONS IN THE HIGHER
+!                            CATEGORY OF VARIABLE B
+!                    ANS(4)- NUMBER OF OBSERVATIONS IN THE LOWER
+!                            CATEGORY OF VARIABLE B
+!                    ANS(5)- MEAN OF VARIABLE A FOR ONLY THOSE
+!                            OBSERVATIONS IN THE HIGHER CATEGORY OF
+!                            VARIABLE B
+!                    ANS(6)- MEAN OF VARIABLE A FOR ONLY THOSE
+!                            OBSERVATIONS IN THE LOWER CATEGORY OF
+!                            VARIABLE B
+!                    ANS(7)- POINT-BISERIAL CORRELATION COEFFICIENT
+!                    ANS(8)- T-TEST FOR THE SIGNIFICANCE OF THE
+!                            DIFFERENCE BETWEEN THE MEANS OF VARIABLE A
+!                            FOR THE HIGHER AND LOWER CATEGORIES
+!                            RESPECTIVELY.
+!                    ANS(9)- DEGREES OF FREEDOM FOR THE T-TEST
+!           IER- 1, IF ALL ELEMENTS OF B ARE NOT LESS THAN HI.
+!                -1, IF ALL ELEMENTS OF B ARE LESS THAN HI.
+!                0, OTHERWISE.  IF IER IS NON-ZERO, ANS(I), I=5,...,9,
+!                IS SET TO 10**75.
+!
+!        REMARKS
+!           THE SYMBOLS USED TO IDENTFY THE VALUES OF THE TWO CATEGORIES
+!           OF VARIABLE B MUST BE NUMERIC.  ALPHABETIC OR SPECIAL
+!           CHARACTERS CANNOT BE USED.
+!           THE T-TEST(ANS(8)) IS A TEST OF WHETHER THE POINT-BISERIAL
+!           COEFFICIENT DIFFERS SIGNIFICANTLY FROM ZERO.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           REFER TO P. HORST, 'PSYCHOLOGICAL MEASUREMENT AND
+!           PREDICTION', P. 91 (WADSWORTH, 1966).
+!
+!     ..................................................................
+!
+SUBROUTINE point(N,A,B,Hi,Ans,Ier)
+   IMPLICIT NONE
+
+   REAL A,Ans,B,fn,Hi,p,q,r,sum,sum2,t
+   INTEGER i,Ier,N
+
+!
+   DIMENSION A(*),B(*),Ans(*)
+!
+!        COMPUTE MEAN AND STANDARD DEVIATION OF VARIABLE A
+!
+   Ier = 0
+   sum = 0.0
+   sum2 = 0.0
+   DO i = 1,N
+      sum = sum + A(i)
+      sum2 = sum2 + A(i)*A(i)
+   ENDDO
+   fn = N
+   Ans(1) = sum/fn
+   Ans(2) = (sum2-Ans(1)*sum)/(fn-1.0)
+   Ans(2) = sqrt(Ans(2))
+!
+!        FIND NUMBERS OF CASES IN THE HIGHER AND LOWER CATEGORIES
+!
+   p = 0.0
+   sum = 0.0
+   sum2 = 0.0
+   DO i = 1,N
+      IF ( B(i)<Hi ) THEN
+         sum2 = sum2 + A(i)
+      ELSE
+         p = p + 1.0
+         sum = sum + A(i)
+      ENDIF
+   ENDDO
+!
+   q = fn - p
+   Ans(3) = p
+   Ans(4) = q
+   IF ( p<=0 ) THEN
+      Ier = -1
+   ELSE
+      Ans(5) = sum/p
+      IF ( q<=0 ) THEN
+         Ier = 1
+      ELSE
+         Ans(6) = sum2/q
+!
+!        COMPUTE THE POINT-BISERIAL CORRELATION
+!
+         r = ((Ans(5)-Ans(1))/Ans(2))*sqrt(p/q)
+         Ans(7) = r
+!
+!        COMPUTE T RATIO USED TO TEST THE HYPOTHESIS OF ZERO CORRELATION
+!
+         t = r*sqrt((fn-2.0)/(1.0-r*r))
+         Ans(8) = t
+!
+!        COMPUTE DEGREES OF FREEDOM
+!
+         Ans(9) = fn - 2
+         RETURN
+      ENDIF
+   ENDIF
+   DO i = 5,9
+      Ans(i) = huge(0.0)
+   ENDDO
+!
+END SUBROUTINE point

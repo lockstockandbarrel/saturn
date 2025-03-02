@@ -1,0 +1,62 @@
+!*==pmpy.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PMPY
+!
+!        PURPOSE
+!           MULTIPLY TWO POLYNOMIALS
+!
+!        USAGE
+!           CALL PMPY(Z,IDIMZ,X,IDIMX,Y,IDIMY)
+!
+!        DESCRIPTION OF PARAMETERS
+!           Z     - VECTOR OF RESULTANT COEFFICIENTS, ORDERED FROM
+!                   SMALLEST TO LARGEST POWER
+!           IDIMZ - DIMENSION OF Z (CALCULATED)
+!           X     - VECTOR OF COEFFICIENTS FOR FIRST POLYNOMIAL, ORDERED
+!                   FROM SMALLEST TO LARGEST POWER
+!           IDIMX - DIMENSION OF X (DEGREE IS IDIMX-1)
+!           Y     - VECTOR OF COEFFICIENTS FOR SECOND POLYNOMIAL,
+!                   ORDERED FROM SMALLEST TO LARGEST POWER
+!           IDIMY - DIMENSION OF Y (DEGREE IS IDIMY-1)
+!
+!        REMARKS
+!           Z CANNOT BE IN THE SAME LOCATION AS X
+!           Z CANNOT BE IN THE SAME LOCATION AS Y
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DIMENSION OF Z IS CALCULATED AS IDIMX+IDIMY-1
+!           THE COEFFICIENTS OF Z ARE CALCULATED AS SUM OF PRODUCTS
+!           OF COEFFICIENTS OF X AND Y,WHOSE EXPONENTS ADD UP TO THE
+!           CORRESPONDING EXPONENT OF Z.
+!
+!     ..................................................................
+!
+SUBROUTINE pmpy(Z,Idimz,X,Idimx,Y,Idimy)
+   IMPLICIT NONE
+
+   INTEGER i,Idimx,Idimy,Idimz,j,k
+   REAL X,Y,Z
+
+   DIMENSION Z(*),X(*),Y(*)
+!
+   IF ( Idimx*Idimy<=0 ) THEN
+      Idimz = 0
+   ELSE
+      Idimz = Idimx + Idimy - 1
+      DO i = 1,Idimz
+         Z(i) = 0.
+      ENDDO
+      DO i = 1,Idimx
+         DO j = 1,Idimy
+            k = i + j - 1
+            Z(k) = X(i)*Y(j) + Z(k)
+         ENDDO
+      ENDDO
+   ENDIF
+END SUBROUTINE pmpy

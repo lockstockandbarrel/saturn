@@ -1,0 +1,80 @@
+!*==qtest.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE QTEST
+!
+!        PURPOSE
+!           TEST WHETHER THREE OR MORE MATCHED GROUPS OF DICHOTOMOUS
+!           DATA DIFFER SIGNIFICANTLY BY THE COCHRAN Q-TEST
+!
+!        USAGE
+!           CALL QTEST(A,N,M,Q,NDF)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A   - INPUT MATRIX, N BY M, OF DICHOTOMOUS DATA (0 AND 1)
+!           N   - NUMBER OF SETS IN EACH GROUP
+!           M   - NUMBER OF GROUPS
+!           Q   - COCHRAN Q STATISTIC (OUTPUT)
+!           NDF - NUMBER OF DEGREES OF FREEDOM (OUTPUT)
+!
+!        REMARKS
+!           M MUST BE THREE OR GREATER
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           DESCRIBED IN S. SIEGEL, 'NONPARAMETRIC STATISTICS FOR THE
+!           BEHAVIORAL SCIENCES', MCGRAW-HILL, NEW YORK, 1956,
+!           CHAPTER 7
+!
+!     ..................................................................
+!
+SUBROUTINE qtest(A,N,M,Q,Ndf)
+   IMPLICIT NONE
+
+   REAL A,csq,fm,gd,Q,rsq,tc,tr
+   INTEGER i,ij,j,M,N,Ndf
+
+   DIMENSION A(*)
+!
+!        COMPUTE SUM OF SQUARES OF ROW TOTALS, RSQ, AND GRAND TOTAL OF
+!        ALL ELEMENTS, GD
+!
+   rsq = 0.0
+   gd = 0.0
+   DO i = 1,N
+      tr = 0.0
+      ij = i - N
+      DO j = 1,M
+         ij = ij + N
+         tr = tr + A(ij)
+      ENDDO
+      gd = gd + tr
+      rsq = rsq + tr*tr
+   ENDDO
+!
+!        COMPUTE SUM OF SQUARES OF COLUMN TOTALS, CSQ
+!
+   csq = 0.0
+   ij = 0
+   DO j = 1,M
+      tc = 0.0
+      DO i = 1,N
+         ij = ij + 1
+         tc = tc + A(ij)
+      ENDDO
+      csq = csq + tc*tc
+   ENDDO
+!
+!        COMPUTE COCHRAN Q TEST VALUE
+!
+   fm = M
+   Q = (fm-1.0)*(fm*csq-gd*gd)/(fm*gd-rsq)
+!
+!        FIND DEGREES OF FREEDOM
+!
+   Ndf = M - 1
+END SUBROUTINE qtest

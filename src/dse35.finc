@@ -1,0 +1,92 @@
+!*==dse35.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE DSE35
+!
+!        PURPOSE
+!           TO COMPUTE A VECTOR OF SMOOTHED FUNCTION VALUES GIVEN A
+!           VECTOR OF FUNCTION VALUES WHOSE ENTRIES CORRESPOND TO
+!           EQUIDISTANTLY SPACED ARGUMENT VALUES.
+!
+!        USAGE
+!           CALL DSE35(Y,Z,NDIM,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           Y     -  GIVEN VECTOR OF DOUBLE PRECISION FUNCTION VALUES
+!                    (DIMENSION NDIM)
+!           Z     -  RESULTING VECTOR OF DOUBLE PRECISION SMOOTHED
+!                    FUNCTION VALUES (DIMENSION NDIM)
+!           NDIM  -  DIMENSION OF VECTORS Y AND Z
+!           IER   -  RESULTING ERROR PARAMETER
+!                    IER = -1  - NDIM IS LESS THAN 5
+!                    IER =  0  - NO ERROR
+!
+!        REMARKS
+!           (1)  IF IER=-1 THERE HAS BEEN NO COMPUTATION.
+!           (2)   Z CAN HAVE THE SAME STORAGE ALLOCATION AS Y.  IF Y IS
+!                 DISTINCT FROM Z, THEN IT IS NOT DESTROYED.
+!
+!        SUBROUTINE AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           IF X IS THE (SUPPRESSED) VECTOR OF ARGUMENT VALUES, THEN
+!           EXCEPT AT THE POINTS X(1),X(2),X(NDIM-1) AND X(NDIM), EACH
+!           SMOOTHED VALUE Z(I) IS OBTAINED BY EVALUATING AT X(I) THE
+!           LEAST-SQUARES POLYNOMIAL OF DEGREE 3 RELEVANT TO THE 5
+!           SUCCESSIVE POINTS (X(I+K),Y(I+K)) K = -2,-1,...,2.  (SEE
+!           HILDEBRAND, F.B., INTRODUCTION TO NUMERICAL ANALYSIS,
+!           MC GRAW-HILL, NEW YORK/TORONTO/LONDON, 1956, PP. 295-302.)
+!
+!     ..................................................................
+!
+SUBROUTINE dse35(Y,Z,Ndim,Ier)
+   IMPLICIT NONE
+
+   INTEGER i,Ier,Ndim
+
+!
+!
+   DIMENSION Y(*),Z(*)
+   DOUBLE PRECISION Y,Z,a,b,c,d
+!
+!        TEST OF DIMENSION
+   IF ( Ndim<5 ) THEN
+!
+!        ERROR EXIT IN CASE NDIM IS LESS THAN 5
+      Ier = -1
+      RETURN
+   ENDIF
+!
+!        PREPARE LOOP
+   b = Y(1)
+   c = Y(2)
+!
+!        START LOOP
+   DO i = 5,Ndim
+      a = b
+      b = c
+      c = Y(i-2)
+!
+!        GENERATE FOURTH CENTRAL DIFFERENCE
+      d = c - b - Y(i-1)
+      d = d + d + c
+      d = d + d + a + Y(i)
+!
+!        CHECK FIRST TWO COMPONENTS
+      IF ( i<=5 ) THEN
+         Z(1) = a - .014285714285714286D0*d
+         Z(2) = b + .057142857142857143D0*d
+      ENDIF
+      Z(i-2) = c - .08571428571428571D0*d
+   ENDDO
+!        END OF LOOP
+!
+!        UPDATE LAST TWO COMPONENTS
+   Z(Ndim-1) = Y(Ndim-1) + .057142857142857143D0*d
+   Z(Ndim) = Y(Ndim) - .014285714285714286D0*d
+   Ier = 0
+   RETURN
+END SUBROUTINE dse35

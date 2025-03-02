@@ -1,0 +1,140 @@
+!*==ttest.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE TTEST
+!
+!        PURPOSE
+!           TO FIND CERTAIN T-STATISTICS ON THE MEANS OF POPULATIONS.
+!
+!        USAGE
+!           CALL TTEST (A,NA,B,NB,NOP,NDF,ANS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A   - INPUT VECTOR OF LENGTH NA CONTAINING DATA.
+!           NA  - NUMBER OF OBSERVATIONS IN A.
+!           B   - INPUT VECTOR OF LENGTH NB CONTAINING DATA.
+!           NB  - NUMBER OF OBSERVATIONS IN B.
+!           NOP - OPTIONS FOR VARIOUS HYPOTHESES..
+!                 NOP=1--- THAT POPULATION MEAN OF B = GIVEN VALUE A.
+!                          (SET NA=1)
+!                 NOP=2--- THAT POPULATION MEAN OF B = POPULATION MEAN
+!                          OF A, GIVEN THAT THE VARIANCE OF B = THE
+!                          VARIANCE OF A.
+!                 NOP=3--- THAT POPULATION MEAN OF B = POPULATION MEAN
+!                          OF A, GIVEN THAT THE VARIANCE OF B IS NOT
+!                          EQUAL TO THE VARIANCE OF A.
+!                 NOP=4--- THAT POPULATION MEAN OF B = POPULATION MEAN
+!                          OF A, GIVEN NO INFORMATION ABOUT VARIANCES OF
+!                          A AND B.  (SET NA=NB)
+!           NDF - OUTPUT VARIABLE CONTAINING DEGREES OF FREEDOM ASSOCI-
+!                 ATED WITH T-STATISTIC CALCULATED.
+!           ANS - T-STATISTIC FOR GIVEN HYPOTHESIS.
+!
+!        REMARKS
+!           NA AND NB MUST BE GREATER THAN 1, EXCEPT THAT NA=1 IN
+!           OPTION 1. NA AND NB MUST BE THE SAME IN OPTION 4.
+!           IF NOP IS OTHER THAN 1, 2, 3 OR 4, DEGREES OF FREEDOM AND
+!           T-STATISTIC WILL NOT BE CALCULATED.  NDF AND ANS WILL BE
+!           SET TO ZERO.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           REFER TO OSTLE, BERNARD, 'STATISTICS IN RESEARCH', IOWA
+!           STATE COLLEGE PRESS, 1954, CHAPTER 5.
+!
+!     ..................................................................
+!
+SUBROUTINE ttest(A,Na,B,Nb,Nop,Ndf,Ans)
+   IMPLICIT NONE
+
+   REAL A,a1,a2,amean,Ans,B,bmean,d,fna,fnb,fndf,s,sa2,sb2,sd
+   INTEGER i,Na,Nb,Ndf,Nop
+
+   DIMENSION A(*),B(*)
+!
+!     INITIALIZATION
+!
+   Ndf = 0
+   Ans = 0.0
+!
+!     CALCULATE THE MEAN OF A
+!
+   amean = 0.0
+   DO i = 1,Na
+      amean = amean + A(i)
+   ENDDO
+   fna = Na
+   amean = amean/fna
+!
+!     CALCULATE THE MEAN OF B
+!
+   bmean = 0.0
+   DO i = 1,Nb
+      bmean = bmean + B(i)
+   ENDDO
+   fnb = Nb
+   bmean = bmean/fnb
+!
+   IF ( Nop<4 ) THEN
+      IF ( Nop<1 ) RETURN
+      IF ( Nop/=1 ) THEN
+!
+!     CALCULATE THE VARIANCE OF A
+!
+         sa2 = 0.0
+         DO i = 1,Na
+            sa2 = sa2 + (A(i)-amean)**2
+         ENDDO
+         sa2 = sa2/(fna-1.0)
+      ENDIF
+!
+!     CALCULATE THE VARIANCE OF B
+!
+      sb2 = 0.0
+      DO i = 1,Nb
+         sb2 = sb2 + (B(i)-bmean)**2
+      ENDDO
+      sb2 = sb2/(fnb-1.0)
+!
+      IF ( Nop==2 ) THEN
+!
+!        OPTION 2
+!
+         Ndf = Na + Nb - 2
+         fndf = Ndf
+         s = sqrt(((fna-1.0)*sa2+(fnb-1.0)*sb2)/fndf)
+         Ans = ((bmean-amean)/s)*(1.0/sqrt(1.0/fna+1.0/fnb))
+      ELSEIF ( Nop==3 ) THEN
+!
+!        OPTION 3
+!
+         Ans = (bmean-amean)/sqrt(sa2/fna+sb2/fnb)
+         a1 = (sa2/fna+sb2/fnb)**2
+         a2 = (sa2/fna)**2/(fna+1.0) + (sb2/fnb)**2/(fnb+1.0)
+         Ndf = a1/a2 - 2.0 + 0.5
+      ELSE
+!
+!        OPTION 1
+!
+         Ans = ((bmean-amean)/sqrt(sb2))*sqrt(fnb)
+         Ndf = Nb - 1
+      ENDIF
+   ELSEIF ( Nop==4 ) THEN
+!
+!        OPTION 4
+!
+      sd = 0.0
+      d = bmean - amean
+      DO i = 1,Nb
+         sd = sd + (B(i)-A(i)-d)**2
+      ENDDO
+      sd = sqrt(sd/(fnb-1.0))
+      Ans = (d/sd)*sqrt(fnb)
+      Ndf = Nb - 1
+   ENDIF
+!
+END SUBROUTINE ttest

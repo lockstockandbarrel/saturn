@@ -1,0 +1,140 @@
+!*==mpair.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MPAIR
+!
+!        PURPOSE
+!           PERFORM THE WILCOXON MATCHED-PAIRS SIGNED-RANKS TEST, GIVEN
+!           TWO VECTORS OF N OBSERVATIONS OF THE MATCHED SAMPLES.
+!
+!        USAGE
+!           CALL MPAIR (N,A,B,K,T,Z,P,D,E,L,IE)
+!
+!        DESCRIPTION OF PARAMETERS
+!           N - NUMBER OF OBSERVATIONS IN THE VECTORS A AND B
+!           A - INPUT VECTOR OF LENGTH N CONTAINING DATA FROM THE FIRST
+!               SAMPLE
+!           B - INPUT VECTOR OF LENGTH N CONTAINING DATA FROM THE SECOND
+!               SAMPLE
+!           K - OUTPUT VARIABLE CONTAINING THE NUMBER OF PAIRS OF THE
+!               MATCHED SAMPLES WHOSE DIFFERENCES ARE NON ZERO (0)
+!           T - OUTPUT VARIABLE CONTAINING THE SUM OF THE RANKS OF PLUS
+!               OR MINUS DIFFERENCES, WHICHEVER IS SMALLER
+!           Z - VALUE OF THE STANDARDIZED NORMAL SCORE COMPUTED FOR THE
+!               WILCOXON MATCHED-PAIRS SIGNED-RANKS TEST
+!           P - COMPUTED PROBABILITY OF OBTAINING A VALUE OF Z AS
+!               EXTREME AS THE ONE FOUND BY THE TEST
+!           D - WORKING VECTOR OF LENGTH N
+!           E - WORKING VECTOR OF LENGTH N
+!           L - WORKING VECTOR OF LENGTH N
+!           IE- 1, IF SAMPLES A AND B ARE IDENTICAL.
+!               0 OTHERWISE.  IF IE=1, THEN T=P=0, AND Z=-10**75
+!
+!        REMARKS
+!           THE COMPUTED PROBABILTY IS FOR A ONE-TAILED TEST.
+!           MULTIPLYING P BY 2 WILL GIVE THE VALUE FOR A TWO-TAILED
+!           TEST.
+!
+!        SUBROUTINES AND FUNCTIONS SUBPROGRAMS REQUIRED
+!           RANK
+!           NDTR
+!
+!        METHOD
+!           REFER TO DIXON AND MASSEY, AN INTRODUCTION TO STATISTICAL
+!           ANALYSIS (MC GRAW-HILL, 1957)
+!
+!     ..................................................................
+!
+SUBROUTINE mpair(N,A,B,K,T,Z,P,D,E,L,Ie)
+   IMPLICIT NONE
+
+   REAL A,B,big,D,dif,E,fk,P,s,summ,sump,T,u,Z
+   INTEGER i,Ie,K,L,N
+
+!
+   DIMENSION A(*),B(*),D(*),E(*),L(*)
+!
+   Ie = 0
+   K = N
+!
+!        FIND DIFFERENCES OF MATCHED-PAIRS
+!
+   big = 0.0
+   DO i = 1,N
+      dif = A(i) - B(i)
+      IF ( dif<0 ) THEN
+!
+!        DIFFERENCE HAS A NEGATIVE SIGN (-)
+!
+         L(i) = 1
+      ELSEIF ( dif==0 ) THEN
+!
+!        DIFFERENCE IS ZERO (0)
+!
+         L(i) = 2
+         K = K - 1
+      ELSE
+!
+!        DIFFERENCE HAS A POSITIVE SIGN (+)
+!
+         L(i) = 3
+      ENDIF
+!
+      dif = abs(dif)
+      IF ( big<dif ) big = dif
+      D(i) = dif
+!
+   ENDDO
+   IF ( K<=0 ) THEN
+      Ie = 1
+      T = 0.0
+      Z = -huge(0.0)
+      P = 0
+   ELSE
+!
+!        STORE A LARGE VALUE IN PLACE OF 0 DIFFERENCE IN ORDER TO
+!        ASSIGN A LARGE RANK (LARGER THAN K), SO THAT ABSOLUTE VALUES
+!        OF SIGNED DIFFERENCES WILL BE PROPERLY RANKED
+!
+      big = big*2.0
+      DO i = 1,N
+         IF ( L(i)==2 ) D(i) = big
+      ENDDO
+!
+      CALL rank(D,E,N)
+!
+!        FIND SUMS OF RANKS OF (+) DIFFERENCES AND (-) DIFFERENCES
+!
+      sump = 0.0
+      summ = 0.0
+      DO i = 1,N
+         IF ( L(i)<2 ) THEN
+            summ = summ + E(i)
+         ELSEIF ( L(i)/=2 ) THEN
+            sump = sump + E(i)
+         ENDIF
+      ENDDO
+!
+!        SET T = SMALLER SUM
+!
+      IF ( sump<=summ ) THEN
+         T = sump
+      ELSE
+         T = summ
+      ENDIF
+!
+!        COMPUTE MEAN, STANDARD DEVIATION, AND Z
+!
+      fk = K
+      u = fk*(fk+1.0)/4.0
+      s = sqrt((fk*(fk+1.0)*(2.0*fk+1.0))/24.0)
+      Z = (T-u)/s
+!
+!        COMPUTE THE PROBABILITY OF A VALUE AS EXTREME AS Z
+!
+      CALL ndtr(Z,P,big)
+   ENDIF
+!
+END SUBROUTINE mpair

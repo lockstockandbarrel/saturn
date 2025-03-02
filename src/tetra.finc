@@ -1,0 +1,180 @@
+!*==tetra.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+!..................................................................
+!   SUBROUTINE TETRA
+!
+!   PURPOSE
+!      COMPUTE A TETRACHORIC CORRELATION COEFFICIENT BETWEEN TWO
+!      VARIABLES WHERE DATA IN BOTH VARIABLES HAVE BEEN REDUCED
+!      ARTIFICIALLY TO TWO CATEGORIES.
+!
+!   USAGE
+!      CALL TETRA (N,U,V,HU,HV,R,RS,IE)
+!
+!   DESCRIPTION OF PARAMETERS
+!      N  - NUMBER OF OBSERVATIONS
+!      U  - INPUT VECTOR OF LENGTH N CONTAINING THE FIRST VARIABLE
+!           REDUCED TO TWO CATEGORIES
+!      V  - INPUT VECTOR OF LENGTH N CONTAINING THE SECOND VARIABLE
+!           REDUCED TO TWO CATEGORIES
+!      HU - INPUT NUMERICAL CODE INDICATING THE HIGHER CATEGORY OF
+!           THE FIRST VARIABLE.  IF ANY VALUE OF VARIABLE U IS
+!           EQUAL TO OR GREATER THAN HU, IT WILL BE CLASSIFIED AS
+!           THE HIGHER CATEGORY, OTHERWISE AS THE LOWER CATEGORY.
+!      HV - SAME AS HU EXCEPT THAT HV IS FOR THE SECOND VARIABLE.
+!      R  - TETRACHORIC CORRELATION COMPUTED
+!      RS - STANDARD ERROR OF TETRACHORIC CORRELATION COMPUTED
+!      IE - ERROR CODE
+!           0 - NO ERROR
+!           1 - UNABLE TO COMPUTE A TETRACHORIC CORRELATION DUE TO
+!               THE FACT THAT AT LEAST ONE CELL SHOWS ZERO FRE-
+!               QUENCY IN THE 2X2 CONTINGENCY TABLE CONSTRUCTED
+!               FROM INPUT DATA.  IN THIS CASE, R AND RS ARE SET
+!               TO 10**75.  (SEE GUILFORD, 1956)
+!           2 - THE ROOT SOLVER GIVES MULTIPLE ROOTS, OR NO ROOTS,
+!               R, IN THE INTERVAL (-1,1) INCLUSIVE. R AND RS ARE
+!               SET TO 10**75.
+!           3 - UNABLE TO COMPUTE A SATISFACTORY VALUE OF TETRA-
+!               CHORIC CORRELATION USING NEWTON-RAPHSON METHOD OF
+!               APPROXIMATION TO THE ROOT OF THE EQUATION.  R AND
+!               RS ARE SET TO 10**75.  SEE SUBROUTINE POLRT ERROR
+!               INDICATORS.
+!           4 - HIGH ORDER COEFFICIENT OF THE POLYNOMIAL IS ZERO.
+!               SEE SUBROUTINE POLRT ERROR INDICATORS.
+!
+!   REMARKS
+!      VALUES OF VARIABLES U AND V MUST BE NUMERICAL, AND
+!      ALPHABETIC AND SPECIAL CHARACTERS MUST NOT BE USED.
+!      FOR A DEPENDABLE RESULT FOR TETRACHORIC CORRELATION,
+!      IT IS RECOMMENDED THAT N BE AT LEAST 200 OR GREATER.
+!
+!   SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!      NDTRI
+!      POLRT--THIS POLYNOMIAL ROOT ROUTINE WAS SELECTED BECAUSE OF
+!             ITS SMALL STORAGE REQUIREMENT.  OTHER SSP ROUTINES
+!             WHICH COULD REPLACE POLRT ARE PRQD AND PRBM.  THEIR
+!             USE WOULD REQUIRE MODIFICATION OF TETRA.
+!
+!   METHOD
+!      REFER TO J. P. GUILFORD, 'FUNDAMENTAL STATISTICS IN PSYCHO-
+!      LOGY AND EDUCATION', MCGRAW-HILL, NEW YORK, 1956, CHAPTER 13
+!      AND W. P. ELDERTON, 'FREQUENCY CURVES AND CORRELATION' 4-TH
+!      ED., CAMBRIDGE UNIVERSITY PRESS, 1953, CHAPTER 9.
+!..................................................................
+SUBROUTINE tetra(N,U,V,Hu,Hv,R,Rs,Ie)
+IMPLICIT NONE
+
+REAL a,b,c,cof,d,fn,Hu,Hv,p1,p2,q1,q2,R,rooti,rootr,Rs,U,V,x1
+REAL x2,xcof,y1,y2
+INTEGER i,Ie,ier,j,N,er
+!
+DIMENSION xcof(8),cof(8),rootr(7),rooti(7)
+DIMENSION U(*),V(*)
+DOUBLE PRECISION x31,x32,x312,x322
+!
+!        CONSTRUCT A 2X2 CONTINGENCY TABLE
+!
+   a = 0.0
+   b = 0.0
+   c = 0.0
+   d = 0.0
+   DO i = 1,N
+      IF ( U(i)<Hu ) THEN
+         IF ( V(i)<Hv ) THEN
+            d = d + 1.0
+         ELSE
+            b = b + 1.0
+         ENDIF
+      ELSEIF ( V(i)<Hv ) THEN
+         c = c + 1.0
+      ELSE
+         a = a + 1.0
+      ENDIF
+   ENDDO
+!
+!        TEST WHETHER ANY CELL IN THE CONTINGENCY TABLE IS ZERO.
+!        IF SO, RETURN TO THE CALLING ROUTINE WITH R=0.0 AND IE=1.
+!
+   Ie = 0
+   IF ( a<=0 ) THEN
+      Ie = 1
+   ELSEIF ( b<=0 ) THEN
+      Ie = 1
+   ELSEIF ( c<=0 ) THEN
+      Ie = 1
+   ELSEIF ( d<=0 ) THEN
+      Ie = 1
+   ELSE
+!
+!        COMPUTE P1, Q1, P2, AND Q2
+!
+      fn = N
+      p1 = (a+c)/fn
+      q1 = (b+d)/fn
+      p2 = (a+b)/fn
+      q2 = (c+d)/fn
+!
+!        FIND THE STANDARD NORMAL DEVIATES AT Q1 AND Q2, AND THE
+!        ORDINATES AT THOSE POINTS
+!
+!     !x! er should perhaps be ier? er is unused
+      CALL ndtri(q1,x1,y1,er)
+      CALL ndtri(q2,x2,y2,er)
+!
+!        COMPUTE THE TETRACHORIC CORRELATION COEFFICIENT
+!
+      IF ( x1==0 ) THEN
+         IF ( x2==0 ) THEN
+            R = 0.0
+!
+!        STANDARD ERROR OF R=0.0
+!
+            Rs = sqrt(p1*p2*q1*q2)/(y1*y2*sqrt(fn))
+            RETURN
+         ENDIF
+      ENDIF
+      xcof(1) = -((a*d-b*c)/(y1*y2*fn*fn))
+      xcof(2) = 1.0
+      xcof(3) = x1*x2/2.0
+      xcof(4) = (x1*x1-1.0)*(x2*x2-1.0)/6.0
+      x31 = dble(x1)
+      x32 = dble(x2)
+      x312 = x31**2
+      x322 = x32**2
+      xcof(5) = sngl(x31*(x312-3.0D0)*x32*(x322-3.0D0)/24.0D0)
+      xcof(6) = sngl((x312*(x312-6.0D0)+3.0D0)*(x322*(x322-6.0D0)+3.0D0)/120.0D0)
+      xcof(7) = sngl(x31*(x312*(x312-10.0D0)+15.0D0)*x32*(x322*(x322-10.0D0)+15.0D0)/720.0D0)
+      xcof(8) = sngl((((x312-15.0D0)*x312+45.0D0)*x312-15.0D0)*(((x322-15.0D0)*x322+45.0D0)*x322-15.0D0)/5040.0D0)
+!
+      CALL polrt(xcof,cof,7,rootr,rooti,ier)
+!
+      j = 0
+      IF ( ier<=0 ) THEN
+         DO i = 1,7
+            IF ( abs(rooti(i))<=.5*abs(rootr(i))*1.0E-6 ) THEN
+               R = rootr(i)
+               IF ( abs(R)<=1.0 ) THEN
+                  j = j + 1
+               ELSE
+                  R = huge(0.0)
+               ENDIF
+            ENDIF
+         ENDDO
+         IF ( j/=1 ) THEN
+            Ie = 2
+         ELSEIF ( R<huge(0.0) ) THEN
+            Rs = sqrt(p1*p2*q1*q2)/(y1*y2*sqrt(fn))
+            RETURN
+         ELSE
+            Ie = 2
+         ENDIF
+      ELSE
+!
+!        UNABLE TO COMPUTE R
+!
+         Ie = ier
+      ENDIF
+   ENDIF
+   R = huge(0.0)
+   Rs = R
+!
+END SUBROUTINE tetra

@@ -1,0 +1,118 @@
+!*==besj.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE BESJ
+!
+!        PURPOSE
+!           COMPUTE THE J BESSEL FUNCTION FOR A GIVEN ARGUMENT AND ORDER
+!
+!        USAGE
+!           CALL BESJ(X,N,BJ,D,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           X  -THE ARGUMENT OF THE J BESSEL FUNCTION DESIRED
+!           N  -THE ORDER OF THE J BESSEL FUNCTION DESIRED
+!           BJ -THE RESULTANT J BESSEL FUNCTION
+!           D  -REQUIRED ACCURACY
+!           IER-RESULTANT ERROR CODE WHERE
+!              IER=0  NO ERROR
+!              IER=1  N IS NEGATIVE
+!              IER=2  X IS NEGATIVE OR ZERO
+!              IER=3  REQUIRED ACCURACY NOT OBTAINED
+!              IER=4  RANGE OF N COMPARED TO X NOT CORRECT (SEE REMARKS)
+!
+!        REMARKS
+!           N MUST BE GREATER THAN OR EQUAL TO ZERO, BUT IT MUST BE
+!           LESS THAN
+!              20+10*X-X** 2/3   FOR X LESS THAN OR EQUAL TO 15
+!              90+X/2           FOR X GREATER THAN 15
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           RECURRENCE RELATION TECHNIQUE DESCRIBED BY H. GOLDSTEIN AND
+!           R.M. THALER,'RECURRENCE TECHNIQUES FOR THE CALCULATION OF
+!           BESSEL FUNCTIONS',M.T.A.C.,V.13,PP.102-108 AND I.A. STEGUN
+!           AND M. ABRAMOWITZ,'GENERATION OF BESSEL FUNCTIONS ON HIGH
+!           SPEED COMPUTERS',M.T.A.C.,V.11,1957,PP.255-257
+!
+!     ..................................................................
+!
+SUBROUTINE besj(X,N,Bj,D,Ier)
+   IMPLICIT NONE
+
+   REAL alpha,Bj,bmk,bprev,D,fm,fm1,s,X
+   INTEGER Ier,jt,k,m,m2,ma,mb,mk,mmax,mzero,N,n1,ntest
+
+!
+   Bj = .0
+   IF ( N<0 ) THEN
+      Ier = 1
+      RETURN
+   ELSEIF ( X<=0 ) THEN
+      Ier = 2
+      RETURN
+   ELSE
+      IF ( X<=15. ) THEN
+         ntest = 20. + 10.*X - X**2/3
+      ELSE
+         ntest = 90. + X/2.
+      ENDIF
+      IF ( N<ntest ) THEN
+         Ier = 0
+         n1 = N + 1
+         bprev = .0
+!
+!     COMPUTE STARTING VALUE OF M
+!
+         IF ( X<5. ) THEN
+            ma = X + 6.
+         ELSE
+            ma = 1.4*X + 60./X
+         ENDIF
+         mb = N + ifix(X)/4 + 2
+         mzero = max0(ma,mb)
+!
+!     SET UPPER LIMIT OF M
+!
+         mmax = ntest
+         DO m = mzero,mmax,3
+!
+!     SET F(M),F(M-1)
+!
+            fm1 = 1.0E-28
+            fm = .0
+            alpha = .0
+            IF ( m/=(m/2)*2 ) THEN
+               jt = 1
+            ELSE
+               jt = -1
+            ENDIF
+            m2 = m - 2
+            DO k = 1,m2
+               mk = m - k
+               bmk = 2.*float(mk)*fm1/X - fm
+               fm = fm1
+               fm1 = bmk
+               IF ( mk-N==1 ) Bj = bmk
+               jt = -jt
+               s = 1 + jt
+               alpha = alpha + bmk*s
+            ENDDO
+            bmk = 2.*fm1/X - fm
+            IF ( N==0 ) Bj = bmk
+            alpha = alpha + bmk
+            Bj = Bj/alpha
+            IF ( abs(Bj-bprev)<=abs(D*Bj) ) RETURN
+            bprev = Bj
+         ENDDO
+         Ier = 3
+      ELSE
+         Ier = 4
+         RETURN
+      ENDIF
+   ENDIF
+END SUBROUTINE besj

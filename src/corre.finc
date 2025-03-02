@@ -1,0 +1,248 @@
+!*==corre.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE CORRE
+!
+!        PURPOSE
+!           COMPUTE MEANS, STANDARD DEVIATIONS, SUMS OF CROSS-PRODUCTS
+!           OF DEVIATIONS, AND CORRELATION COEFFICIENTS.
+!
+!        USAGE
+!           CALL CORRE (N,M,IO,X,XBAR,STD,RX,R,B,D,T)
+!
+!        DESCRIPTION OF PARAMETERS
+!           N     - NUMBER OF OBSERVATIONS. N MUST BE > OR = TO 2.
+!           M     - NUMBER OF VARIABLES. M MUST BE > OR = TO 1.
+!           IO    - OPTION CODE FOR INPUT DATA
+!                   0 IF DATA ARE TO BE READ IN FROM INPUT DEVICE IN THE
+!                     SPECIAL SUBROUTINE NAMED DATA.  (SEE SUBROUTINES
+!                     USED BY THIS SUBROUTINE BELOW.)
+!                   1 IF ALL DATA ARE ALREADY IN CORE.
+!           X     - IF IO=0, THE VALUE OF X IS 0.0.
+!                   IF IO=1, X IS THE INPUT MATRIX (N BY M) CONTAINING
+!                            DATA.
+!           XBAR  - OUTPUT VECTOR OF LENGTH M CONTAINING MEANS.
+!           STD   - OUTPUT VECTOR OF LENGTH M CONTAINING STANDARD
+!                   DEVIATIONS.
+!           RX    - OUTPUT MATRIX (M X M) CONTAINING SUMS OF CROSS-
+!                   PRODUCTS OF DEVIATIONS FROM MEANS.
+!           R     - OUTPUT MATRIX (ONLY UPPER TRIANGULAR PORTION OF THE
+!                   SYMMETRIC MATRIX OF M BY M) CONTAINING CORRELATION
+!                   COEFFICIENTS.  (STORAGE MODE OF 1)
+!           B     - OUTPUT VECTOR OF LENGTH M CONTAINING THE DIAGONAL
+!                   OF THE MATRIX OF SUMS OF CROSS-PRODUCTS OF
+!                   DEVIATIONS FROM MEANS.
+!           D     - WORKING VECTOR OF LENGTH M.
+!           T     - WORKING VECTOR OF LENGTH M.
+!
+!        REMARKS
+!           CORRE WILL NOT ACCEPT A CONSTANT VECTOR.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           DATA(M,D) - THIS SUBROUTINE MUST BE PROVIDED BY THE USER.
+!                       (1) IF IO=0, THIS SUBROUTINE IS EXPECTED TO
+!                           FURNISH AN OBSERVATION IN VECTOR D FROM AN
+!                           EXTERNAL INPUT DEVICE.
+!                       (2) IF IO=1, THIS SUBROUTINE IS NOT USED BY
+!                           CORRE BUT MUST EXIST IN JOB DECK. IF USER
+!                           HAS NOT SUPPLIED A SUBROUTINE NAMED DATA,
+!                           THE FOLLOWING IS SUGGESTED.
+!                                SUBROUTINE DATA
+!                                RETURN
+!                                END
+!
+!        METHOD
+!           PRODUCT-MOMENT CORRELATION COEFFICIENTS ARE COMPUTED.
+!
+!     ..................................................................
+!
+SUBROUTINE corre(N,M,Io,X,Xbar,Std,Rx,R,B,D,T)
+   IMPLICIT NONE
+
+   REAL B,D,fkk,fn,R,Rx,Std,T,X,Xbar
+   INTEGER i,Io,j,jk,k,kk,l,M,N
+
+   DIMENSION X(*),Xbar(*),Std(*),Rx(*),R(*),B(*),D(*),T(*)
+!
+!        ...............................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION XBAR,STD,RX,R,B,T
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!        CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  SQRT AND ABS IN
+!        STATEMENT 220 MUST BE CHANGED TO DSQRT AND DABS.
+!
+!        ...............................................................
+!
+!     INITIALIZATION
+!
+   DO j = 1,M
+      B(j) = 0.0
+      T(j) = 0.0
+   ENDDO
+   k = (M*M+M)/2
+   DO i = 1,k
+      R(i) = 0.0
+   ENDDO
+   fn = N
+   l = 0
+!
+   IF ( Io/=0 ) THEN
+!
+!     DATA ARE ALREADY IN CORE
+!
+      DO j = 1,M
+         DO i = 1,N
+            l = l + 1
+            T(j) = T(j) + X(l)
+         ENDDO
+         Xbar(j) = T(j)
+         T(j) = T(j)/fn
+      ENDDO
+!
+      DO i = 1,N
+         jk = 0
+         l = i - N
+         DO j = 1,M
+            l = l + N
+            D(j) = X(l) - T(j)
+            B(j) = B(j) + D(j)
+         ENDDO
+         DO j = 1,M
+            DO k = 1,j
+               jk = jk + 1
+               R(jk) = R(jk) + D(j)*D(k)
+            ENDDO
+         ENDDO
+      ENDDO
+   ELSE
+!
+!     READ OBSERVATIONS AND CALCULATE TEMPORARY
+!     MEANS FROM THESE DATA IN T(J)
+!
+      IF ( N<=M ) THEN
+         kk = N
+      ELSE
+         kk = M
+      ENDIF
+      DO i = 1,kk
+         CALL data(M,D)
+         DO j = 1,M
+            T(j) = T(j) + D(j)
+            l = l + 1
+            Rx(l) = D(j)
+         ENDDO
+      ENDDO
+      fkk = kk
+      DO j = 1,M
+         Xbar(j) = T(j)
+         T(j) = T(j)/fkk
+      ENDDO
+!
+!     CALCULATE SUMS OF CROSS-PRODUCTS OF DEVIATIONS
+!     FROM TEMPORARY MEANS FOR M OBSERVATIONS
+!
+      l = 0
+      DO i = 1,kk
+         jk = 0
+         DO j = 1,M
+            l = l + 1
+            D(j) = Rx(l) - T(j)
+         ENDDO
+         DO j = 1,M
+            B(j) = B(j) + D(j)
+            DO k = 1,j
+               jk = jk + 1
+               R(jk) = R(jk) + D(j)*D(k)
+            ENDDO
+         ENDDO
+      ENDDO
+!
+      IF ( N>kk ) THEN
+!
+!     READ THE REST OF OBSERVATIONS ONE AT A TIME, SUM
+!     THE OBSERVATION, AND CALCULATE SUMS OF CROSS-
+!     PRODUCTS OF DEVIATIONS FROM TEMPORARY MEANS
+!
+         kk = N - kk
+         DO i = 1,kk
+            jk = 0
+            CALL data(M,D)
+            DO j = 1,M
+               Xbar(j) = Xbar(j) + D(j)
+               D(j) = D(j) - T(j)
+               B(j) = B(j) + D(j)
+            ENDDO
+            DO j = 1,M
+               DO k = 1,j
+                  jk = jk + 1
+                  R(jk) = R(jk) + D(j)*D(k)
+               ENDDO
+            ENDDO
+         ENDDO
+      ENDIF
+   ENDIF
+!
+!     CALCULATE MEANS
+!
+   jk = 0
+   DO j = 1,M
+      Xbar(j) = Xbar(j)/fn
+!
+!     ADJUST SUMS OF CROSS-PRODUCTS OF DEVIATIONS
+!     FROM TEMPORARY MEANS
+!
+      DO k = 1,j
+         jk = jk + 1
+         R(jk) = R(jk) - B(j)*B(k)/fn
+      ENDDO
+   ENDDO
+!
+!     CALCULATE CORRELATION COEFFICIENTS
+!
+   jk = 0
+   DO j = 1,M
+      jk = jk + j
+      Std(j) = sqrt(abs(R(jk)))
+   ENDDO
+   DO j = 1,M
+      DO k = j,M
+         jk = j + (k*k-k)/2
+         l = M*(j-1) + k
+         Rx(l) = R(jk)
+         l = M*(k-1) + j
+         Rx(l) = R(jk)
+         IF ( Std(j)*Std(k)/=0 ) THEN
+            R(jk) = R(jk)/(Std(j)*Std(k))
+         ELSE
+            R(jk) = 0.0
+         ENDIF
+      ENDDO
+   ENDDO
+!
+!     CALCULATE STANDARD DEVIATIONS
+!
+   fn = sqrt(fn-1.0)
+   DO j = 1,M
+      Std(j) = Std(j)/fn
+   ENDDO
+!
+!     COPY THE DIAGONAL OF THE MATRIX OF SUMS OF CROSS-PRODUCTS OF
+!     DEVIATIONS FROM MEANS.
+!
+   l = -M
+   DO i = 1,M
+      l = l + M + 1
+      B(i) = Rx(l)
+   ENDDO
+END SUBROUTINE corre

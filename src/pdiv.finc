@@ -1,0 +1,97 @@
+!*==pdiv.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE PDIV
+!
+!        PURPOSE
+!           DIVIDE ONE POLYNOMIAL BY ANOTHER
+!
+!        USAGE
+!           CALL PDIV(P,IDIMP,X,IDIMX,Y,IDIMY,TOL,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           P     - RESULTANT VECTOR OF INTEGRAL PART
+!           IDIMP - DIMENSION OF P
+!           X     - VECTOR OF COEFFICIENTS FOR DIVIDEND POLYNOMIAL,
+!                   ORDERED FROM SMALLEST TO LARGEST POWER. IT IS
+!                   REPLACED BY REMAINDER AFTER DIVISION.
+!           IDIMX - DIMENSION OF X
+!           Y     - VECTOR OF COEFFICIENTS FOR DIVISOR POLYNOMIAL,
+!                   ORDERED FROM SMALLEST TO LARGEST POWER
+!           IDIMY - DIMENSION OF Y
+!           TOL   - TOLERANCE VALUE BELOW WHICH COEFFICIENTS ARE
+!                   ELIMINATED DURING NORMALIZATION
+!           IER   - ERROR CODE. 0 IS NORMAL, 1 IS FOR ZERO DIVISOR
+!
+!        REMARKS
+!           THE REMAINDER R REPLACES X.
+!           THE DIVISOR Y REMAINS UNCHANGED.
+!           IF DIMENSION OF Y EXCEEDS DIMENSION OF X, IDIMP IS SET TO
+!           ZERO AND CALCULATION IS BYPASSED
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           PNORM
+!
+!        METHOD
+!           POLYNOMIAL X IS DIVIDED BY POLYNOMIAL Y GIVING INTEGER PART
+!           P AND REMAINDER R SUCH THAT X = P*Y + R.
+!           DIVISOR Y AND REMAINDER  VECTOR GET NORMALIZED.
+!
+!     ..................................................................
+!
+SUBROUTINE pdiv(P,Idimp,X,Idimx,Y,Idimy,Tol,Ier)
+   IMPLICIT NONE
+
+   INTEGER i,Idimp,Idimx,Idimy,Ier,ii,j,k
+   REAL P,Tol,X,Y
+
+   DIMENSION P(*),X(*),Y(*)
+!
+   CALL pnorm(Y,Idimy,Tol)
+   IF ( Idimy<=0 ) THEN
+!
+!     Y IS ZERO POLYNOMIAL
+!
+      Ier = 1
+   ELSE
+      Idimp = Idimx - Idimy + 1
+      IF ( Idimp<0 ) THEN
+!
+!     DEGREE OF DIVISOR WAS GREATER THAN DEGREE OF DIVIDEND
+!
+         Idimp = 0
+         Ier = 0
+      ELSEIF ( Idimp==0 ) THEN
+         Ier = 0
+      ELSE
+!
+!     START REDUCTION
+!
+         Idimx = Idimy - 1
+         i = Idimp
+         SPAG_Loop_1_1: DO
+            ii = i + Idimx
+            P(i) = X(ii)/Y(Idimy)
+!
+!     SUBTRACT MULTIPLE OF DIVISOR
+!
+            DO k = 1,Idimx
+               j = k - 1 + i
+               X(j) = X(j) - P(i)*Y(k)
+            ENDDO
+            i = i - 1
+            IF ( i<=0 ) THEN
+!
+!     NORMALIZE REMAINDER POLYNOMIAL
+!
+               CALL pnorm(X,Idimx,Tol)
+               Ier = 0
+               EXIT SPAG_Loop_1_1
+            ENDIF
+         ENDDO SPAG_Loop_1_1
+      ENDIF
+   ENDIF
+   RETURN
+END SUBROUTINE pdiv

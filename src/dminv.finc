@@ -1,0 +1,177 @@
+!*==dminv.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+!..................................................................
+!   SUBROUTINE DMINV          
+!                              
+!   PURPOSE                    
+!      INVERT A MATRIX         
+!                              
+!   USAGE
+!      CALL DMINV(A,N,D,L,M)
+!
+!   DESCRIPTION OF PARAMETERS
+!      A - INPUT MATRIX, DESTROYED IN COMPUTATION AND REPLACED BY
+!          RESULTANT INVERSE.
+!      N - ORDER OF MATRIX A
+!      D - RESULTANT DETERMINANT
+!
+!   REMARKS
+!      MATRIX A MUST BE A GENERAL MATRIX
+!
+!   SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!      NONE
+!
+!   METHOD
+!      THE STANDARD GAUSS-JORDAN METHOD IS USED. THE DETERMINANT
+!      IS ALSO CALCULATED. A DETERMINANT OF ZERO INDICATES THAT
+!      THE MATRIX IS SINGULAR.
+!..................................................................
+SUBROUTINE dminv(A,N,D)
+IMPLICIT NONE
+INTEGER i,ij,ik,iz,j,ji,jk,jp,jq,jr,k,ki,kj,kk,L,M,N,nk
+DIMENSION A(*),L(N),M(N)
+!      L - WORK VECTOR OF LENGTH N
+!      M - WORK VECTOR OF LENGTH N
+!...............................................................
+!   IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!   C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!   STATEMENT WHICH FOLLOWS.
+!
+   DOUBLE PRECISION A,D,biga,hold
+!
+!   THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!   APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!   ROUTINE.
+!
+!   THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!   CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  ABS IN STATEMENT
+!   10 MUST BE CHANGED TO DABS.
+!...............................................................
+!  SEARCH FOR LARGEST ELEMENT
+   D = 1.0
+   nk = -N
+   DO k = 1,N
+      nk = nk + N
+      L(k) = k
+      M(k) = k
+      kk = nk + k
+      biga = A(kk)
+      DO j = k,N
+         iz = N*(j-1)
+         DO i = k,N
+            ij = iz + i
+            IF ( dabs(biga)<dabs(A(ij)) ) THEN
+               biga = A(ij)
+               L(k) = i
+               M(k) = j
+            ENDIF
+         ENDDO
+      ENDDO
+!
+!        INTERCHANGE ROWS
+!
+      j = L(k)
+      IF ( j>k ) THEN
+         ki = k - N
+         DO i = 1,N
+            ki = ki + N
+            hold = -A(ki)
+            ji = ki - k + j
+            A(ki) = A(ji)
+            A(ji) = hold
+         ENDDO
+      ENDIF
+!
+!        INTERCHANGE COLUMNS
+!
+      i = M(k)
+      IF ( i>k ) THEN
+         jp = N*(i-1)
+         DO j = 1,N
+            jk = nk + j
+            ji = jp + j
+            hold = -A(jk)
+            A(jk) = A(ji)
+            A(ji) = hold
+         ENDDO
+      ENDIF
+!
+!        DIVIDE COLUMN BY MINUS PIVOT (VALUE OF PIVOT ELEMENT IS
+!        CONTAINED IN BIGA)
+!
+      IF ( biga/=0 ) THEN
+         DO i = 1,N
+            IF ( i/=k ) THEN
+               ik = nk + i
+               A(ik) = A(ik)/(-biga)
+            ENDIF
+         ENDDO
+!
+!        REDUCE MATRIX
+!
+         DO i = 1,N
+            ik = nk + i
+            hold = A(ik)
+            ij = i - N
+            DO j = 1,N
+               ij = ij + N
+               IF ( i/=k ) THEN
+                  IF ( j/=k ) THEN
+                     kj = ij - i + k
+                     A(ij) = hold*A(kj) + A(ij)
+                  ENDIF
+               ENDIF
+            ENDDO
+         ENDDO
+!
+!        DIVIDE ROW BY PIVOT
+!
+         kj = k - N
+         DO j = 1,N
+            kj = kj + N
+            IF ( j/=k ) A(kj) = A(kj)/biga
+         ENDDO
+!
+!        PRODUCT OF PIVOTS
+!
+         D = D*biga
+!
+!        REPLACE PIVOT BY RECIPROCAL
+!
+         A(kk) = 1.0/biga
+      ELSE
+         D = 0.0
+         RETURN
+      ENDIF
+   ENDDO
+!
+!        FINAL ROW AND COLUMN INTERCHANGE
+!
+   k = N
+   SPAG_Loop_1_1: DO
+      k = (k-1)
+      IF ( k<=0 ) EXIT SPAG_Loop_1_1
+      i = L(k)
+      IF ( i>k ) THEN
+         jq = N*(k-1)
+         jr = N*(i-1)
+         DO j = 1,N
+            jk = jq + j
+            hold = A(jk)
+            ji = jr + j
+            A(jk) = -A(ji)
+            A(ji) = hold
+         ENDDO
+      ENDIF
+      j = M(k)
+      IF ( j>k ) THEN
+         ki = k - N
+         DO i = 1,N
+            ki = ki + N
+            hold = A(ki)
+            ji = ki - k + j
+            A(ki) = -A(ji)
+            A(ji) = hold
+         ENDDO
+      ENDIF
+   ENDDO SPAG_Loop_1_1
+END SUBROUTINE dminv

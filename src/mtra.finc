@@ -1,0 +1,64 @@
+!*==mtra.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE MTRA
+!
+!        PURPOSE
+!           TRANSPOSE A MATRIX
+!
+!        USAGE
+!           CALL MTRA(A,R,N,M,MS)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF MATRIX TO BE TRANSPOSED
+!           R - NAME OF OUTPUT MATRIX
+!           N - NUMBER OF ROWS OF A AND COLUMNS OF R
+!           M - NUMBER OF COLUMNS OF A AND ROWS OF R
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A (AND R)
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           MATRIX R CANNOT BE IN THE SAME LOCATION AS MATRIX A
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           MCPY
+!
+!        METHOD
+!           TRANSPOSE N BY M MATRIX A TO FORM M BY N MATRIX R BY MOVING
+!           EACH ROW OF A INTO THE CORRESPONDING COLUMN OF R. IF MATRIX
+!           A IS SYMMETRIC OR DIAGONAL, MATRIX R IS THE SAME AS A.
+!
+!     ..................................................................
+!
+SUBROUTINE mtra(A,R,N,M,Ms)
+   IMPLICIT NONE
+
+   REAL A,R
+   INTEGER i,ij,ir,j,M,Ms,N
+
+   DIMENSION A(*),R(*)
+!
+!        IF MS IS 1 OR 2, COPY A
+!
+   IF ( Ms/=0 ) THEN
+      CALL mcpy(A,R,N,N,Ms)
+      RETURN
+   ELSE
+!
+!        TRANSPOSE GENERAL MATRIX
+!
+      ir = 0
+      DO i = 1,N
+         ij = i - N
+         DO j = 1,M
+            ij = ij + N
+            ir = ir + 1
+            R(ir) = A(ij)
+         ENDDO
+      ENDDO
+   ENDIF
+END SUBROUTINE mtra

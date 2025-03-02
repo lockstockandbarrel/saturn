@@ -1,0 +1,103 @@
+!*==ctab.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE CTAB
+!
+!        PURPOSE
+!           TABULATE COLUMNS OF A MATRIX TO FORM A SUMMARY MATRIX
+!
+!        USAGE
+!           CALL CTAB(A,B,R,S,N,M,MS,L)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A - NAME OF INPUT MATRIX
+!           B - NAME OF INPUT VECTOR OF LENGTH M CONTAINING KEY
+!           R - NAME OF OUTPUT MATRIX CONTAINING SUMMARY OF COLUMN DATA.
+!               IT IS INITIALLY SET TO ZERO BY THIS SUBROUTINE.
+!           S - NAME OF OUTPUT VECTOR OF LENGTH L+1 CONTAINING COUNTS
+!           N - NUMBER OF ROWS IN A AND R
+!           M - NUMBER OF COLUMNS IN A
+!           L - NUMBER OF COLUMNS IN R
+!           MS  - ONE DIGIT NUMBER FOR STORAGE MODE OF MATRIX A
+!                  0 - GENERAL
+!                  1 - SYMMETRIC
+!                  2 - DIAGONAL
+!
+!        REMARKS
+!           MATRIX R IS ALWAYS A GENERAL MATRIX
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           LOC
+!           CADD
+!
+!        METHOD
+!           COLUMNS OF DATA IN MATRIX A ARE TABULATED BASED ON THE KEY
+!           CONTAINED IN VECTOR B. THE FLOATING POINT NUMBER IN B(I) IS
+!           TRUNCATED TO FORM J. THE ITH COLUMN OF A IS ADDED TO THE JTH
+!           COLUMN OF MATRIX R AND ONE IS ADDED TO S(J). IF THE VALUE OF
+!           J IS NOT BETWEEN 1 AND L, ONE IS ADDED TO S(L+1)
+!           UPON COMPLETION, THE OUTPUT MATRIX R CONTAINS A SUMMARY OF
+!           COLUMN DATA AS SPECIFIED BY VECTOR B. EACH ELEMENT IN VECTOR
+!           S CONTAINS A COUNT OF THE NUMBER OF COLUMNS OF A USED TO
+!           FORM R. ELEMENT S(L+1) CONTAINS THE NUMBER OF COLUMNS OF A
+!           NOT INCLUDED IN R AS A RESULT OF J BEING LESS THAN ONE OR
+!           GREATER THAN L.
+!
+!     ..................................................................
+!
+SUBROUTINE ctab(A,B,R,S,N,M,Ms,L)
+   IMPLICIT NONE
+
+   REAL A,B,R,S
+   INTEGER i,ir,is,it,jr,L,M,Ms,N
+
+   DIMENSION A(*),B(*),R(*),S(*)
+   INTEGER :: spag_nextblock_1
+!
+!        CLEAR OUTPUT AREAS
+!
+   CALL loc(N,L,it,N,L,0)
+   DO ir = 1,it
+      R(ir) = 0.0
+   ENDDO
+   DO is = 1,L
+      S(is) = 0.0
+   ENDDO
+   S(L+1) = 0.0
+!
+   DO i = 1,M
+      spag_nextblock_1 = 1
+      SPAG_DispatchLoop_1: DO
+         SELECT CASE (spag_nextblock_1)
+         CASE (1)
+!
+!        TEST FOR THE KEY OUTSIDE THE RANGE
+!
+            jr = B(i)
+            IF ( jr<1 ) THEN
+               spag_nextblock_1 = 2
+               CYCLE SPAG_DispatchLoop_1
+            ENDIF
+            IF ( jr/=1 ) THEN
+               IF ( jr>L ) THEN
+                  spag_nextblock_1 = 2
+                  CYCLE SPAG_DispatchLoop_1
+               ENDIF
+            ENDIF
+!
+!
+!        ADD COLUMN OF A TO COLUMN OF R AND 1 TO COUNT
+!
+            CALL cadd(A,i,R,jr,N,M,Ms,L)
+            S(jr) = S(jr) + 1.0
+            CYCLE
+         CASE (2)
+!
+            S(L+1) = S(L+1) + 1.0
+            EXIT SPAG_DispatchLoop_1
+         END SELECT
+      ENDDO SPAG_DispatchLoop_1
+   ENDDO
+END SUBROUTINE ctab

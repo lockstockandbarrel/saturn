@@ -1,0 +1,55 @@
+!*==cint.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE CINT
+!
+!        PURPOSE
+!           INTERCHANGE TWO COLUMNS OF A MATRIX
+!
+!        USAGE
+!           CALL CINT(A,N,LA,LB)
+!
+!        DESCRIPTION OF PARAMETERS
+!           A  - NAME OF MATRIX
+!           N  - NUMBER OF ROWS IN A
+!           LA - COLUMN TO BE INTERCHANGED WITH COLUMN LB
+!           LB - COLUMN TO BE INTERCHANGED WITH COLUMN LA
+!
+!        REMARKS
+!           MATRIX A MUST BE A GENERAL MATRIX
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           NONE
+!
+!        METHOD
+!           EACH ELEMENT OF COLUMN LA IS INTERCHANGED WITH CORRESPONDING
+!           ELEMENT OF COLUMN LB
+!
+!     ..................................................................
+!
+SUBROUTINE cint(A,N,La,Lb)
+   IMPLICIT NONE
+
+   REAL A,save
+   INTEGER i,ila,ilb,La,Lb,N
+
+   DIMENSION A(*)
+!
+!        LOCATE STARTING POINT OF BOTH COLUMNS
+!
+   ila = N*(La-1)
+   ilb = N*(Lb-1)
+!
+   DO i = 1,N
+      ila = ila + 1
+      ilb = ilb + 1
+!
+!        INTERCHANGE ELEMENTS
+!
+      save = A(ila)
+      A(ila) = A(ilb)
+      A(ilb) = save
+   ENDDO
+END SUBROUTINE cint

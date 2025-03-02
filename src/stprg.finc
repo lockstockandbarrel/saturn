@@ -1,0 +1,349 @@
+!*==stprg.f90 processed by SPAG 8.01RF 00:35  2 Mar 2025
+
+!
+!     ..................................................................
+!
+!        SUBROUTINE STPRG
+!
+!        PURPOSE
+!           TO PERFORM A STEPWISE MULTIPLE REGRESSION ANALYSIS FOR A
+!           DEPENDENT VARIABLE AND A SET OF INDEPENDENT VARIABLES.  AT
+!           EACH STEP, THE VARIABLE ENTERED INTO THE REGRESSION EQUATION
+!           IS THAT WHICH EXPLAINS THE GREATEST AMOUNT OF VARIANCE
+!           BETWEEN IT AND THE DEPENDENT VARIABLE (I.E. THE VARIABLE
+!           WITH THE HIGHEST PARTIAL CORRELATION WITH THE DEPENDENT
+!           VARIABLE).  ANY VARIABLE CAN BE DESIGNATED AS THE DEPENDENT
+!           VARIABLE.  ANY INDEPENDENT VARIABLE CAN BE FORCED INTO OR
+!           DELETED FROM THE REGRESSION EQUATION, IRRESPECTIVE OF ITS
+!           CONTRIBUTION TO THE EQUATION.
+!
+!        USAGE
+!           CALL STPRG (M,N,D,XBAR,IDX,PCT,NSTEP,ANS,L,B,S,T,LL,IER)
+!
+!        DESCRIPTION OF PARAMETERS
+!           M    - TOTAL NUMBER OF VARIABLES IN DATA MATRIX
+!           N    - NUMBER OF OBSERVATIONS
+!           D    - INPUT MATRIX (M X M) OF SUMS OF CROSS-PRODUCTS OF
+!                  DEVIATIONS FROM MEAN.  THIS MATRIX WILL BE DESTROYED.
+!           XBAR - INPUT VECTOR OF LENGTH M OF MEANS
+!           IDX  - INPUT VECTOR OF LENGTH M HAVING ONE OF THE FOLLOWING
+!                  CODES FOR EACH VARIABLE.
+!                    0 - INDEPENDENT VARIABLE AVAILABLE FOR SELECTION
+!                    1 - INDEPENDENT VARIABLE TO BE FORCED INTO THE
+!                        REGRESSION EQUATION
+!                    2 - VARIABLE NOT TO BE CONSIDERED IN THE EQUATION
+!                    3 - DEPENDENT VARIABLE
+!                  THIS VECTOR WILL BE DESTROYED
+!           PCT  - A CONSTANT VALUE INDICATING THE PROPORTION OF THE
+!                  TOTAL VARIANCE TO BE EXPLAINED BY ANY INDEPENDENT
+!                  VARIABLE.  THOSE INDEPENDENT VARIABLES WHICH FALL
+!                  BELOW THIS PROPORTION WILL NOT ENTER THE REGRESSION
+!                  EQUATION.  TO ENSURE THAT ALL VARIABLES ENTER THE
+!                  EQUATION, SET PCT = 0.0.
+!           NSTEP- OUTPUT VECTOR OF LENGTH 5 CONTAINING THE FOLLOWING
+!                  INFORMATION
+!                     NSTEP(1)- THE NUMBER OF THE DEPENDENT VARIABLE
+!                     NSTEP(2)- NUMBER OF VARIABLES FORCED INTO THE
+!                               REGRESSION EQUATION
+!                     NSTEP(3)- NUMBER OF VARIABLE DELETED FROM THE
+!                               EQUATION
+!                     NSTEP(4)- THE NUMBER OF THE LAST STEP
+!                     NSTEP(5)- THE NUMBER OF THE LAST VARIABLE ENTERED
+!           ANS  - OUTPUT VECTOR OF LENGTH 11 CONTAINING THE FOLLOWING
+!                  INFORMATION FOR THE LAST STEP
+!                     ANS(1)- SUM OF SQUARES REDUCED BY THIS STEP
+!                     ANS(2)- PROPORTION OF TOTAL SUM OF SQUARES REDUCED
+!                     ANS(3)- CUMULATIVE SUM OF SQUARES REDUCED UP TO
+!                             THIS STEP
+!                     ANS(4)- CUMULATIVE PROPORTION OF TOTAL SUM OF
+!                             SQUARES REDUCED
+!                     ANS(5)- SUM OF SQUARES OF THE DEPENDENT VARIABLE
+!                     ANS(6)- MULTIPLE CORRELATION COEFFICIENT
+!                     ANS(7)- F RATIO FOR SUM OF SQUARES DUE TO
+!                             REGRESSION
+!                     ANS(8)- STANDARD ERROR OF THE ESTIMATE (RESIDUAL
+!                             MEAN SQUARE)
+!                     ANS(9)- INTERCEPT CONSTANT
+!                     ANS(10)-MULTIPLE CORRELATION COEFFICIENT ADJUSTED
+!                             FOR DEGREES OF FREEDOM.
+!                     ANS(11)-STANDARD ERROR OF THE ESTIMATE ADJUSTED
+!                             FOR DEGREES OF FREEDOM.
+!           L    - OUTPUT VECTOR OF LENGTH K, WHERE K IS THE NUMBER OF
+!                  INDEPENDENT VARIABLES IN THE REGRESSION EQUATION.
+!                  THIS VECTOR CONTAINS THE NUMBERS OF THE INDEPENDENT
+!                  VARIABLES IN THE EQUATION.
+!           B    - OUTPUT VECTOR OF LENGTH K, CONTAINING THE PARTIAL
+!                  REGRESSION COEFFICIENTS CORRESPONDING TO THE
+!                  VARIABLES IN VECTOR L.
+!           S    - OUTPUT VECTOR OF LENGTH K, CONTAINING THE STANDARD
+!                  ERRORS OF THE PARTIAL REGRESSION COEFFICIENTS,
+!                  CORRESPONDING TO THE VARIABLES IN VECTOR L.
+!           T    - OUTPUT VECTOR OF LENGTH K, CONTAINING THE COMPUTED
+!                  T-VALUES CORRESPONDING TO THE VARIABLES IN VECTOR L.
+!           LL   - WORKING VECTOR OF LENGTH M
+!           IER  - 0, IF THERE IS NO ERROR.
+!                  1, IF RESIDUAL SUM OF SQUARES IS NEGATIVE OR IF THE
+!                  PIVOTAL ELEMENT IN THE STEPWISE INVERSION PROCESS IS
+!                  ZERO.  IN THIS CASE, THE VARIABLE WHICH CAUSES THIS
+!                  ERROR IS NOT ENTERED IN THE REGRESSION, THE RESULT
+!                  PRIOR TO THIS STEP IS RETAINED, AND THE CURRENT
+!                  SELECTION IS TERMINATED.
+!
+!        REMARKS
+!           THE NUMBER OF DATA POINTS MUST BE AT LEAST GREATER THAN THE
+!           NUMBER OF INDEPENDENT VARIABLES PLUS ONE.  FORCED VARIABLES
+!           ARE ENTERED INTO THE REGRESSION EQUATION BEFORE ALL OTHER
+!           INDEPENDENT VARIABLES.  WITHIN THE SET OF FORCED VARIABLES,
+!           THE ONE TO BE CHOSEN FIRST WILL BE THAT ONE WHICH EXPLAINS
+!           THE GREATEST AMOUNT OF VARIANCE.
+!           INSTEAD OF USING, AS A STOPPING CRITERION, A PROPORTION OF
+!           THE TOTAL VARIANCE, SOME OTHER CRITERION MAY BE ADDED TO
+!           SUBROUTINE STOUT.
+!
+!        SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED
+!           STOUT(NSTEP,ANS,L,B,S,T,NSTOP)
+!           THIS SUBROUTINE MUST BE PROVIDED BY THE USER.  IT IS AN
+!           OUTPUT ROUTINE WHICH WILL PRINT THE RESULTS OF EACH STEP OF
+!           THE REGRESSION ANALYSIS.  NSTOP IS AN OPTION CODE WHICH IS
+!           ONE IF THE STEPWISE REGRESSION IS TO BE TERMINATED, AND IS
+!           ZERO IF IT IS TO CONTINUE.  THE USER MUST CONSIDER THIS IF
+!           SOME OTHER STOPPING CRITERION THAN VARIANCE PROPORTION IS TO
+!           BE USED.
+!
+!        METHOD
+!           THE ABBREVIATED DOOLITTLE METHOD IS USED TO (1) DECIDE VARI-
+!           ABLES ENTERING IN THE REGRESSION AND (2) COMPUTE REGRESSION
+!           COEFFICIENTS.  REFER TO C. A. BENNETT AND N. L. FRANKLIN,
+!           'STATISTICAL ANALYSIS IN CHEMISTRY AND THE CHEMICAL INDUS-
+!           TRY', JOHN WILEY AND SONS, 1954, APPENDIX 6A.
+!
+!     ..................................................................
+!
+SUBROUTINE stprg(M,N,D,Xbar,Idx,Pct,Nstep,Ans,L,B,S,T,Ll,Ier)
+   IMPLICIT NONE
+
+   REAL Ans,B,D,onm,Pct,rd,re,S,T,Xbar
+   INTEGER i,id,Idx,Ier,ij,ik,ip,j,k,kk,L,Ll,ly,lyp,M,mk,mx,my,N,new
+   INTEGER nfo,nl,Nstep,nstop
+
+!
+   DIMENSION D(*),Xbar(*),Idx(*),Nstep(*),Ans(*),L(*),B(*),S(*),T(*),Ll(*)
+!
+!     ..................................................................
+!
+!        IF A DOUBLE PRECISION VERSION OF THIS ROUTINE IS DESIRED, THE
+!        C IN COLUMN 1 SHOULD BE REMOVED FROM THE DOUBLE PRECISION
+!        STATEMENT WHICH FOLLOWS.
+!
+!     DOUBLE PRECISION D,XBAR,ANS,B,S,T,RD,RE
+!
+!        THE C MUST ALSO BE REMOVED FROM DOUBLE PRECISION STATEMENTS
+!        APPEARING IN OTHER ROUTINES USED IN CONJUNCTION WITH THIS
+!        ROUTINE.
+!
+!        THE DOUBLE PRECISION VERSION OF THIS SUBROUTINE MUST ALSO
+!        CONTAIN DOUBLE PRECISION FORTRAN FUNCTIONS.  SQRT IN STATEMENTS
+!        85,90,114,132,AND 134, MUST BE CHANGED TO DSQRT.
+!
+!     ..................................................................
+!
+!        INITIALIZATION
+!
+   Ier = 0
+   onm = N - 1
+   nfo = 0
+   Nstep(3) = 0
+   Ans(3) = 0.0
+   Ans(4) = 0.0
+   nstop = 0
+!
+!        FIND DEPENDENT VARIABLE, NUMBER OF VARIABLES TO BE FORCED TO
+!        ENTER IN THE REGRESSION, AND NUMBER OF VARIABLES TO BE DELETED
+!
+   DO i = 1,M
+      Ll(i) = 1
+      IF ( Idx(i)>0 ) THEN
+         IF ( Idx(i)<2 ) THEN
+            nfo = nfo + 1
+            Idx(nfo) = i
+         ELSEIF ( Idx(i)==2 ) THEN
+            Nstep(3) = Nstep(3) + 1
+            Ll(i) = -1
+         ELSE
+            my = i
+            Nstep(1) = my
+            ly = M*(my-1)
+            lyp = ly + my
+            Ans(5) = D(lyp)
+         ENDIF
+      ENDIF
+   ENDDO
+   Nstep(2) = nfo
+!
+!        FIND THE MAXIMUM NUMBER OF STEPS
+!
+   mx = M - Nstep(3) - 1
+!
+!        START SELECTION OF VARIABLES
+!
+   SPAG_Loop_1_1: DO nl = 1,mx
+      rd = 0
+      IF ( nl<=nfo ) THEN
+!
+!        SELECT NEXT VARIABLE TO ENTER AMONG FORCED VARIABLES
+!
+         DO i = 1,nfo
+            k = Idx(i)
+            IF ( Ll(k)>0 ) THEN
+               lyp = ly + k
+               ip = M*(k-1) + k
+               re = D(lyp)*D(lyp)/D(ip)
+               IF ( rd<re ) THEN
+                  rd = re
+                  new = k
+               ENDIF
+            ENDIF
+         ENDDO
+      ELSE
+!
+!        SELECT NEXT VARIABLE TO ENTER AMONG NON-FORCED VARIABLES
+!
+         DO i = 1,M
+            IF ( i/=my ) THEN
+               IF ( Ll(i)>0 ) THEN
+                  lyp = ly + i
+                  ip = M*(i-1) + i
+                  re = D(lyp)*D(lyp)/D(ip)
+                  IF ( rd<re ) THEN
+                     rd = re
+                     new = i
+                  ENDIF
+               ENDIF
+            ENDIF
+         ENDDO
+      ENDIF
+!
+!        TEST WHETHER THE PROPORTION OF THE SUM OF SQUARES REDUCED BY
+!        THE LAST VARIABLE ENTERED IS GREATER THAN OR EQUAL TO THE
+!        SPECIFIED PROPORTION
+!
+      IF ( rd>0 ) THEN
+         IF ( Ans(5)>(Ans(3)+rd) ) THEN
+            re = rd/Ans(5)
+            IF ( re<Pct ) EXIT SPAG_Loop_1_1
+!
+!        IT IS GREATER THAN OR EQUAL
+!
+            Ll(new) = 0
+            L(nl) = new
+            Ans(1) = rd
+            Ans(2) = re
+            Ans(3) = Ans(3) + rd
+            Ans(4) = Ans(4) + re
+            Nstep(4) = nl
+            Nstep(5) = new
+!
+!        COMPUTE MULTIPLE CORRELATION, F-VALUE FOR ANALYSIS OF
+!        VARIANCE, AND STANDARD ERROR OF ESTIMATE
+!
+            Ans(6) = sqrt(Ans(4))
+            rd = nl
+            re = onm - rd
+            re = (Ans(5)-Ans(3))/re
+            Ans(7) = (Ans(3)/rd)/re
+            Ans(8) = sqrt(re)
+!
+!        DIVIDE BY THE PIVOTAL ELEMENT
+!
+            ip = M*(new-1) + new
+            rd = D(ip)
+            lyp = new - M
+            DO j = 1,M
+               lyp = lyp + M
+               IF ( Ll(j)<0 ) CYCLE
+               IF ( Ll(j)==0 ) THEN
+                  IF ( j/=new ) THEN
+                     ij = M*(j-1) + j
+                     D(ij) = D(ij) + D(lyp)*D(lyp)/rd
+                  ELSE
+                     D(ip) = 1.0/rd
+                     CYCLE
+                  ENDIF
+               ENDIF
+               D(lyp) = D(lyp)/rd
+            ENDDO
+!
+!        COMPUTE REGRESSION COEFFICIENTS
+!
+            lyp = ly + new
+            B(nl) = D(lyp)
+            IF ( nl>1 ) THEN
+               id = nl - 1
+               DO j = 1,id
+                  ij = nl - j
+                  kk = L(ij)
+                  lyp = ly + kk
+                  B(ij) = D(lyp)
+                  DO k = 1,j
+                     ik = nl - k + 1
+                     mk = L(ik)
+                     lyp = M*(mk-1) + kk
+                     B(ij) = B(ij) - D(lyp)*B(ik)
+                  ENDDO
+               ENDDO
+            ENDIF
+!
+!        COMPUTE INTERCEPT
+!
+            Ans(9) = Xbar(my)
+            DO i = 1,nl
+               kk = L(i)
+               Ans(9) = Ans(9) - B(i)*Xbar(kk)
+               ij = M*(kk-1) + kk
+               S(i) = Ans(8)*sqrt(D(ij))
+               T(i) = B(i)/S(i)
+            ENDDO
+!
+!        PERFORM A REDUCTION TO ELIMINATE THE LAST VARIABLE ENTERED
+!
+            ip = M*(new-1)
+            DO i = 1,M
+               ij = i - M
+               ik = new - M
+               ip = ip + 1
+               IF ( Ll(i)>0 ) THEN
+                  DO j = 1,M
+                     ij = ij + M
+                     ik = ik + M
+                     IF ( Ll(j)>=0 ) THEN
+                        IF ( j/=new ) D(ij) = D(ij) - D(ip)*D(ik)
+                     ENDIF
+                  ENDDO
+                  D(ip) = D(ip)/(-rd)
+               ENDIF
+            ENDDO
+!
+!        ADJUST STANDARD ERROR OF THE ESTIMATE AND MULTIPLE CORRELATION
+!        COEFFICIENT
+!
+            rd = N - Nstep(4)
+            rd = onm/rd
+            Ans(10) = sqrt(1.0-(1.0-Ans(6)*Ans(6))*rd)
+            Ans(11) = Ans(8)*sqrt(rd)
+!
+!        CALL THE OUTPUT SUBROUTINE
+            CALL stout(Nstep,Ans,L,B,S,T,nstop)
+!
+!        TEST WHETHER THE STEP-WISE REGRESSION WAS TERMINATED IN
+!        SUBROUTINE STOUT
+!
+            IF ( nstop>0 ) EXIT SPAG_Loop_1_1
+            CYCLE
+         ENDIF
+      ENDIF
+      Ier = 1
+      EXIT SPAG_Loop_1_1
+!
+   ENDDO SPAG_Loop_1_1
+!
+END SUBROUTINE stprg
